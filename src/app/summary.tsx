@@ -1,7 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 export default function SummaryScreen() {
@@ -11,63 +11,39 @@ export default function SummaryScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
       
-      {/* App Bar */}
-      <View style={styles.header}>
-        <View style={{ width: 24 }} />
-        <Text style={styles.headerTitle}>Session Summary</Text>
-        <TouchableOpacity onPress={() => router.replace('/')}>
-          <Ionicons name="home" size={24} color="white" />
-        </TouchableOpacity>
+      {/* Success Icon & Title */}
+      <View style={styles.congratsContainer}>
+        <View style={styles.iconCircle}>
+          <Ionicons name="trophy" size={50} color="#7FE5B6" />
+        </View>
+        <Text style={styles.mainTitle}>Session Finished!</Text>
+        <Text style={styles.subtitle}>Great job staying away from distractions.</Text>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Success Badge & Points Section */}
-        <View style={styles.successCard}>
-          <MaterialCommunityIcons name="trophy-award" size={80} color="#7FE5B6" />
-          <Text style={styles.congratstext}>SESSION COMPLETE!</Text>
-          <Text style={styles.pointsText}>+150 XP Earned</Text>
-          <Text style={styles.streakText}>🔥 5 Day Streak!</Text>
+      {/* Stats Card */}
+      <View style={styles.statsCard}>
+        <Text style={styles.cardHeader}>SESSION STATS</Text>
+        
+        {/* Stat Row 1 */}
+        <View style={styles.statRow}>
+          <Text style={styles.statLabel}>Time Focused</Text>
+          <Text style={styles.statValue}>25 Mins</Text>
         </View>
 
-        {/* Analytics Dashboard Sheet */}
-        <View style={styles.sheet}>
-          <Text style={styles.sheetTitle}>Deep Work Analytics</Text>
-
-          {/* Stat 1: Focus Duration */}
-          <View style={styles.statCard}>
-            <Ionicons name="time" size={24} color="#0F2537" />
-            <View style={styles.statTextContainer}>
-              <Text style={styles.statLabel}>Total Focus Time</Text>
-              <Text style={styles.statValue}>25 Minutes</Text>
-            </View>
-          </View>
-
-          {/* Stat 2: Distraction Shield Insights */}
-          <View style={styles.statCard}>
-            <MaterialCommunityIcons name="shield-airplane" size={24} color="#0F2537" />
-            <View style={styles.statTextContainer}>
-              <Text style={styles.statLabel}>Distractions Blocked</Text>
-              <Text style={styles.statValue}>12 Attempts (TikTok/Insta)</Text>
-            </View>
-          </View>
-
-          {/* Simple Chart Simulation (AI Focus Graph) */}
-          <Text style={styles.chartTitle}>Weekly Focus Pattern</Text>
-          <View style={styles.chartContainer}>
-            <View style={[styles.bar, { height: 40 }]}><Text style={styles.barLabel}>M</Text></View>
-            <View style={[styles.bar, { height: 70 }]}><Text style={styles.barLabel}>T</Text></View>
-            <View style={[styles.bar, { height: 110, backgroundColor: '#2C7A6F' }]}><Text style={styles.barLabel}>W</Text></View>
-            <View style={[styles.bar, { height: 50 }]}><Text style={styles.barLabel}>T</Text></View>
-            <View style={[styles.bar, { height: 90 }]}><Text style={styles.barLabel}>F</Text></View>
-          </View>
-          <Text style={styles.aiInsightText}>💡 AI Insight: Your focus peaks on Wednesdays at 9:00 AM.</Text>
-
-          {/* Done Button */}
-          <TouchableOpacity style={styles.doneButton} onPress={() => router.replace('/')}>
-            <Text style={styles.doneButtonText}>BACK TO DASHBOARD</Text>
-          </TouchableOpacity>
+        {/* Stat Row 2 */}
+        <View style={styles.statRow}>
+          <Text style={styles.statLabel}>AI Shield Status</Text>
+          <Text style={[styles.statValue, { color: '#7FE5B6', fontWeight: 'bold' }]}>100% SECURE</Text>
         </View>
-      </ScrollView>
+      </View>
+
+      {/* Bottom Action Button */}
+      <TouchableOpacity 
+        style={styles.homeButton} 
+        onPress={() => router.replace('/')} // ආපහු මුල් පිටුවටම ලස්සනට රැගෙන යනවා
+      >
+        <Text style={styles.homeButtonText}>START NEW SESSION</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -76,123 +52,86 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0F2537',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 50,
+    paddingHorizontal: 20,
   },
-  header: {
+  congratsContainer: {
+    alignItems: 'center',
+    marginTop: 40,
+  },
+  iconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#1B3B54',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 25,
+    borderWidth: 2,
+    borderColor: '#7FE5B6',
+  },
+  mainTitle: {
+    color: 'white',
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  subtitle: {
+    color: '#A2BCCF',
+    fontSize: 15,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    lineHeight: 22,
+  },
+  statsCard: {
+    backgroundColor: '#1B3B54',
+    width: '100%',
+    borderRadius: 25,
+    padding: 25,
+    marginVertical: 30,
+  },
+  cardHeader: {
+    color: '#7FE5B6',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 2,
+    marginBottom: 20,
+  },
+  statRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    marginBottom: 10,
-  },
-  headerTitle: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  successCard: {
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  congratstext: {
-    color: 'white',
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginTop: 15,
-    letterSpacing: 1,
-  },
-  pointsText: {
-    color: '#7FE5B6',
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 5,
-  },
-  streakText: {
-    color: 'white',
-    fontSize: 14,
-    marginTop: 5,
-    opacity: 0.8,
-  },
-  sheet: {
-    backgroundColor: '#CBEFDF',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingHorizontal: 20,
-    paddingTop: 25,
-    paddingBottom: 40,
-  },
-  sheetTitle: {
-    color: '#0F2537',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-  },
-  statCard: {
-    backgroundColor: 'white',
-    borderRadius: 15,
-    padding: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  statTextContainer: {
-    marginLeft: 15,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#244A66',
   },
   statLabel: {
-    color: '#555',
-    fontSize: 12,
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '500',
   },
   statValue: {
+    color: '#A2BCCF',
+    fontSize: 16,
+  },
+  homeButton: {
+    backgroundColor: '#7FE5B6', // කැපී පේන ලස්සන මින්ට් ග්‍රීන් බටන් එකක්
+    width: '100%',
+    borderRadius: 20,
+    paddingVertical: 18,
+    alignItems: 'center',
+    shadowColor: '#7FE5B6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  homeButtonText: {
     color: '#0F2537',
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  chartTitle: {
-    color: '#0F2537',
-    fontSize: 15,
-    fontWeight: 'bold',
-    marginTop: 15,
-    marginBottom: 10,
-  },
-  chartContainer: {
-    backgroundColor: 'white',
-    borderRadius: 15,
-    padding: 20,
-    height: 160,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-end',
-  },
-  bar: {
-    width: 25,
-    backgroundColor: '#0F2537',
-    borderRadius: 5,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
-  barLabel: {
-    color: 'white',
-    fontSize: 10,
-    marginBottom: -18,
-  },
-  aiInsightText: {
-    color: '#2C7A6F',
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 25,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  doneButton: {
-    backgroundColor: '#0F2537',
-    borderRadius: 15,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 30,
-  },
-  doneButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
+    letterSpacing: 1,
   },
 });
