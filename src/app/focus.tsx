@@ -6,12 +6,18 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 
 export default function FocusScreen() {
   const router = useRouter();
-  // පළමු පිටුවෙන් එවපු දත්ත මෙතනට ගන්නවා
   const { taskName, focusType } = useLocalSearchParams();
 
-  // මිනිට්ටු 25 තත්පර වලට හරවා ගනිමු (25 * 60 = 1500)
-  const [secondsLeft, setSecondsLeft] = useState(1500);
-  const [isActive, setIsActive] = useState(true); // ඇතුළු වූ සැනින් ටයිමර් එක පටන් ගනී
+  const [secondsLeft, setSecondsLeft] = useState(1500); // 25 Mins
+  const [isActive, setIsActive] = useState(true);
+
+  // Summary එකට දත්ත අරන් යන පොදු ෆන්ක්ෂන් එකක් හැදුවා
+  const navigateToSummary = () => {
+    router.push({
+      pathname: '/summary',
+      params: { completedTask: taskName, completedType: focusType }
+    });
+  };
 
   useEffect(() => {
     let interval: any = null;
@@ -22,14 +28,12 @@ export default function FocusScreen() {
       }, 1000);
     } else if (secondsLeft === 0) {
       clearInterval(interval);
-      // ටයිමර් එක ඉවර වුණාම ඔටෝමැටිකව Summary Screen එකට යනවා
-      router.push('/summary');
+      navigateToSummary(); // ඉවර වුණාම දත්ත එක්ක යනවා
     }
 
     return () => clearInterval(interval);
   }, [isActive, secondsLeft]);
 
-  // තත්පර ගණන MM:SS විදිහට සකස් කරගන්නා ෆන්ක්ෂන් එක
   const formatTime = () => {
     const mins = Math.floor(secondsLeft / 60);
     const secs = secondsLeft % 60;
@@ -40,30 +44,25 @@ export default function FocusScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
       
-      {/* Top Bar */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{focusType || 'Focus Zone'}</Text>
-        <View style={{ width: 24 }} /> {/* Balance එක තියාගන්න හිස් තැනක් */}
+        <View style={{ width: 24 }} />
       </View>
 
-      {/* Task Displayer */}
       <View style={styles.taskContainer}>
         <Text style={styles.taskSubtitle}>CURRENT TASK</Text>
         <Text style={styles.taskTitle}>{taskName || 'No Task Named'}</Text>
       </View>
 
-      {/* Big Circular Timer Appearance */}
       <View style={styles.timerCircle}>
         <Text style={styles.timerText}>{formatTime()}</Text>
         <Text style={styles.statusText}>{isActive ? 'STAY FOCUSED' : 'PAUSED'}</Text>
       </View>
 
-      {/* Timer Controls */}
       <View style={styles.controlsContainer}>
-        {/* Pause / Play Button */}
         <TouchableOpacity 
           style={[styles.controlButton, isActive ? styles.pauseButton : styles.playButton]} 
           onPress={() => setIsActive(!isActive)}
@@ -71,8 +70,7 @@ export default function FocusScreen() {
           <Ionicons name={isActive ? "pause" : "play"} size={28} color="white" />
         </TouchableOpacity>
 
-        {/* Quit Button */}
-        <TouchableOpacity style={styles.quitButton} onPress={() => router.push('/summary')}>
+        <TouchableOpacity style={styles.quitButton} onPress={navigateToSummary}>
           <Text style={styles.quitButtonText}>GIVE UP</Text>
         </TouchableOpacity>
       </View>
