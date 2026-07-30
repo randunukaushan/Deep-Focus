@@ -1,56 +1,103 @@
-# Welcome to your Expo app 👋
+# Deep Focus
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+> An AI-powered productivity platform that eliminates distractions, predicts burnout, and helps people achieve sustainable deep work.
 
-## Get started
+---
 
-1. Install dependencies
+## Overview
 
-   ```bash
-   npm install
-   ```
+Deep Focus is more than a Pomodoro timer.
 
-2. Start the app
+It is an intelligent productivity ecosystem designed to help students and professionals achieve their highest level of focus while protecting their mental well-being.
 
-   ```bash
-   npx expo start
-   ```
+By combining Artificial Intelligence, distraction shielding, adaptive focus sessions, gamification, analytics, and wellness features, Deep Focus becomes a personal productivity companion rather than just a timer.
 
-In the output, you'll find options to open the app in a
+Its mission is simple:
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+**Help people work smarter, stay healthier, and build lifelong deep work habits.**
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+---
 
-## Get a fresh project
+## Why Deep Focus?
 
-When you're ready, run:
+Most productivity apps solve only one problem.
 
-```bash
-npm run reset-project
-```
+- Some track time.
+- Some block distracting apps.
+- Some manage tasks.
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Deep Focus combines these capabilities into one intelligent platform.
 
-### Other setup steps
+Instead of only measuring productivity, it understands user behavior, predicts fatigue, adapts focus sessions, and continuously helps users improve their performance.
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+---
 
-## Learn more
+## Vision
 
-To learn more about developing your project with Expo, look at the following resources:
+To become the world's most intelligent AI-powered focus platform by combining productivity, digital well-being, and behavioral intelligence into one seamless experience.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
-## Join the community
+## Features
 
-Join our community of developers creating universal apps.
+- AI Energy Tracker
+- Anti-Distraction Shield
+- Deep Work Analytics
+- AI Soundscape Adaptation
+- True Zen Break
+- Predictive Burnout Shield
+- Gamified Reward System
+- Focus Bet Challenge
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+---
+
+## Tech Stack
+
+- React Native
+- Expo
+- TypeScript
+- Firebase (Planned)
+- OpenAI API (Planned)
+- React Navigation
+- Async Storage
+- Expo Notifications
+
+---
+
+## Roadmap
+
+### Phase 1
+- Basic Focus Timer
+- Statistics
+- Session History
+
+### Phase 2
+- AI Coach
+- Smart Break Suggestions
+- Adaptive Focus Sessions
+
+### Phase 3
+- Burnout Prediction
+- AI Productivity Reports
+- Cross-device Sync
+
+### Phase 4
+- Community Challenges
+- Focus Groups
+- Premium AI Features
+
+---
+
+## Status
+
+🚧 Currently under active development.
+
+This project is being built publicly with continuous updates and improvements.
+
+---
+
+## Author
+
+Built with passion by **Randunu Kaushan**
+
+Learning in public while building an AI-powered productivity platform.
