@@ -12,101 +12,126 @@ Every feature, interface, AI capability, and user experience should align with t
 
 ## 1. Introduction
 
-Modern digital life offers unlimited access to information, communication, and entertainment. While these technologies provide enormous benefits, they also introduce constant interruptions, fragmented attention, and increasing levels of digital fatigue.
+Deep Focus is an intelligent productivity platform designed to help people perform meaningful work while building healthier and more sustainable focus habits.
 
-Many existing productivity applications focus on only one aspect of productivity, such as task management, time tracking, or distraction blocking. Although these tools are useful, they rarely address the broader challenge of helping people build sustainable focus habits while protecting their mental well-being.
+Modern digital environments make sustained attention increasingly difficult. Notifications, communication tools, entertainment platforms, and constant access to information can fragment attention and increase cognitive load.
 
-Deep Focus was created to address this gap.
+Deep Focus approaches productivity as more than time management or task completion. The platform aims to combine focused work, behavioral insights, thoughtful user experience, and supportive artificial intelligence within a unified environment.
 
-Instead of functioning as another productivity timer, Deep Focus aims to become an intelligent productivity companion that understands user behavior, adapts to changing work patterns, and supports long-term personal growth.
+Rather than encouraging users to spend more time working, Deep Focus is designed to help them use their attention more intentionally.
 
-The platform combines artificial intelligence, behavioral insights, productivity science, wellness principles, and thoughtful user experience design to create an environment where users can consistently perform meaningful work without sacrificing their health or motivation.
+The platform should evolve around three fundamental outcomes:
 
-Every aspect of the platform is intentionally designed to reduce cognitive load, minimize unnecessary distractions, and encourage healthier, more sustainable productivity habits over time.
+- Help users protect and strengthen their attention
+- Support sustainable productivity habits
+- Promote a healthier relationship with digital work
+
+Every major product decision should contribute to these outcomes while respecting user privacy, autonomy, accessibility, and long-term well-being.
 
 ---
 
 ## 2. Problem Statement
 
-Modern technology has transformed the way people work, study, and communicate. However, the same technologies that improve productivity have also become one of its greatest obstacles.
+Modern digital environments make sustained concentration increasingly difficult.
 
-People are constantly interrupted by notifications, social media, instant messaging, emails, and endless streams of digital content. These distractions reduce concentration, increase cognitive load, and make sustained deep work increasingly difficult.
+People regularly move between notifications, messaging, email, social media, entertainment, and other digital tools. Frequent interruptions fragment attention, increase cognitive load, and make deep, uninterrupted work harder to maintain.
 
-At the same time, many individuals experience mental fatigue, burnout, and declining motivation due to prolonged periods of fragmented attention and unhealthy work habits.
+At the same time, prolonged or poorly managed work can contribute to mental fatigue, declining motivation, and unhealthy productivity habits.
 
-Although numerous productivity applications exist, most focus on solving only a single problem.
+Many productivity tools address only individual parts of this problem. Some provide timers, others manage tasks, block distractions, or display productivity statistics.
 
-Some applications provide timers.
+This can leave users managing multiple disconnected tools without a unified system for understanding and improving their focus habits.
 
-Others manage tasks.
+Deep Focus addresses this broader challenge by bringing focus support, behavioral insights, productivity guidance, and digital well-being into a more unified experience.
 
-Some block distracting websites.
+The problem Deep Focus aims to solve is therefore not simply a lack of productivity tools.
 
-Others collect productivity statistics.
-
-Very few platforms combine productivity, behavioral science, artificial intelligence, and digital well-being into a unified experience that actively helps users build sustainable focus habits.
-
-As a result, users are often forced to switch between multiple applications, creating fragmented workflows and inconsistent experiences.
-
-Deep Focus was conceived to solve this broader problem.
-
-Rather than offering isolated productivity tools, Deep Focus aims to provide a unified ecosystem that intelligently supports focus, minimizes distractions, protects mental well-being, and continuously adapts to each user's unique working patterns.
-
-The goal is not simply to help users complete more tasks, but to help them achieve meaningful, sustainable productivity throughout their personal and professional lives.
+It is the difficulty of maintaining meaningful, sustainable focus within a digital environment that constantly competes for human attention.
 
 ---
 
 ## 3. Why Deep Focus Exists
 
-Deep Focus exists because productivity should not come at the expense of mental health.
+Deep Focus exists to help people regain greater control over their attention and develop a healthier approach to productivity.
 
-The platform was created with the belief that meaningful work requires more than discipline, motivation, or time management. It requires an environment that supports sustained attention, reduces unnecessary distractions, and encourages healthier work habits.
+The platform is built on the belief that productivity should not require users to sacrifice their mental well-being or simply work for longer periods.
 
-Deep Focus is built on the idea that technology should actively help people regain control over their attention instead of competing for it.
+Instead, Deep Focus should help users work more intentionally by creating an environment that:
 
-Rather than encouraging users to work longer hours, the platform encourages them to work more intentionally. Success is measured not only by completed tasks but also by the quality of focus, consistency of habits, and overall well-being of the user.
+- Supports sustained attention
+- Reduces unnecessary distractions
+- Encourages healthy breaks and work habits
+- Helps users understand their productivity patterns
+- Adapts to different working styles where appropriate
 
-Artificial intelligence plays a supporting role throughout the platform. Instead of replacing human decision-making, AI provides personalized guidance, recognizes behavioral patterns, detects signs of fatigue, and offers recommendations that help users make better decisions throughout their productivity journey.
+Artificial intelligence should support this experience rather than control it.
 
-Deep Focus also recognizes that every individual works differently. Focus levels, energy patterns, schedules, and working environments vary from person to person. For this reason, the platform is designed to adapt to each user rather than forcing everyone into a single productivity method.
+AI may help identify useful patterns, provide personalized guidance, and suggest improvements, but users should remain in control of their decisions and productivity habits.
 
-Ultimately, Deep Focus exists to create a future where technology helps people think more clearly, work more meaningfully, and live healthier lives through sustainable deep work.
+Deep Focus also recognizes that focus is personal. Users may differ in their schedules, energy levels, goals, environments, and preferred ways of working.
+
+For this reason, the platform should support adaptation without forcing every user into a single productivity method.
+
+Ultimately, Deep Focus exists to help technology become a tool for protecting attention rather than another source competing for it.
 
 ---
 
 ## 4. Mission
 
-The mission of Deep Focus is to empower people to achieve meaningful, sustainable productivity by combining artificial intelligence, behavioral science, and thoughtful user experience into a single intelligent platform.
+The mission of Deep Focus is to help people perform meaningful work with greater intention while building sustainable productivity habits.
 
-Rather than encouraging users to simply complete more tasks, Deep Focus seeks to help them work with greater intention, maintain healthier focus habits, and achieve long-term personal and professional growth.
+Deep Focus aims to achieve this by combining focused work tools, behavioral insights, thoughtful user experience, and supportive artificial intelligence within a calm and accessible environment.
 
-The platform is committed to reducing digital distractions, protecting mental well-being, and creating an environment where users can consistently perform deep, uninterrupted work.
+The platform should help users:
 
-To achieve this mission, Deep Focus will continuously evolve through research, user feedback, and technological innovation while remaining focused on one fundamental principle:
+- Protect their attention
+- Reduce unnecessary distractions
+- Build consistent focus habits
+- Understand their productivity patterns
+- Maintain healthier work and break routines
+- Make informed decisions about how they use their time and energy
 
-Technology should help people regain control over their attention rather than compete for it.
+Deep Focus should not encourage productivity for its own sake.
 
-Every feature developed for Deep Focus should contribute to this mission by improving focus, reducing unnecessary cognitive load, supporting healthier work habits, and delivering meaningful value to users throughout their productivity journey.
+Every major feature should provide meaningful value by improving focus, reducing cognitive load, supporting healthier work habits, or helping users better understand and manage their productivity.
+
+The mission is guided by one central principle:
+
+**Technology should help people regain control over their attention rather than compete for it.**
 
 ---
 
 ## 5. Vision
 
-The vision of Deep Focus is to become the world's most trusted intelligent productivity platform that empowers millions of people to perform meaningful work while maintaining long-term mental well-being.
+The long-term vision of Deep Focus is to become a trusted, intelligent productivity platform that helps people perform meaningful work while maintaining a healthy relationship with technology.
 
-Deep Focus envisions a future where technology no longer competes for human attention but instead protects, strengthens, and intelligently supports it.
+As the platform evolves, Deep Focus may expand beyond its initial mobile application into a broader productivity ecosystem that supports users across different devices, environments, and stages of their personal or professional lives.
 
-As artificial intelligence continues to evolve, productivity should become more personal, adaptive, and human-centered. Rather than replacing human decision-making, intelligent systems should help individuals understand their habits, improve their focus, and achieve a healthier balance between work and life.
+Future capabilities may combine:
 
-Deep Focus aims to lead this transformation by creating a productivity ecosystem that continuously learns from each user's unique behaviors, working patterns, and long-term goals while respecting privacy, transparency, and user control.
+- Intelligent productivity guidance
+- Behavioral insights
+- Focus and habit development
+- Digital well-being
+- Planning and learning support
+- Cross-platform productivity experiences
 
-In the long term, the platform seeks to become more than a mobile application. Deep Focus is envisioned as a comprehensive ecosystem that integrates artificial intelligence, behavioral science, wellness practices, learning, planning, and productivity into a unified experience that supports users across multiple devices and environments.
+Artificial intelligence should make these experiences more adaptive and useful without replacing user judgment or reducing user control.
 
-Every stage of the platform's evolution should remain guided by one fundamental belief:
+Growth should not be measured by the number of features alone. Deep Focus should expand only when new capabilities strengthen its core purpose and provide meaningful value to users.
 
-Technology should enhance human potential rather than compete for human attention.
+Throughout its evolution, the platform should continue to prioritize:
 
-By remaining committed to this vision, Deep Focus aspires to become a global benchmark for intelligent productivity, sustainable deep work, and digital well-being.
+- User trust
+- Privacy
+- Accessibility
+- Simplicity
+- Sustainable productivity
+- Human-centered design
+
+The long-term goal is not to make users spend more time inside Deep Focus.
+
+It is to help them use their attention more intentionally outside it.
 
 ---
 
@@ -128,7 +153,7 @@ Features should simplify users' lives, reduce unnecessary complexity, and create
 
 Deep Focus does not encourage constant work or unhealthy productivity.
 
-The platform promotes balanced work habits that help users achieve meaningful results while protecting their physical and mental well-being.
+The platform promotes balanced work habits that help users pursue meaningful results while supporting healthier and more sustainable patterns of work and recovery.
 
 ---
 
@@ -242,6 +267,12 @@ Deep Focus is designed with a long-term perspective that extends beyond the firs
 
 The platform aims to evolve gradually while maintaining its core philosophy of supporting meaningful work, sustainable productivity, and long-term mental well-being.
 
+These goals describe the long-term direction of Deep Focus rather than guaranteed features for the initial product release.
+
+Features should be introduced gradually according to validated user needs, technical feasibility, available resources, and alignment with the core Deep Focus mission.
+
+Long-term ambition should not create unnecessary complexity in the current product.
+
 The primary long-term goals of Deep Focus include:
 
 ### Build Sustainable Productivity Habits
@@ -256,9 +287,9 @@ Continuously improve the platform's ability to adapt to each user's goals, work 
 
 ---
 
-### Protect Mental Well-Being
+### Support Sustainable Well-Being
 
-Reduce burnout, digital fatigue, and cognitive overload by promoting balanced work habits, healthy breaks, and thoughtful use of technology.
+Support healthier and more sustainable work patterns by encouraging balanced workloads, appropriate recovery, healthy breaks, and thoughtful use of technology.
 
 ---
 
@@ -288,57 +319,38 @@ Adopt new technologies and scientific research responsibly while ensuring that e
 
 ## 9. Success Metrics
 
-The success of Deep Focus should not be measured solely by downloads, usage time, or the number of completed focus sessions.
+The success of Deep Focus should be evaluated by whether the platform provides meaningful value to users while supporting sustainable productivity habits.
 
-Instead, success should be evaluated based on the platform's ability to help users build sustainable productivity habits, improve their well-being, and achieve meaningful long-term outcomes.
+Potential product-level indicators may include:
 
-Key success indicators include:
+- Focus session completion
+- Consistent use of focus tools
+- User-reported improvements in focus
+- User-reported usefulness of AI recommendations
+- Adoption of healthy break patterns
+- Feature reliability
+- User satisfaction
+- Accessibility quality
+- Application stability
+- Long-term user trust
 
-### Improved Focus Quality
+These indicators should be interpreted carefully.
 
-Users should experience longer periods of uninterrupted concentration and a noticeable reduction in unnecessary distractions during focus sessions.
+Deep Focus should not optimize engagement simply to increase time spent inside the application.
 
----
+Metrics should not encourage:
 
-### Sustainable Productivity Habits
+- Unnecessary notifications
+- Artificial engagement loops
+- Pressure to maintain unhealthy streaks
+- Excessive work duration
+- Manipulative reward systems
 
-The platform should encourage consistent daily productivity routines that users can maintain over extended periods without experiencing excessive stress or burnout.
+Well-being, stress, fatigue, or burnout-related indicators should be treated as supportive user-reported or behavioral signals unless a feature has been appropriately validated for stronger claims.
 
----
+Product metrics should guide improvement without being presented as medical or psychological diagnoses.
 
-### User Well-Being
-
-Deep Focus should contribute to healthier work habits by promoting balanced workloads, regular breaks, and improved awareness of mental fatigue.
-
----
-
-### Positive User Engagement
-
-Users should continue using the platform because it provides genuine value rather than relying on addictive engagement techniques or unnecessary notifications.
-
----
-
-### Personal Growth
-
-The platform should help users better understand their productivity patterns, develop stronger focus skills, and make continuous improvements over time.
-
----
-
-### AI Effectiveness
-
-Artificial intelligence should consistently deliver relevant, personalized, and trustworthy recommendations that genuinely improve the user experience while remaining transparent and respectful of user control.
-
----
-
-### Accessibility and Inclusion
-
-The platform should remain accessible to users with diverse abilities, languages, devices, and working styles, ensuring that meaningful productivity is available to as many people as possible.
-
----
-
-### Long-Term Trust
-
-Success should ultimately be reflected in the trust users place in the platform through continued usage, positive feedback, transparency, responsible data practices, and ethical application of artificial intelligence.
+The most important measure of success is whether Deep Focus helps users protect their attention and build more sustainable productivity habits.
 
 ---
 
@@ -365,7 +377,7 @@ Potential long-term areas of evolution include:
 
 As these capabilities continue to grow, Deep Focus should remain focused on helping users perform meaningful work rather than overwhelming them with unnecessary complexity.
 
-Every future innovation should strengthen the platform's mission of helping people regain control over their attention, improve their well-being, and build sustainable productivity habits.
+Every future innovation should strengthen the platform's mission of helping people regain greater control over their attention, support healthier work patterns, and build sustainable productivity habits.
 
 Regardless of how the platform evolves, its success should always be measured by its positive impact on people's lives rather than the number of features it provides.
 
@@ -375,7 +387,7 @@ Regardless of how the platform evolves, its success should always be measured by
 
 Deep Focus was created with a long-term purpose that extends far beyond improving productivity.
 
-The platform exists to help people build healthier relationships with technology, develop sustainable focus habits, and perform meaningful work without sacrificing their mental well-being.
+The platform exists to help people build healthier relationships with technology, develop sustainable focus habits, and pursue meaningful work without encouraging unhealthy or unsustainable work patterns.
 
 Every feature, design decision, AI capability, and future innovation should remain aligned with the mission, vision, and core values defined in this document.
 
