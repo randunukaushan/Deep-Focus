@@ -2859,3 +2859,606 @@ The assessment schema should:
 - Remain flexible enough for future assessment improvements
 
 ---
+
+## 13. Relationship Summary
+
+---
+
+The Deep Focus V1 database uses clear ownership and optional feature relationships.
+
+The primary relationships are:
+
+```text
+users
+ ├── focus_sessions
+ ├── tasks
+ ├── goals
+ ├── streaks
+ ├── reward_progress
+ ├── user_settings
+ └── assessments
+
+goals
+ └── tasks
+
+tasks
+ └── focus_sessions
+
+assessments
+ └── assessment_answers
+
+users
+ └── user_achievements
+```
+
+Where implemented:
+
+```text
+users
+ └── reward_events
+```
+
+### Relationship Cardinality
+
+Conceptually:
+
+```text
+User
+→ many FocusSessions
+
+User
+→ many Tasks
+
+User
+→ many Goals
+
+User
+→ one Streak
+
+User
+→ one RewardProgress
+
+User
+→ one UserSettings
+
+User
+→ many Assessments
+
+Goal
+→ many Tasks
+
+Task
+→ many FocusSessions
+
+Assessment
+→ many AssessmentAnswers
+
+User
+→ many UserAchievements
+```
+
+Relationships should preserve user ownership boundaries.
+
+A record owned by one user should never reference another user's private resource unless a future feature explicitly introduces supported shared data.
+
+---
+
+## 14. Foreign Key and Deletion Rules
+
+---
+
+Deletion behavior should protect historical integrity while removing dependent data when that data has no independent meaning.
+
+Recommended behavior includes:
+
+```text
+User deleted
+→ Account-deletion process handles owned user data
+
+Goal deleted
+→ Related tasks remain valid where appropriate
+→ tasks.goal_id becomes null
+
+Task deleted
+→ Historical focus sessions remain valid
+→ focus_sessions.task_id becomes null
+
+Assessment deleted
+→ Related assessment answers are deleted
+
+Achievement definition removed
+→ Existing user achievement history should be handled carefully
+```
+
+### Historical Records
+
+Important historical productivity records should not disappear because an optional related record was removed.
+
+For example:
+
+```text
+Task
+  ↓
+FocusSession
+```
+
+If the task is deleted:
+
+```text
+FocusSession remains
+task_id becomes null
+```
+
+This preserves:
+
+- Focus history
+- Analytics
+- Streak calculations
+- Reward verification
+
+### Cascading Deletes
+
+Cascade deletion should be used only where dependent data has no useful meaning without its parent.
+
+A suitable example is:
+
+```text
+Assessment
+    ↓
+AssessmentAnswers
+```
+
+If the assessment is deleted, its answers may also be deleted.
+
+Cascade deletion should not be applied broadly to historical productivity data without a clear requirement.
+
+---
+
+## 15. Index Strategy
+
+---
+
+Indexes should support common V1 queries without creating unnecessary write or storage overhead.
+
+Important query patterns include:
+
+- User focus-session history
+- Active-session recovery
+- Completed-session analytics
+- Task filtering
+- Goal filtering
+- Goal expiration
+- Assessment history
+- User achievement lookup
+
+### Recommended Index Summary
+
+Conceptually:
+
+```text
+users
+→ email where required
+
+focus_sessions
+→ user_id
+→ user_id + created_at
+→ user_id + status
+→ task_id
+
+tasks
+→ user_id
+→ user_id + status
+→ goal_id
+→ user_id + due_at
+
+goals
+→ user_id
+→ user_id + status
+→ user_id + period
+→ user_id + ends_at
+
+streaks
+→ unique user_id
+
+reward_progress
+→ unique user_id
+
+user_settings
+→ unique user_id
+
+assessments
+→ user_id
+→ user_id + created_at
+→ user_id + status
+
+assessment_answers
+→ assessment_id
+→ unique assessment_id + question_id
+
+user_achievements
+→ user_id
+→ unique user_id + achievement_id
+```
+
+Indexes should be reviewed against real application query patterns during implementation.
+
+V1 should avoid speculative indexes that are not required by actual queries.
+
+---
+
+## 16. Data Integrity
+
+---
+
+Database and application logic should work together to protect important invariants.
+
+Examples include:
+
+```text
+planned_duration_seconds > 0
+
+focused_duration_seconds >= 0
+
+paused_duration_seconds >= 0
+
+target_value > 0
+
+current_value >= 0
+
+current_streak >= 0
+
+longest_streak >= current_streak
+
+total_xp >= 0
+```
+
+The system should also protect lifecycle consistency.
+
+Examples:
+
+```text
+Completed FocusSession
+→ completed_at exists
+
+Cancelled FocusSession
+→ cancelled_at exists
+
+Completed Task
+→ completed_at exists
+
+Completed Goal
+→ completed_at exists
+
+Completed Assessment
+→ completed_at exists
+```
+
+Not every business rule needs to become a complex database constraint.
+
+Rules that are easier and safer to maintain in transactional service logic may remain in the backend.
+
+Critical integrity should not rely solely on client-side behavior.
+
+---
+
+## 17. Transactions and Atomic Updates
+
+---
+
+Operations that update multiple related records should use transactional behavior where required.
+
+Important examples may include:
+
+```text
+Complete FocusSession
+        ↓
+Update Session
+Update Goal Progress
+Update Streak
+Process Reward
+```
+
+These operations should avoid leaving the database in a partially updated state.
+
+Another example:
+
+```text
+Complete Task
+      ↓
+Update Task
+Update Goal Progress
+Process Reward
+```
+
+Where the selected database supports transactions, critical multi-record operations should use them appropriately.
+
+If a service architecture processes some updates asynchronously, duplicate processing and recovery behavior should remain reliable.
+
+---
+
+## 18. Duplicate Prevention
+
+---
+
+The database should help prevent duplicate records and duplicate side effects.
+
+Important uniqueness rules may include:
+
+```text
+One Streak per User
+
+One RewardProgress per User
+
+One UserSettings per User
+
+One Achievement Unlock per User + Achievement
+
+One Assessment Answer per Assessment + Question
+```
+
+Where only one active or paused focus session per user is supported, that rule should also be protected through the strongest practical mechanism available.
+
+Reward-producing events should not generate duplicate XP or achievements when requests are retried.
+
+Database uniqueness constraints should be preferred where they provide a simple and reliable protection mechanism.
+
+---
+
+## 19. Analytics Data
+
+---
+
+V1 should avoid creating unnecessary analytics tables when metrics can be calculated efficiently from authoritative records.
+
+Primary analytics sources include:
+
+```text
+focus_sessions
+tasks
+goals
+streaks
+reward_progress
+```
+
+Examples of derived metrics include:
+
+```text
+Total Focus Time
+Completed Sessions
+Average Session Duration
+Completed Tasks
+Completed Goals
+Daily Focus Time
+Weekly Focus Time
+Current Streak
+```
+
+Precomputed analytics tables or materialized summaries may be introduced later if real performance requirements justify them.
+
+They should not be introduced solely for theoretical future scale.
+
+Authoritative historical records should remain the source from which derived analytics can be rebuilt.
+
+---
+
+## 20. Synchronization Support
+
+---
+
+The database should support reliable synchronization between local application state and backend persistence where cloud synchronization is implemented.
+
+Important records should use stable identifiers so the same logical record is not recreated during synchronization.
+
+Synchronization should account for:
+
+- Temporary network loss
+- Retried requests
+- Duplicate submissions
+- Conflicting updates
+- Application restarts
+- Offline focus sessions
+
+`updated_at` may assist conflict detection but should not automatically determine every conflict-resolution decision.
+
+Historical completed records should generally require stricter modification rules than ordinary preferences.
+
+Synchronization logic should avoid creating duplicate:
+
+- Focus sessions
+- Rewards
+- Achievements
+- Assessment answers
+
+The exact synchronization implementation should follow `ARCHITECTURE.md` and `API_SPEC.md`.
+
+---
+
+## 21. Database Migrations
+
+---
+
+Database schema changes should be managed through controlled migrations.
+
+Migrations may be required when:
+
+- Adding columns
+- Adding tables
+- Adding constraints
+- Adding indexes
+- Changing relationships
+- Migrating existing data
+
+Migration files should:
+
+- Be version-controlled
+- Be reviewable
+- Preserve compatible user data
+- Avoid unnecessary destructive operations
+- Be tested before production deployment
+
+Existing production migrations should not normally be rewritten after they have been applied.
+
+New changes should use new migration files.
+
+### Data Migration
+
+When a new required field is introduced, the migration should define how existing records receive a valid value.
+
+Possible approaches include:
+
+- Safe defaults
+- Derived values
+- Temporary nullability followed by backfilling
+
+Schema changes should not assume that every existing record already contains newly introduced data.
+
+---
+
+## 22. Backup and Recovery
+
+---
+
+Production database infrastructure should support appropriate backup and recovery mechanisms.
+
+Backup strategy depends on the selected database provider and deployment architecture.
+
+Important user data may include:
+
+- Focus-session history
+- Tasks
+- Goals
+- Assessments
+- Settings
+- Reward progression
+
+Recovery procedures should prioritize data integrity and avoid restoring inconsistent partial state where practical.
+
+V1 application code should not attempt to build a custom database backup system when the selected managed database platform already provides reliable backup capabilities.
+
+---
+
+## 23. Security and Privacy
+
+---
+
+Database access should occur through trusted application infrastructure.
+
+The mobile client should not receive unrestricted database credentials.
+
+Database security should enforce:
+
+- Authentication
+- User ownership
+- Authorization
+- Least-privilege access
+- Protected credentials
+- Safe administrative access
+
+Sensitive credentials should never be stored in:
+
+- Mobile application source code
+- Public repositories
+- Client-visible configuration
+- Documentation examples containing real secrets
+
+The database should collect and retain only information required by supported Deep Focus functionality.
+
+Detailed security requirements should be defined in `SECURITY.md`.
+
+---
+
+## 24. V1 Schema Summary
+
+---
+
+The primary Deep Focus V1 schema consists of:
+
+```text
+users
+focus_sessions
+tasks
+goals
+streaks
+reward_progress
+user_settings
+assessments
+```
+
+Supporting tables may include:
+
+```text
+assessment_answers
+user_achievements
+```
+
+A supporting table such as:
+
+```text
+reward_events
+```
+
+may be introduced when durable reward-event deduplication is required by the implementation.
+
+The schema can be summarized conceptually as:
+
+```text
+users
+ │
+ ├── focus_sessions
+ │       ↑
+ │       │
+ │     tasks
+ │       ↑
+ │       │
+ │     goals
+ │
+ ├── streaks
+ │
+ ├── reward_progress
+ │
+ ├── user_achievements
+ │
+ ├── user_settings
+ │
+ └── assessments
+          │
+          └── assessment_answers
+```
+
+The database should keep authoritative productivity history separate from derived summaries.
+
+---
+
+# Conclusion
+
+---
+
+This Database Schema defines the persistent data structure required for Deep Focus V1.
+
+The schema should prioritize:
+
+- Data integrity
+- Reliable focus-session history
+- Clear user ownership
+- Predictable relationships
+- Historical preservation
+- Duplicate prevention
+- Efficient V1 queries
+- Safe synchronization
+- Controlled migrations
+- Security and privacy
+- Maintainable implementation
+
+The schema should remain intentionally focused on the first usable version of Deep Focus.
+
+Logical entities and their responsibilities are defined in `DATA_MODEL.md`.
+
+Client and backend communication is defined in `API_SPEC.md`.
+
+Authentication, authorization, data protection, credentials, privacy, and other security requirements should be defined in `SECURITY.md`.
+
+Additional tables, indexes, and infrastructure should be introduced only when they solve a concrete implementation requirement.
+
+---
+
+
