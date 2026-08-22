@@ -678,9 +678,400 @@ Example response:
 
 ### 5. Resume Focus
 
-## 13. Streak Endpoints
+```http
+POST /v1/focus-sessions/{sessionId}/resume
+```
+
+The API should:
+
+- Confirm the session is currently paused
+- Record the resume timestamp
+- Update confirmed paused duration where required
+- Prevent duplicate resume transitions
+- Return the updated session state
+
+Example response:
+
+```json
+{
+  "data": {
+    "id": "session_123",
+    "status": "active",
+    "focusedDurationSeconds": 1250,
+    "pausedDurationSeconds": 300,
+    "lastResumedAt": "2026-08-19T00:45:50.000Z"
+  }
+}
+```
+
+### 6. Complete Focus Session
+
+```http
+POST /v1/focus-sessions/{sessionId}/complete
+```
+
+The API should:
+
+- Confirm that the session can transition to `completed`
+- Calculate or validate confirmed focus duration
+- Exclude paused duration from confirmed focus time
+- Record the completion timestamp
+- Prevent duplicate completion processing
+- Preserve the completed session as historical activity
+- Trigger qualifying streak, goal, reward, and analytics processing where required
+
+Example response:
+
+```json
+{
+  "data": {
+    "id": "session_123",
+    "status": "completed",
+    "plannedDurationSeconds": 3000,
+    "focusedDurationSeconds": 3000,
+    "pausedDurationSeconds": 300,
+    "completedAt": "2026-08-19T01:15:50.000Z"
+  }
+}
+```
+
+Repeated completion requests must not cause duplicate:
+
+- XP awards
+- Achievement unlocks
+- Streak increments
+- Goal progress
+- Analytics activity
+
+Completion processing should remain safe to retry after recoverable network failures.
+
+### 7. Cancel Focus Session
+
+```http
+POST /v1/focus-sessions/{sessionId}/cancel
+```
+
+The API should:
+
+- Confirm that the session can transition to `cancelled`
+- Record the cancellation state
+- Preserve the record where required for reliable session history and synchronization
+- Avoid treating cancelled activity as a qualifying completed focus session
+- Prevent completed sessions from being cancelled through an invalid state transition
+
+Example response:
+
+```json
+{
+  "data": {
+    "id": "session_123",
+    "status": "cancelled",
+    "focusedDurationSeconds": 600,
+    "cancelledAt": "2026-08-19T00:30:00.000Z"
+  }
+}
+```
+
+Cancelled sessions should not award trusted completion-based progression.
+
+### 8. Focus Session State Transitions
+
+Supported focus-session transitions should remain predictable.
+
+Conceptually:
+
+```text
+active
+├── paused
+├── completed
+└── cancelled
+
+paused
+├── active
+├── completed
+└── cancelled
+
+completed
+→ terminal
+
+cancelled
+→ terminal
+```
+
+Invalid transitions should return an appropriate conflict or validation error.
+
+The backend should remain authoritative for accepted server-managed session state.
+
+### 9. Focus Session Recovery and Synchronization
+
+Focus sessions may continue through temporary network loss or application interruption.
+
+The client should preserve the local information required for reliable recovery.
+
+When synchronized, the backend should:
+
+- Verify resource ownership
+- Validate the submitted session state
+- Reject impossible or invalid state transitions
+- Avoid duplicate session records
+- Avoid duplicate completion side effects
+- Preserve completed historical activity
+
+The backend should not blindly trust arbitrary duration values supplied by the client.
+
+The exact timer recovery implementation should remain aligned with the approved architecture and local persistence strategy.
 
 ---
+
+## 11. Task Endpoints
+
+---
+
+Task endpoints should support the V1 task lifecycle while preserving user ownership and historical focus activity.
+
+### 1. Create Task
+
+```http
+POST /v1/tasks
+```
+
+Example request:
+
+```json
+{
+  "title": "Complete Chemistry Questions",
+  "description": "Finish questions 1–20",
+  "priority": "high",
+  "goalId": "goal_123"
+}
+```
+
+The API should:
+
+- Validate supported task fields
+- Assign ownership from authenticated identity
+- Verify that any referenced goal belongs to the same user
+- Initialize task state according to approved V1 defaults
+
+### 2. Get Task
+
+```http
+GET /v1/tasks/{taskId}
+```
+
+The task should be returned only when the authenticated user is allowed to access it.
+
+### 3. List Tasks
+
+```http
+GET /v1/tasks
+```
+
+Supported query parameters may include:
+
+```text
+status
+goalId
+cursor
+limit
+```
+
+The API should apply predictable ordering and reasonable pagination limits.
+
+### 4. Update Task
+
+```http
+PATCH /v1/tasks/{taskId}
+```
+
+Only supported client-editable task fields should be accepted.
+
+The client should not directly modify trusted derived progression through an ordinary task update.
+
+### 5. Complete Task
+
+```http
+POST /v1/tasks/{taskId}/complete
+```
+
+The API should:
+
+- Verify ownership
+- Confirm that the task can transition to `completed`
+- Record the completion timestamp
+- Prevent duplicate completion processing
+- Trigger qualifying goal and reward processing where required
+
+Repeated completion requests should not repeatedly increase trusted progression.
+
+### 6. Delete Task
+
+```http
+DELETE /v1/tasks/{taskId}
+```
+
+Deleting a task should not delete historical focus sessions that previously referenced the task.
+
+Where required by the approved data model, historical references should remain safely preserved or detached without destroying authoritative focus history.
+
+---
+
+## 12. Goal Endpoints
+
+---
+
+Goal endpoints should support measurable V1 productivity targets.
+
+Trusted goal progress should be derived from verified qualifying activity rather than arbitrary client-provided progress values.
+
+### 1. Create Goal
+
+```http
+POST /v1/goals
+```
+
+Example request:
+
+```json
+{
+  "title": "Focus for 3 Hours Today",
+  "type": "focus_time",
+  "targetValue": 10800,
+  "period": "daily",
+  "startsAt": "2026-08-19T00:00:00.000Z",
+  "endsAt": "2026-08-19T23:59:59.999Z"
+}
+```
+
+The API should:
+
+- Validate the title
+- Validate supported goal type and period values
+- Require a target greater than zero
+- Validate date boundaries
+- Assign ownership from authenticated identity
+- Initialize trusted progress safely
+
+### 2. Get Goal
+
+```http
+GET /v1/goals/{goalId}
+```
+
+The API should return only goals owned by the authenticated user.
+
+### 3. List Goals
+
+```http
+GET /v1/goals
+```
+
+Optional query parameters may include:
+
+```text
+status
+type
+period
+cursor
+limit
+```
+
+The API should apply predictable ordering and reasonable pagination limits.
+
+### 4. Update Goal
+
+```http
+PATCH /v1/goals/{goalId}
+```
+
+Only supported client-editable goal fields should be accepted.
+
+The client should not directly set trusted values such as:
+
+```json
+{
+  "currentValue": 999999
+}
+```
+
+when progress can be derived from verified productivity activity.
+
+### 5. Goal Progress Processing
+
+Goal progress should normally update automatically from verified qualifying activity.
+
+Conceptually:
+
+```text
+Completed FocusSession
+        ↓
+Qualifying Goal
+        ↓
+Update Goal Progress
+```
+
+or:
+
+```text
+Completed Task
+        ↓
+Qualifying Goal
+        ↓
+Update Goal Progress
+```
+
+Supported calculation should follow the goal type:
+
+```text
+focus_time
+→ Sum confirmed focus duration
+
+session_count
+→ Count qualifying completed focus sessions
+
+task_completion
+→ Count qualifying completed tasks
+```
+
+Repeated processing of the same source activity should not increase goal progress multiple times.
+
+### 6. Goal Completion
+
+When verified progress reaches or exceeds the target, the goal may transition to `completed`.
+
+Completion should:
+
+- Record the completion timestamp
+- Preserve authoritative source activity
+- Prevent duplicate completion side effects
+- Trigger qualifying reward processing where required
+
+The client should not need an unrestricted endpoint that directly marks trusted progress as completed when completion can be determined from authoritative activity.
+
+### 7. Delete Goal
+
+```http
+DELETE /v1/goals/{goalId}
+```
+
+Deleting a goal should not unnecessarily delete tasks associated with it.
+
+Where required by the approved data model:
+
+```text
+Goal deleted
+      ↓
+Task preserved
+      ↓
+goalId becomes null
+```
+
+Historical focus-session activity should remain preserved.
+
+---
+
+## 13. Streak Endpoints
+
 
 Streak endpoints should primarily provide access to calculated consistency information.
 
