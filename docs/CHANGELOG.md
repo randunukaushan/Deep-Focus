@@ -107,6 +107,12 @@ Only work that has actually been completed should be recorded here.
 - Contribution guide
 - Testing strategy
 - Initial changelog structure
+- EAS development, preview, production, and submission configuration
+
+### Changed
+
+- Renamed the application configuration and package metadata from MyFirstApp to Deep Focus
+
 
 ### Improved
 

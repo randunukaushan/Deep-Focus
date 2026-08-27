@@ -1,5 +1,5 @@
 {
-  "name": "myfirstapp",
+  "name": "deep-focus",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
@@ -8,6 +8,7 @@
     "@expo/vector-icons": "^15.0.2",
     "expo": "~56.0.12",
     "expo-constants": "~56.0.18",
+    "expo-dev-client": "~56.0.25",
     "expo-device": "~56.0.4",
     "expo-font": "~56.0.7",
     "expo-glass-effect": "~56.0.4",
