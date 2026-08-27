@@ -112,6 +112,12 @@ Only work that has actually been completed should be recorded here.
 ### Changed
 
 - Renamed the application configuration and package metadata from MyFirstApp to Deep Focus
+- Replaced the experimental session setup entry screen with the Phase 0 Deep Focus home  screen
+- Simplified web navigation to the active Home route
+
+### Removed
+
+- Removed obsolete Explore, Focus, Summary, and legacy index prototype routes
 
 
 ### Improved
