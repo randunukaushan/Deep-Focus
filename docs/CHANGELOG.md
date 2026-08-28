@@ -109,6 +109,7 @@ Only work that has actually been completed should be recorded here.
 - Initial changelog structure
 - EAS development, preview, production, and submission configuration
 - Added the initial shared design-token foundation for colors, typography, spacing, radii, shadows, opacity, motion, and layout.
+- Added an accessible shared Button component with primary, secondary, ghost, destructive, disabled, and loading states
 
 ### Changed
 
