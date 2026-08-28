@@ -108,6 +108,7 @@ Only work that has actually been completed should be recorded here.
 - Testing strategy
 - Initial changelog structure
 - EAS development, preview, production, and submission configuration
+- Added the initial shared design-token foundation for colors, typography, spacing, radii, shadows, opacity, motion, and layout.
 
 ### Changed
 
