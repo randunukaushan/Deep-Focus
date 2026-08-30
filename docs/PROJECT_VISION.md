@@ -383,6 +383,30 @@ Regardless of how the platform evolves, its success should always be measured by
 
 ---
 
+## 10.1 Approved V1 AI Direction
+
+The V1 product keeps the complete approved core focus and productivity scope and
+adds a limited, user-controlled AI layer.
+
+The approved V1 AI direction is:
+
+- `Plan My Day` is required for V1;
+- `Break Down This Task` is included only after core stability is demonstrated;
+- `Review My Day Lite` is included only when release quality and time permit;
+- every generated plan or task change remains a proposal until the user confirms it;
+- the first five eligible AI actions are introductory free actions;
+- later AI access may use trusted rewarded-ad verification without interrupting focus or recovery;
+- voice AI, long-form chat, automatic rescheduling, and weekly AI planning remain post-V1.
+
+The canonical feature boundaries and release checkpoints are defined in
+`V1_FEATURE_SCOPE.md` and `POST_V1_FEATURE_SCOPE.md`.
+
+This scope expands V1 without removing or reducing its existing focus, recovery,
+task, goal, progress, analytics, settings, accessibility, privacy, and reliability
+requirements.
+
+---
+
 ## 11. Conclusion
 
 Deep Focus was created with a long-term purpose that extends far beyond improving productivity.

@@ -51,7 +51,7 @@ The primary Deep Focus V1 data entities are:
 7. `UserSettings`
 8. `Assessment`
 
-Supporting types may be introduced when they simplify implementation, but unnecessary standalone entities should be avoided.
+Supporting types may be introduced when they simplify implementation, but unnecessary standalone entities should be avoided. The approved V1 AI scope adds `TaskReminder`, `AIActionGrant`, `AIActionRequest`, and transient `AIPlanProposal` support as defined in Section 19.
 
 Analytics data should primarily be derived from existing session, goal, task, and reward data where practical instead of duplicating the same information in separate records.
 
@@ -2986,5 +2986,154 @@ Frontend and backend data exchange should be defined in `API_SPEC.md`.
 Security-sensitive storage, authentication, authorization, and data-protection requirements should be defined in `SECURITY.md`.
 
 The V1 data model should remain focused on functionality required to build the first usable version of Deep Focus without introducing speculative complexity.
+
+---
+
+## 19. V1 Planning Support and AI Action Types
+
+The approved V1 AI scope introduces one lightweight reminder entity, an optional
+task hierarchy field, and two supporting server-owned AI usage entities.
+
+### Task Parent Relationship
+
+To support a user-confirmed `Break Down This Task` proposal, V1 may extend `Task`
+with:
+
+```ts
+parentTaskId?: string;
+```
+
+Rules:
+
+- parent and child tasks belong to the same authenticated user;
+- a task cannot be its own parent;
+- V1 should prevent hierarchy cycles;
+- deleting a parent should preserve child tasks and detach them where required;
+- the relationship remains optional so ordinary tasks are unchanged.
+
+### TaskReminder
+
+`TaskReminder` represents one user-confirmed reminder for a user-owned task.
+
+```ts
+type TaskReminderSource = 'manual' | 'plan_my_day';
+type TaskReminderStatus = 'scheduled' | 'cancelled';
+
+interface TaskReminder {
+  id: string;
+  userId: string;
+  taskId: string;
+  scheduledFor: string;
+  source: TaskReminderSource;
+  status: TaskReminderStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+Rules:
+
+- the task and reminder belong to the same authenticated user;
+- an AI proposal does not create a reminder until the user confirms it;
+- reminder times use validated timezone-aware timestamps;
+- duplicate retries must not schedule the same logical reminder more than once;
+- cancelling or deleting a reminder must cancel the corresponding scheduled
+  notification where possible;
+- deleting a task cancels or removes its future reminders according to the
+  approved retention behavior.
+
+### AIActionGrant
+
+`AIActionGrant` represents a trusted allowance of eligible AI actions.
+
+```ts
+type AIActionGrantSource =
+  | 'introductory'
+  | 'rewarded_ad'
+  | 'administrative_adjustment';
+
+interface AIActionGrant {
+  id: string;
+  userId: string;
+  source: AIActionGrantSource;
+  grantedActions: number;
+  consumedActions: number;
+  verificationReferenceHash?: string;
+  expiresAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+Rules:
+
+- the introductory source grants five actions once per eligible user;
+- `0 <= consumedActions <= grantedActions`;
+- a rewarded-ad grant requires trusted verification;
+- provider verification evidence must not be exposed as ordinary client-editable
+  state;
+- grant size and expiration remain server-configured until exact product values
+  are approved.
+
+### AIActionRequest
+
+`AIActionRequest` records trusted lifecycle and consumption metadata without
+requiring full prompt or response retention.
+
+```ts
+type AIActionType =
+  | 'plan_my_day'
+  | 'break_down_task'
+  | 'review_my_day_lite';
+
+type AIActionRequestStatus =
+  | 'pending'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+interface AIActionRequest {
+  id: string;
+  userId: string;
+  actionType: AIActionType;
+  status: AIActionRequestStatus;
+  grantId?: string;
+  idempotencyKey?: string;
+  createdAt: string;
+  completedAt?: string;
+}
+```
+
+Rules:
+
+- user ownership comes from authenticated identity;
+- full user prompts and AI responses are not stored by default;
+- a failed or cancelled request does not consume a grant unless a later approved
+  contract explicitly defines and discloses different behavior;
+- one logical completed request consumes at most one eligible action;
+- repeated requests with the same supported idempotency key must not consume
+  multiple actions.
+
+### AIPlanProposal
+
+`AIPlanProposal` is a validated application-layer type, not a trusted productivity
+record.
+
+```ts
+interface AIPlanProposal {
+  proposalId: string;
+  actionType: 'plan_my_day' | 'break_down_task';
+  items: AIProposedAction[];
+  explanation?: string;
+  expiresAt?: string;
+}
+```
+
+The proposal remains uncommitted until the user confirms exact items. Confirmed
+writes create or update ordinary V1 entities through their normal validation,
+ownership, persistence, synchronization, and duplicate-protection rules.
+
+`Review My Day Lite` should derive verified metrics from existing records and
+does not require a new persisted daily-review entity for V1.
 
 ---

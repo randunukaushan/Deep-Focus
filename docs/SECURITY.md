@@ -2705,6 +2705,12 @@ DATABASE_SCHEMA.md
 AI_RULES.md
 → Defines AI behavior and boundaries
 
+V1_FEATURE_SCOPE.md
+→ Defines approved V1 feature and AI-access boundaries
+
+POST_V1_FEATURE_SCOPE.md
+→ Defines deferred capabilities that must not be enabled silently
+
 TESTING_STRATEGY.md
 → Defines security and reliability testing
 
@@ -2713,6 +2719,89 @@ DEVELOPMENT_GUIDE.md
 ```
 
 When security-related implementation changes affect these documents, the relevant documentation should be updated together.
+
+---
+
+## 23. V1 AI Proposal and Rewarded-Unlock Security
+
+### Proposal Generation Is Not Authorization
+
+AI-generated plans and task breakdowns are untrusted proposals. A model-generated
+instruction must never authorize a write by itself.
+
+The confirmed apply boundary must:
+
+- authenticate the user again through the ordinary request boundary;
+- verify ownership of every referenced task, goal, reminder, or other resource;
+- accept only supported action types and fields;
+- revalidate user-edited values;
+- apply only the exact submitted and confirmed items;
+- use ordinary trusted task and reminder services;
+- enforce idempotency and duplicate protection;
+- return safe item-level outcomes without leaking unrelated data.
+
+An opaque proposal identifier must not be predictable or usable by another user.
+If proposal state is signed or stored temporarily, it must have an appropriate
+expiration and must not contain unnecessary private context.
+
+### AI Action Entitlements
+
+The mobile client must not be authoritative for introductory, consumed, or
+rewarded AI action counts.
+
+Trusted infrastructure must enforce:
+
+- exactly one five-action introductory grant per eligible user;
+- atomic successful-request completion and action consumption;
+- idempotent retries;
+- no consumption for provider timeout, malformed response, internal failure, or
+  user cancellation under the approved V1 contract;
+- supported feature availability before provider work begins.
+
+Concurrent requests must not overspend the same remaining action.
+
+### Rewarded Advertisement Verification
+
+A client SDK callback, local flag, screenshot, or boolean is not trusted proof of
+a completed rewarded advertisement.
+
+When the selected provider supports server-side verification, trusted
+infrastructure should validate:
+
+- authenticated user binding;
+- expected application and reward placement;
+- provider signature or verification evidence;
+- freshness where applicable;
+- one-time use and replay prevention;
+- grant amount from trusted server configuration.
+
+Verification evidence should be minimized, protected in transit, redacted from
+logs, and not stored in raw form longer than required. A non-reversible reference
+hash may be retained when required for replay and fraud prevention.
+
+No advertising SDK or provider may be added without dependency, privacy,
+platform-policy, consent, and data-flow review.
+
+### Advertising Safety Boundary
+
+Rewarded advertising must not:
+
+- interrupt an active Focus Session or True Zen Break;
+- use private tasks, goals, assessment answers, focus history, or AI prompts as
+  advertising targeting data;
+- grant trusted actions before verification succeeds;
+- create pressure through misleading countdowns or hidden costs;
+- make core focus functionality depend on advertisement availability.
+
+### AI Content Retention
+
+Full prompts, full AI responses, and complete proposals are not retained by
+default. Operational records should prefer minimal metadata such as action type,
+status, timing, provider error category, and trusted consumption reference.
+
+Any later retention of AI content requires an explicit purpose, limited retention
+period, user-facing privacy treatment where required, access control, deletion
+behavior, and documented approval.
 
 ---
 

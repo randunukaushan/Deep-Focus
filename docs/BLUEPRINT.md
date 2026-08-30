@@ -2132,3 +2132,55 @@ The long-term mission remains:
 > **Help people achieve meaningful work through intentional focus, sustainable habits, and responsible use of technology and Artificial Intelligence.**
 
 ---
+
+## 13. Approved V1 Scope Addendum
+
+The canonical V1 feature boundary is defined in `V1_FEATURE_SCOPE.md`. Deferred
+and longer-term capabilities are defined in `POST_V1_FEATURE_SCOPE.md`.
+
+This decision is additive: previously approved V1 functionality remains in
+scope. The AI layer adds:
+
+1. `Plan My Day` as a required V1 feature;
+2. `Break Down This Task` after the core application reaches acceptable stability;
+3. `Review My Day Lite` only when time remains after higher-priority release work.
+
+### Plan My Day
+
+The user provides or selects the relevant tasks, available time, and supported
+preferences. Deep Focus may propose an ordered daily plan containing focus
+blocks, breaks, and reminders.
+
+The proposal remains editable and dismissible. It must not create or modify
+tasks, reminders, goals, or settings until the user explicitly confirms the
+specific actions shown.
+
+### Break Down This Task
+
+The user selects one task and requests smaller, actionable steps. The proposed
+steps may include an order or estimated focus-session structure, but remain
+editable and uncommitted until confirmation.
+
+### Review My Day Lite
+
+Deep Focus may summarize verified daily activity and provide one concise,
+practical suggestion for the following day. It must not diagnose or claim to
+detect medical, psychological, attention, fatigue, or burnout conditions.
+
+### AI Access
+
+The first five eligible AI actions are introductory free actions. Additional
+actions may be granted after trusted rewarded-ad verification. Grant size and
+validity remain server-configured until exact values are approved.
+
+Rewarded advertising must remain optional, must not interrupt active focus or
+recovery, and must never use private productivity data as an advertising product.
+
+### Release Protection
+
+The V1 scope checkpoint is 2026-11-15, followed by a beta target on 2026-11-30,
+a store-submission target on 2026-12-15, and a public-release target on
+2027-01-01. Conditional AI features move to V1.1 if they threaten core
+reliability, security, accessibility, testing, or release readiness.
+
+---

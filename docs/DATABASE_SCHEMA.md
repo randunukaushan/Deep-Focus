@@ -96,6 +96,8 @@ Supporting tables may be introduced where required for:
 - Reward-event deduplication
 - Assessment answers
 - Synchronization
+- Task reminders
+- AI action grants and request accounting
 - Database-provider requirements
 
 Supporting tables should only be introduced when they solve a concrete implementation requirement.
@@ -3461,4 +3463,121 @@ Additional tables, indexes, and infrastructure should be introduced only when th
 
 ---
 
+## 25. V1 AI Usage Tables
 
+The approved five-action introduction and rewarded-unlock behavior require
+server-authoritative usage records.
+
+### Task and Reminder Schema Extensions
+
+Add nullable `parent_task_id` to `tasks` when `Break Down This Task` is enabled.
+
+```text
+tasks.parent_task_id
+        ↓
+tasks.id
+```
+
+Required rules include:
+
+- parent and child ownership must match;
+- `parent_task_id != id`;
+- application and trusted-service validation must prevent cycles;
+- deleting a parent uses `ON DELETE SET NULL` so child tasks remain available.
+
+Add the lightweight `task_reminders` table:
+
+| Column | Type | Null | Responsibility |
+| --- | --- | --- | --- |
+| `id` | UUID | No | Stable reminder identifier |
+| `user_id` | UUID | No | Authenticated owner |
+| `task_id` | UUID | No | Related user-owned task |
+| `scheduled_for` | TIMESTAMP | No | Timezone-aware reminder time |
+| `source` | ENUM/TEXT | No | `manual` or `plan_my_day` |
+| `status` | ENUM/TEXT | No | `scheduled` or `cancelled` |
+| `created_at` | TIMESTAMP | No | Creation time |
+| `updated_at` | TIMESTAMP | No | Last update time |
+
+Required rules include:
+
+- same-user ownership for reminder and task;
+- unique logical reminder protection, such as `(user_id, task_id,
+  scheduled_for)` where compatible with the final lifecycle rules;
+- `ON DELETE CASCADE` or equivalent trusted cleanup for future reminders when a
+  task is deleted;
+- an index on `(user_id, status, scheduled_for)` for upcoming reminder queries.
+
+### Table: `ai_action_grants`
+
+| Column | Type | Null | Responsibility |
+| --- | --- | --- | --- |
+| `id` | UUID | No | Stable grant identifier |
+| `user_id` | UUID | No | Owner derived from authenticated identity |
+| `source` | ENUM/TEXT | No | `introductory`, `rewarded_ad`, or approved adjustment |
+| `granted_actions` | INTEGER | No | Positive number of actions granted |
+| `consumed_actions` | INTEGER | No | Number consumed from this grant |
+| `verification_reference_hash` | TEXT | Yes | Non-reversible replay-protection reference for verified grants |
+| `expires_at` | TIMESTAMP | Yes | Optional server-configured expiration |
+| `created_at` | TIMESTAMP | No | Creation time |
+| `updated_at` | TIMESTAMP | No | Last trusted update time |
+
+Required constraints include:
+
+- `granted_actions > 0`;
+- `consumed_actions >= 0`;
+- `consumed_actions <= granted_actions`;
+- one introductory grant per user;
+- unique non-null rewarded verification reference hash;
+- foreign key ownership to `users` with approved account-deletion behavior.
+
+Recommended indexes include:
+
+- `(user_id, expires_at)` for available-grant lookup;
+- `(user_id, source)` for entitlement management;
+- unique partial index for introductory source per user where supported;
+- unique partial index for non-null `verification_reference_hash` where supported.
+
+### Table: `ai_action_requests`
+
+| Column | Type | Null | Responsibility |
+| --- | --- | --- | --- |
+| `id` | UUID | No | Stable request identifier |
+| `user_id` | UUID | No | Authenticated owner |
+| `action_type` | ENUM/TEXT | No | Approved V1 AI action type |
+| `status` | ENUM/TEXT | No | `pending`, `completed`, `failed`, or `cancelled` |
+| `grant_id` | UUID | Yes | Grant consumed by a successful request |
+| `idempotency_key` | TEXT | Yes | Duplicate-request protection |
+| `created_at` | TIMESTAMP | No | Request creation time |
+| `completed_at` | TIMESTAMP | Yes | Terminal completion time |
+
+Required constraints include:
+
+- supported action and status values only;
+- unique `(user_id, idempotency_key)` when a key is present;
+- a completed request consumes no more than one action;
+- full prompts and AI responses are not stored in these usage tables;
+- grant consumption and completed-request transition occur atomically.
+
+Recommended indexes include:
+
+- `(user_id, created_at DESC)`;
+- `(user_id, action_type, created_at DESC)`;
+- `(grant_id)`;
+- `(status, created_at)` for safe recovery of interrupted requests where required.
+
+### Proposal Storage
+
+Persisting full AI proposals is not required by default. If secure confirmation or
+retry requires server-side proposal state, use a short-lived store containing only
+the validated structured actions and minimum ownership metadata. Do not add a
+long-term prompt/response archive without a separately approved privacy and
+retention requirement.
+
+### Deletion and Retention
+
+AI usage metadata should follow approved account-deletion and retention rules.
+Provider verification secrets or raw tokens should not be retained in these
+tables. Any retained hash or reference must exist only for entitlement integrity,
+fraud prevention, and replay protection.
+
+---

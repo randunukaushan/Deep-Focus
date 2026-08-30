@@ -1681,6 +1681,110 @@ The overall strategy should evolve as Deep Focus introduces new functionality, p
 
 ---
 
+## 13. V1 AI Scope Test Matrix
+
+The approved V1 AI features require dedicated verification in addition to the
+general AI tests defined earlier.
+
+### Plan My Day
+
+Verify:
+
+- valid tasks and available-time input produces a validated proposal;
+- proposal generation performs no task, reminder, goal, or settings write;
+- existing and generated information are distinguishable;
+- user can edit, remove, reject, retry, and confirm;
+- confirm applies only the selected items;
+- edited values are revalidated;
+- unauthorized or deleted task references fail safely;
+- duplicate confirmation with the same idempotency key does not duplicate writes;
+- reminder scheduling uses the confirmed timezone-aware value;
+- partial external notification failure is communicated and recoverable;
+- AI disabled, offline, provider timeout, malformed output, and feature-unavailable
+  states do not block manual planning or core focus functionality.
+
+### Break Down This Task
+
+When the conditional feature is enabled, verify:
+
+- only an owned task can be submitted;
+- generated child tasks remain uncommitted before confirmation;
+- user edits and removals are respected;
+- parent and child ownership match;
+- self-parent and hierarchy-cycle attempts fail;
+- duplicate apply does not create duplicate child tasks;
+- deleting a parent preserves and detaches child tasks according to the data
+  contract;
+- disabled-feature behavior appears before provider work or action consumption.
+
+### Review My Day Lite
+
+When the conditional feature is enabled, verify:
+
+- daily metrics come from authorized verified records;
+- empty activity produces an appropriate result;
+- cancelled sessions and untrusted client totals are handled correctly;
+- generated text is visually and semantically separate from verified metrics;
+- output validation rejects medical, psychological, fatigue, attention, and
+  burnout diagnosis claims where the safety layer is designed to detect them;
+- failure leaves analytics and productivity history unchanged.
+
+### AI Action Accounting
+
+Verify:
+
+- an eligible user receives exactly five introductory actions once;
+- a successful validated AI result consumes one action;
+- provider failure, malformed response, cancellation, and internal failure do not
+  consume an action;
+- concurrent requests cannot overspend the same remaining action;
+- idempotent retry does not consume an additional action;
+- proposal apply does not consume a second AI action;
+- unavailable conditional features do not consume an action;
+- account switching cannot expose or spend another user's grants.
+
+### Rewarded Unlock
+
+Verify:
+
+- client-only completion claims are rejected;
+- valid provider verification creates one configured grant;
+- replayed evidence does not create another grant;
+- repeated verification with the same idempotency key is safe;
+- cancelled, failed, unavailable, and offline advertisement states create no
+  trusted grant;
+- verification evidence and secrets are absent from ordinary logs and UI errors;
+- no rewarded advertisement interrupts an active Focus Session or True Zen Break;
+- core functionality remains available when ads are unavailable.
+
+### Proposal Accessibility
+
+Verify:
+
+- screen readers identify AI-generated content and confirmed-write actions;
+- confirmation labels state the real effect;
+- proposal items have logical reading and focus order;
+- edit, remove, reject, retry, and confirm actions meet touch-target requirements;
+- large text, reduced motion, loading, error, offline, and partial-result states
+  remain usable;
+- focus moves predictably after generation, failure, confirmation, and dismissal.
+
+### Release Gate
+
+The 2026-11-15 checkpoint must record evidence for:
+
+- stable core focus, task, goal, recovery, and synchronization workflows;
+- required `Plan My Day` acceptance, security, accessibility, and failure tests;
+- conditional feature readiness;
+- unresolved release-blocking defects;
+- remaining test and store-submission capacity.
+
+`Break Down This Task` or `Review My Day Lite` moves to V1.1 when required test
+evidence cannot be completed without weakening the 2027-01-01 release target or
+core release quality.
+
+---
+
 # Conclusion
 
 ---

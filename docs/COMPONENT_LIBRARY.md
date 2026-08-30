@@ -7713,6 +7713,42 @@ Example:
 
 AI should not silently perform important state changes merely because it generated a recommendation.
 
+#### Approved V1 Proposal Flows
+
+The V1 `Plan My Day` and conditional `Break Down This Task` experiences should
+compose existing primitives into a reusable proposal-review pattern containing:
+
+- AI source indicator;
+- proposal title and short explanation;
+- structured proposed-item list;
+- per-item edit and remove controls;
+- `Reject` and `Retry` actions;
+- explicit confirmation label describing the resulting writes;
+- partial-success and recoverable-error presentation;
+- loading, unavailable, offline, and disabled states.
+
+The component must receive validated proposal view models. It must not call an AI
+provider directly or apply data changes from within the presentation layer.
+
+#### AI Action Availability and Rewarded Unlock
+
+When introductory or granted AI actions are unavailable, the UI may compose an
+access-status card and a rewarded-unlock sheet.
+
+These components should support:
+
+- available-action state;
+- no-action state;
+- advertisement loading and unavailable state;
+- user cancellation;
+- verification-in-progress state;
+- verified-grant success;
+- verification failure and safe retry.
+
+The component must not display a successful grant based only on a client callback.
+It must not be rendered as an interruption during an active Focus Session or True
+Zen Break.
+
 ---
 
 ### 11.18 AI Component Properties

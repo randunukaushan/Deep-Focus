@@ -27,7 +27,7 @@ Use this routing guide:
 
 | Work area | Required references |
 | --- | --- |
-| Product purpose, user value, or feature scope | `docs/PROJECT_VISION.md`, `docs/BLUEPRINT.md`, `docs/V1_IMPLEMENTATION_PLAN.md` |
+| Product purpose, user value, or feature scope | `docs/PROJECT_VISION.md`, `docs/BLUEPRINT.md`, `docs/V1_FEATURE_SCOPE.md`, `docs/POST_V1_FEATURE_SCOPE.md`, `docs/V1_IMPLEMENTATION_PLAN.md` |
 | Architecture, folders, state, navigation, services, or dependencies | `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT_GUIDE.md` |
 | UI, interaction, tokens, responsive behavior, or accessibility | `docs/UI_UX_DESIGN_SPECIFICATION.md`, `docs/COMPONENT_LIBRARY.md` |
 | Domain entities or lifecycle rules | `docs/DATA_MODEL.md` |
@@ -132,6 +132,8 @@ AI is optional support, not a dependency for the core focus experience.
 - Send only the minimum approved context to AI services.
 - Validate AI output and fail safely.
 - Never let AI make security-critical, irreversible, or silent settings decisions.
+- Treat AI-generated plans, task breakdowns, reminders, and task changes as proposals until the user explicitly confirms the exact actions shown.
+- Verify rewarded-ad grants on trusted infrastructure; never trust a client-only completion claim or show an advertisement during an active focus or recovery session.
 - Do not interrupt an active focus session unless the user explicitly enabled the behavior.
 - Core focus functionality should continue when AI or the network is unavailable whenever practical.
 

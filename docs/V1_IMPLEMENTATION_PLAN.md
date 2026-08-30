@@ -118,6 +118,8 @@ Implementation should follow:
 
 - `PROJECT_VISION.md`
 - `BLUEPRINT.md`
+- `V1_FEATURE_SCOPE.md`
+- `POST_V1_FEATURE_SCOPE.md`
 - `UI_UX_DESIGN_SPECIFICATION.md`
 - `COMPONENT_LIBRARY.md`
 - `ARCHITECTURE.md`
@@ -1989,6 +1991,14 @@ Phase 7 should implement:
 - AI error handling
 - AI privacy controls
 
+The exact V1 AI scope is defined in `V1_FEATURE_SCOPE.md`:
+
+- `Plan My Day` is required;
+- `Break Down This Task` is conditional on core stability;
+- `Review My Day Lite` is conditional on remaining release capacity;
+- voice AI, long-form chat, automatic rescheduling, and AI weekly planning are
+  post-V1 unless explicitly promoted later.
+
 ### Assessment Definition
 
 Implement the approved V1 assessment definition using a versioned structure.
@@ -2237,6 +2247,92 @@ Resource ownership
 Account permissions
 ```
 
+### Plan My Day
+
+Implement `Plan My Day` as a proposal-first workflow.
+
+```text
+User Selects Relevant Tasks / Enters Available Time
+        ↓
+Validate and Minimize Context
+        ↓
+Generate Structured Daily Plan Proposal
+        ↓
+Validate Response
+        ↓
+Show Exact Proposed Focus Blocks / Breaks / Reminders
+        ↓
+User Edits, Rejects, Retries, or Confirms
+        ↓
+Apply Only Confirmed Items Through Normal Validated Services
+```
+
+The generation request and the confirmed apply operation are separate actions.
+Generating a proposal must not silently create tasks, reminders, goals, or
+settings changes.
+
+### Break Down This Task
+
+After core stability is demonstrated, implement a proposal-first task breakdown
+flow for one user-owned task. The response may include smaller actionable steps,
+an order, and supported focus-session estimates.
+
+No proposed subtask should be persisted until the user confirms the exact list.
+Ordinary task validation, ownership, duplicate protection, and synchronization
+rules still apply.
+
+### Review My Day Lite
+
+If release capacity remains, implement a concise review derived from verified
+daily activity. The review may summarize completed tasks, completed focus
+sessions, focus time, goal progress, streaks, and rewards, then offer one
+practical suggestion for the next day.
+
+The feature must not infer or diagnose medical, psychological, attention,
+fatigue, or burnout conditions.
+
+### AI Proposal Confirmation
+
+AI-generated changes remain untrusted proposals.
+
+Before applying a proposal, verify:
+
+- authenticated identity;
+- current ownership of referenced resources;
+- proposal structure and supported action types;
+- field limits and allowed values;
+- the exact set of items confirmed by the user;
+- idempotency or duplicate protection where an apply request can be retried.
+
+The server must not accept an instruction such as `apply everything the model
+said` without receiving and validating the exact approved structured actions.
+
+### AI Access and Rewarded Unlock
+
+The first five eligible AI actions are introductory free actions.
+
+After those actions are exhausted:
+
+```text
+AI Action Requested
+        ↓
+No Available Action Grant
+        ↓
+Offer Optional Rewarded Unlock
+        ↓
+Trusted Advertisement Verification
+        ↓
+Server Creates Usage Grant
+        ↓
+Retry AI Action
+```
+
+The number and validity period of actions granted by one verified advertisement
+remain server-configured until exact product values are approved.
+
+Advertisements must not interrupt an active Focus Session or True Zen Break.
+Client-only advertisement completion claims must not create trusted grants.
+
 ### AI Failure Handling
 
 AI provider failure should produce a safe recoverable state.
@@ -2322,6 +2418,17 @@ Network Failure
 Repeated Request
 Oversized Input
 Unauthorized Resource Context
+Plan My Day Proposal → Reject
+Plan My Day Proposal → Edit → Confirm
+Plan My Day Confirmation → Retry Without Duplicate Writes
+Task Breakdown → Reject
+Task Breakdown → Confirm
+Review My Day Lite With Empty Activity
+Review My Day Lite With Verified Activity
+Five Introductory AI Actions Exhausted
+Unverified Rewarded-Ad Claim
+Verified Rewarded-Ad Grant
+Advertisement Failure / Cancellation
 ```
 
 Verify that AI cannot directly modify trusted:
@@ -2351,6 +2458,11 @@ Phase 7 is complete when:
 - AI responses are validated
 - AI failures do not break core application functionality
 - AI cannot control trusted security or progression decisions
+- `Plan My Day` cannot apply unconfirmed tasks or reminders
+- confirmed AI proposals apply only the exact validated items selected by the user
+- AI action usage and rewarded grants are enforced by trusted infrastructure
+- advertisements do not interrupt active focus or recovery
+- conditional AI features satisfy the 2026-11-15 scope checkpoint before release inclusion
 - Assessment and AI tests pass
 
 ---
@@ -2851,6 +2963,20 @@ Phase 10 publishes the first validated Deep Focus V1 release.
 
 The release should represent tested implementation rather than merely completed feature development.
 
+### Approved Release Targets
+
+| Checkpoint | Target |
+| --- | --- |
+| V1 scope and stability checkpoint | 2026-11-15 |
+| Beta | 2026-11-30 |
+| Store submission | 2026-12-15 |
+| Public V1 release | 2027-01-01 |
+
+At the scope checkpoint, `Plan My Day` remains required. `Break Down This Task`
+and `Review My Day Lite` remain in V1 only when their inclusion does not weaken
+core reliability, security, accessibility, testing, store readiness, or the
+public-release target.
+
 ### Release Candidate
 
 Create a release candidate after Phase 9 requirements are satisfied.
@@ -3059,29 +3185,41 @@ The following order should be used as the default implementation sequence.
 
 33. Implement assessment persistence/results
 
-34. Implement approved AI features
+34. Implement assessment-based Productivity Profile
 
-35. Harden offline synchronization
+35. Implement `Plan My Day` proposal generation
 
-36. Harden duplicate-processing protection
+36. Implement explicit proposal confirmation and validated apply behavior
 
-37. Complete regression testing
+37. Implement introductory AI usage and trusted rewarded-unlock enforcement
 
-38. Complete Android/iOS compatibility testing
+38. Pass the 2026-11-15 core-stability checkpoint
 
-39. Complete security review
+39. Implement `Break Down This Task` if the checkpoint allows it
 
-40. Complete performance/accessibility testing
+40. Implement `Review My Day Lite` if release capacity remains
 
-41. Fix release-blocking defects
+41. Harden offline synchronization
 
-42. Create release candidate
+42. Harden duplicate-processing protection
 
-43. Validate production build
+43. Complete regression testing
 
-44. Update changelog/version
+44. Complete Android/iOS compatibility testing
 
-45. Release Deep Focus V1
+45. Complete security review
+
+46. Complete performance/accessibility testing
+
+47. Fix release-blocking defects
+
+48. Create release candidate
+
+49. Validate production build
+
+50. Update changelog/version
+
+51. Release Deep Focus V1
 ```
 
 This order may be adjusted when a real implementation dependency requires it.

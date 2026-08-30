@@ -22559,9 +22559,14 @@ Users should be able to override or disable adaptive interface behavior where ap
 
 As Deep Focus evolves, Artificial Intelligence may become more deeply integrated into the user experience.
 
+The proposal-first `Plan My Day` experience is now part of the approved V1
+scope. `Break Down This Task` and `Review My Day Lite` are conditional V1 targets
+under `V1_FEATURE_SCOPE.md`. The enhancements below refer to deeper adaptive or
+post-V1 versions unless that scope document explicitly includes them.
+
 Possible enhancements include:
 
-- AI-generated daily planning
+- Advanced adaptive AI-generated daily planning
 - Context-aware recommendations
 - Smart notification prioritization
 - Predictive productivity insights
@@ -22826,5 +22831,137 @@ Every future enhancement should strengthen the product while preserving the qual
 - Sustainable productivity
 
 The interface should evolve with the platform without losing the simplicity that makes Deep Focus effective.
+
+---
+
+## 13. Approved V1 AI Experience Addendum
+
+This section defines the screen-level requirements introduced by the V1 AI scope
+decision. Existing screens and workflows remain unchanged unless this addendum
+explicitly extends them.
+
+### 13.1 Shared Proposal-First Flow
+
+`Plan My Day` and `Break Down This Task` must use a proposal-first interaction:
+
+```text
+Request
+  ↓
+AI Processing
+  ↓
+Validated Proposal Preview
+  ↓
+Edit / Reject / Retry / Confirm
+  ↓
+Apply Only Confirmed Items
+  ↓
+Success or Recoverable Error
+```
+
+The preview must clearly distinguish:
+
+- existing user data;
+- AI-generated suggestions;
+- items that will be created or changed after confirmation;
+- items that the user removed or edited;
+- any unsupported item that cannot be applied.
+
+The primary confirmation button should state the real outcome, such as `Add 4
+Tasks and 3 Reminders`, instead of using a vague label such as `Continue`.
+
+### 13.2 Plan My Day
+
+#### Version Availability
+
+✅ V1 (Required AI Feature)
+
+The entry point may appear on Home or in another approved planning surface. It
+must not become a permanent chatbot tab merely to expose one workflow.
+
+The request experience may include:
+
+- available-time input;
+- selection of relevant existing tasks;
+- optional new task text within approved limits;
+- supported planning preferences;
+- clear AI processing disclosure;
+- current AI action availability.
+
+The proposal preview may include:
+
+- ordered task blocks;
+- proposed focus durations;
+- proposed breaks;
+- proposed reminders;
+- short explanations where useful;
+- per-item edit or removal controls;
+- `Reject`, `Retry`, and explicit `Confirm` actions.
+
+No task or reminder should appear as saved before confirmation succeeds. If only
+part of a confirmed apply operation succeeds, the interface must identify the
+exact applied and unapplied items and provide safe recovery.
+
+### 13.3 Break Down This Task
+
+#### Version Availability
+
+Conditional V1 target after core stability.
+
+The user selects one task and receives a structured list of smaller proposed
+steps. Each step should be editable and removable. The interface may display a
+suggested order or focus-session estimate without presenting it as guaranteed.
+
+The confirmation action must state how many supported subtasks will be created.
+Rejecting the proposal leaves the original task unchanged.
+
+### 13.4 Review My Day Lite
+
+#### Version Availability
+
+Conditional V1 target when release capacity remains.
+
+The review should be a concise, secondary surface rather than a long chat. It may
+present:
+
+- verified completed tasks;
+- verified completed sessions and focus time;
+- goal, streak, and reward progress;
+- one short generated summary;
+- one practical suggestion for the next day.
+
+The UI must visually separate verified metrics from generated interpretation and
+must not display medical, psychological, fatigue, attention, or burnout claims.
+
+### 13.5 AI Action Availability
+
+Before an AI request begins, the interface should make unavailable access states
+understandable.
+
+The first five eligible AI actions are introductory free actions. When none
+remain, the user may be offered a rewarded unlock with:
+
+- a clear explanation of what is being unlocked;
+- an optional `Watch Ad to Unlock` action;
+- a cancel action;
+- advertisement loading, unavailable, cancelled, verification, success, and
+  failure states;
+- no false grant before trusted verification succeeds.
+
+The exact action count and validity granted by one advertisement remain
+server-configured until approved. Rewarded advertising must not appear during an
+active Focus Session or True Zen Break.
+
+### 13.6 Accessibility and Failure Behavior
+
+All V1 AI flows must:
+
+- support screen readers and logical focus order;
+- provide accessible processing and result announcements without excessive
+  repetition;
+- use adequate touch targets and clear labels;
+- remain usable with larger text and reduced motion;
+- preserve user edits when a safe retry is possible;
+- provide manual paths when AI or rewarded access is unavailable;
+- avoid blocking unrelated navigation or core productivity features.
 
 ---

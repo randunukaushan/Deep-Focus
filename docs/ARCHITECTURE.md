@@ -5432,3 +5432,111 @@ Above all, every architectural decision should continue supporting the central p
 **To provide a calm, reliable, and sustainable productivity experience that helps users protect their attention and perform meaningful work.**
 
 ---
+
+## 16. Approved V1 AI Planning Addendum
+
+The V1 AI scope is defined in `V1_FEATURE_SCOPE.md`. This addendum extends the
+existing AI architecture without selecting a specific AI or advertising provider.
+
+### 1. Required Responsibilities
+
+The trusted AI boundary should separate:
+
+```text
+Authenticated Request
+        ↓
+AI Action Entitlement Check
+        ↓
+Context Minimization and Validation
+        ↓
+Provider-Neutral AI Orchestrator
+        ↓
+Structured Response Validation
+        ↓
+Proposal Returned to Client
+        ↓
+Explicit User Confirmation
+        ↓
+Confirmed Action Executor
+        ↓
+Existing Task / Reminder Services
+```
+
+Recommended responsibilities include:
+
+- `AIActionEntitlementService` for introductory and granted action availability;
+- `AIContextBuilder` for feature-specific data minimization;
+- `AIOrchestrator` for provider-neutral requests and timeouts;
+- `AIProposalValidator` for structured output validation;
+- `AIConfirmedActionExecutor` for exact confirmed writes through normal services;
+- `RewardedAdVerificationAdapter` for provider-specific server verification.
+
+Provider-specific SDKs and response formats belong in infrastructure adapters,
+not domain, application, or UI code.
+
+### 2. Proposal and Apply Separation
+
+`Plan My Day` and `Break Down This Task` use two separate boundaries:
+
+1. generate a validated proposal;
+2. apply the exact user-confirmed items.
+
+Generation must not persist tasks, reminders, goals, or settings. Apply behavior
+must revalidate ownership, supported fields, current resource state, and
+idempotency rather than trusting the earlier AI response.
+
+Proposal persistence is not required by default. A short-lived opaque proposal
+identifier or signed proposal reference may be used when needed for secure apply,
+retry, or replay protection. Full prompts and responses should not be retained by
+default.
+
+### 3. AI Action Entitlement Flow
+
+Introductory and rewarded actions are trusted backend state.
+
+```text
+Eligible User
+  ↓
+Five Introductory Actions Created Once
+  ↓
+Successful Validated AI Result Consumes One Action
+  ↓
+No Action Available
+  ↓
+Optional Rewarded-Ad Verification
+  ↓
+Server-Created Action Grant
+```
+
+Provider timeout, network failure, malformed provider output, or internal failure
+must not consume an action unless a valid feature result was produced according
+to the final implementation contract.
+
+### 4. Rewarded Advertisement Boundary
+
+The client may launch an approved rewarded advertisement and receive an SDK
+callback, but that callback is not authoritative proof.
+
+Trusted infrastructure should:
+
+- verify provider evidence where the selected provider supports server-side
+  verification;
+- bind the verification to the authenticated user and expected reward placement;
+- reject replayed verification references;
+- create an idempotent action grant;
+- avoid storing raw provider tokens longer than required;
+- return the trusted updated entitlement state.
+
+No advertising provider, SDK, grant quantity, or grant-validity period is
+approved by this architecture addendum.
+
+### 5. Feature Availability
+
+`Plan My Day` is required for V1. `Break Down This Task` and `Review My Day Lite`
+must be controlled by server-aware feature availability so a conditional feature
+can remain disabled without shipping non-functional UI or weakening core flows.
+
+AI feature availability must not change the availability of focus sessions,
+tasks, goals, recovery, history, settings, or deterministic analytics.
+
+---

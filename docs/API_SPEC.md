@@ -383,6 +383,9 @@ Focus Sessions
 Tasks
 → Task creation and management
 
+Task Reminders
+→ User-confirmed task notification scheduling
+
 Goals
 → Goal creation and progress
 
@@ -400,6 +403,9 @@ Assessments
 
 Analytics
 → Derived productivity summaries
+
+AI Actions
+→ Proposal generation, explicit confirmation, usage availability, and rewarded unlocks
 ```
 
 Not every logical data entity requires unrestricted CRUD endpoints.
@@ -1973,6 +1979,9 @@ The Deep Focus V1 API is organized around the following resource groups:
 /v1/tasks
 → Task management
 
+/v1/task-reminders
+→ User-confirmed task reminder management
+
 /v1/goals
 → Productivity goals
 
@@ -1990,6 +1999,9 @@ The Deep Focus V1 API is organized around the following resource groups:
 
 /v1/analytics
 → Derived productivity information
+
+/v1/ai
+→ Approved AI proposals, confirmation, usage availability, and rewarded unlocks
 ```
 
 The API should distinguish between client-editable information and trusted server-managed information.
@@ -2010,10 +2022,228 @@ Verified / Server-Managed
 ├── Streak
 ├── Reward Progress
 ├── Achievement Unlocks
-└── Analytics
+├── Analytics
+├── AI Action Grants
+├── AI Action Consumption
+└── Rewarded-Ad Verification
 ```
 
 The exact implementation may vary according to the selected backend architecture while preserving these responsibilities.
+
+---
+
+## 28. Approved V1 AI and Reminder Endpoints
+
+These contracts are provider-neutral. They do not select an AI model,
+advertising SDK, authentication provider, or backend platform.
+
+### 1. Task Reminder Endpoints
+
+```http
+POST /v1/task-reminders
+GET /v1/task-reminders
+PATCH /v1/task-reminders/{reminderId}
+DELETE /v1/task-reminders/{reminderId}
+```
+
+Create example:
+
+```json
+{
+  "taskId": "task_123",
+  "scheduledFor": "2026-09-01T18:00:00+05:30",
+  "source": "manual"
+}
+```
+
+The API should derive ownership from authenticated identity, verify task
+ownership, validate timezone-aware scheduling, prevent duplicate logical
+reminders, and cancel obsolete scheduled notifications where required.
+
+AI-confirmed reminders use `source = plan_my_day` and must enter through the same
+trusted reminder service rather than bypassing ordinary validation.
+
+### 2. Get AI Action Availability
+
+```http
+GET /v1/ai/usage
+```
+
+Example response data:
+
+```json
+{
+  "remainingActions": 3,
+  "introductoryActionsTotal": 5,
+  "rewardedUnlockAvailable": true,
+  "enabledFeatures": {
+    "planMyDay": true,
+    "breakDownTask": false,
+    "reviewMyDayLite": false
+  }
+}
+```
+
+Availability is server-authoritative. The client may cache it for presentation
+but must not grant itself actions.
+
+### 3. Generate Plan My Day Proposal
+
+```http
+POST /v1/ai/plan-my-day
+```
+
+Example request:
+
+```json
+{
+  "taskIds": ["task_123", "task_456"],
+  "availableStart": "2026-09-01T18:00:00+05:30",
+  "availableEnd": "2026-09-01T23:00:00+05:30",
+  "timeZone": "Asia/Colombo",
+  "preferences": {
+    "defaultFocusMinutes": 45,
+    "defaultBreakMinutes": 10
+  }
+}
+```
+
+The response should contain a validated structured proposal, an opaque proposal
+identifier or secure equivalent, the exact proposed actions, and updated trusted
+usage information.
+
+No task, reminder, goal, or setting is written by this endpoint.
+
+### 4. Generate Task Breakdown Proposal
+
+```http
+POST /v1/ai/break-down-task
+```
+
+Example request:
+
+```json
+{
+  "taskId": "task_123",
+  "additionalContext": "Use short steps suitable for focus sessions"
+}
+```
+
+The backend must verify task ownership and return validated proposed child tasks.
+The endpoint remains unavailable when the conditional feature is disabled.
+
+### 5. Generate Review My Day Lite
+
+```http
+POST /v1/ai/review-my-day-lite
+```
+
+Example request:
+
+```json
+{
+  "localDate": "2026-09-01",
+  "timeZone": "Asia/Colombo"
+}
+```
+
+The backend should derive verified activity through authorized analytics and
+productivity services. The client must not submit trusted focus, XP, streak, or
+goal totals for the AI to treat as authoritative.
+
+The endpoint remains unavailable when the conditional feature is disabled.
+
+### 6. Apply Confirmed Proposal
+
+```http
+POST /v1/ai/proposals/{proposalId}/apply
+Idempotency-Key: <client-generated-key>
+```
+
+Example request:
+
+```json
+{
+  "items": [
+    {
+      "proposalItemId": "item_1",
+      "action": "create_task",
+      "values": {
+        "title": "Review chemistry notes",
+        "parentTaskId": null
+      }
+    },
+    {
+      "proposalItemId": "item_2",
+      "action": "schedule_task_reminder",
+      "values": {
+        "taskReference": "item_1",
+        "scheduledFor": "2026-09-01T18:00:00+05:30"
+      }
+    }
+  ]
+}
+```
+
+The API must:
+
+- verify the authenticated owner and proposal validity;
+- accept only supported action types and fields;
+- compare submitted items with the proposal while permitting approved user edits;
+- validate current ownership and resource state again;
+- apply only the exact submitted items;
+- use ordinary task and reminder services;
+- protect retries through idempotency;
+- return the exact created, updated, skipped, or failed items.
+
+Applying a proposal does not consume a second AI action.
+
+### 7. Verify Rewarded Unlock
+
+```http
+POST /v1/ai/rewarded-unlocks/verify
+Idempotency-Key: <client-generated-key>
+```
+
+The request contains only the provider-specific evidence required by the selected
+verification adapter. The exact shape remains undefined until an advertising
+provider is approved.
+
+The backend must authenticate the user, validate the expected reward placement,
+verify provider evidence where supported, prevent replay, create one idempotent
+grant, and return updated trusted usage state.
+
+A mobile SDK callback or client boolean such as `completed = true` is not
+sufficient proof.
+
+### 8. Consumption Rules
+
+- Five introductory actions are created once per eligible user.
+- A valid generated proposal or valid `Review My Day Lite` result consumes at
+  most one action.
+- Provider timeout, malformed output, internal failure, or cancelled request does
+  not consume an action.
+- Grant consumption and completed-request state transition should be atomic.
+- Feature unavailability should fail before provider work or action consumption.
+
+### 9. AI Error Codes
+
+Supported API error codes may include:
+
+```text
+AI_FEATURE_DISABLED
+AI_ACTION_REQUIRED
+AI_REQUEST_INVALID
+AI_PROVIDER_UNAVAILABLE
+AI_RESPONSE_INVALID
+AI_PROPOSAL_EXPIRED
+AI_PROPOSAL_MISMATCH
+REWARDED_VERIFICATION_FAILED
+REWARDED_VERIFICATION_REPLAYED
+```
+
+Errors should remain safe and user-understandable without exposing provider
+credentials, raw verification evidence, private prompts, or internal stack data.
 
 ---
 

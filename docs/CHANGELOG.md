@@ -110,12 +110,15 @@ Only work that has actually been completed should be recorded here.
 - EAS development, preview, production, and submission configuration
 - Added the initial shared design-token foundation for colors, typography, spacing, radii, shadows, opacity, motion, and layout.
 - Added an accessible shared Button component with primary, secondary, ghost, destructive, disabled, and loading states
+- Added canonical V1 and post-V1 feature-scope documents, including permanent links to the pre-change documentation snapshot
 
 ### Changed
 
 - Renamed the application configuration and package metadata from MyFirstApp to Deep Focus
 - Replaced the experimental session setup entry screen with the Phase 0 Deep Focus home  screen
 - Simplified web navigation to the active Home route
+- Documented `Plan My Day` as required V1 scope and `Break Down This Task` plus `Review My Day Lite` as release-gated V1 targets
+- Documented the November 15 scope checkpoint, November 30 beta, December 15 store submission, and January 1, 2027 public-release targets
 
 ### Removed
 
@@ -131,6 +134,7 @@ Only work that has actually been completed should be recorded here.
 - Refined AI behavior and development guidance
 - Expanded development and contribution standards
 - Expanded testing, compatibility, performance, release, and defect-management guidance
+- Synchronized product, UI, component, architecture, data, database, API, security, and testing contracts for proposal-first AI actions, task reminders, subtasks, action accounting, and trusted rewarded unlocks
 
 ---
 

@@ -14,6 +14,8 @@ Core project documentation includes:
 
 - PROJECT_VISION.md
 - BLUEPRINT.md
+- V1_FEATURE_SCOPE.md
+- POST_V1_FEATURE_SCOPE.md
 - UI_UX_DESIGN_SPECIFICATION.md
 - COMPONENT_LIBRARY.md
 - ARCHITECTURE.md
@@ -202,6 +204,10 @@ AI should:
 - Clearly distinguish AI-generated recommendations from confirmed user data
 - Avoid presenting uncertain recommendations as guaranteed facts
 - Request only the data necessary for the intended feature
+- Present generated plans, reminders, task breakdowns, and task changes as reviewable proposals
+- Require explicit user confirmation before applying any proposed task, reminder, goal, schedule, or settings change
+- Apply only the exact confirmed items and validate them through the normal application boundary
+- Keep AI access and rewarded-unlock state server-authoritative where trusted usage limits or advertisement verification are required
 
 AI should not:
 
@@ -211,8 +217,12 @@ AI should not:
 - Expose sensitive user information
 - Silently change important user settings
 - Distract users from active focus sessions
+- Treat a client-only rewarded-ad completion claim as trusted proof
+- Display rewarded advertising during an active Focus Session or True Zen Break
 
 Users should remain able to ignore, dismiss, or disable optional AI recommendations where appropriate.
+
+For the approved V1 scope, `Plan My Day` is required, while `Break Down This Task` and `Review My Day Lite` remain conditional on the release guardrails in `V1_FEATURE_SCOPE.md`. Voice AI, long-form AI chat, automatic rescheduling, and AI weekly planning remain post-V1 capabilities unless a later approved scope decision promotes them.
 
 AI features should degrade gracefully when AI services are unavailable so that core Deep Focus functionality can continue whenever possible.
 

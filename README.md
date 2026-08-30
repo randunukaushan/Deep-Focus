@@ -6,11 +6,12 @@ Deep Focus is being developed as a cross-platform mobile application for people 
 
 ## Project Status
 
-Deep Focus is currently in **Phase 0 — Project Readiness**.
+Deep Focus is currently in **Phase 1 — Application Foundation**.
 
-- The primary V1 documentation set is complete.
+- Phase 0 project-readiness work is complete.
 - The initial React Native and Expo project foundation exists.
-- Repository, dependencies, configuration, and development environments are being verified before V1 feature implementation begins.
+- Shared design tokens and the first accessible shared component are in place.
+- Navigation, reusable components, services, persistence, and error-state foundations are being completed before dependent V1 features begin.
 - Features listed below describe the approved V1 direction and must not be treated as implemented until they have been built and verified.
 
 ## Mission
@@ -54,7 +55,9 @@ Planned V1 capabilities include:
 - session history and productivity analytics;
 - Focus XP, levels, streaks, and approved achievements;
 - notifications and accessibility settings;
-- personal assessment and approved optional AI guidance;
+- personal assessment and an assessment-based Productivity Profile;
+- required V1 `Plan My Day` AI assistance;
+- conditional `Break Down This Task` and `Review My Day Lite` AI assistance when release guardrails are satisfied;
 - offline behavior, synchronization, and duplicate-processing protection.
 
 Deep Focus does not use real-money rewards, gambling, or cash-based focus bets. Optional AI features must remain private, transparent, dismissible, and unable to block the core focus experience.
@@ -132,8 +135,8 @@ Do not describe the application or a feature as tested unless the relevant check
 
 Development follows the dependency order defined in [`docs/V1_IMPLEMENTATION_PLAN.md`](docs/V1_IMPLEMENTATION_PLAN.md):
 
-- [ ] Phase 0 — Project Readiness *(in progress)*
-- [ ] Phase 1 — Application Foundation
+- [x] Phase 0 — Project Readiness
+- [ ] Phase 1 — Application Foundation *(in progress)*
 - [ ] Phase 2 — Authentication and User Foundation
 - [ ] Phase 3 — Core Focus Session System
 - [ ] Phase 4 — Tasks and Goals
@@ -154,6 +157,8 @@ The documents in `docs/` are the primary implementation reference.
 
 - [`PROJECT_VISION.md`](docs/PROJECT_VISION.md) — mission, long-term vision, and values;
 - [`BLUEPRINT.md`](docs/BLUEPRINT.md) — product behavior, features, navigation, and roadmap;
+- [`V1_FEATURE_SCOPE.md`](docs/V1_FEATURE_SCOPE.md) — canonical V1 user-facing feature list and release guardrails;
+- [`POST_V1_FEATURE_SCOPE.md`](docs/POST_V1_FEATURE_SCOPE.md) — deferred V1.1 and longer-term feature directions;
 - [`V1_IMPLEMENTATION_PLAN.md`](docs/V1_IMPLEMENTATION_PLAN.md) — approved V1 sequence, completion criteria, and scope control.
 
 ### Design and architecture
