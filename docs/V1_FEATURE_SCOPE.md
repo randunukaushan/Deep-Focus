@@ -281,14 +281,21 @@ after core stability and higher-priority release work.
 
 The planning baseline is five Deep Focus development hours per weekday.
 
+V1 targets Android and iOS from one shared React Native and Expo codebase. The
+public-release target applies to both Google Play Store and Apple App Store.
+Separate Android `.aab` and iOS `.ipa` builds are required; one platform binary
+is not converted into the other.
+
 The approved release targets are:
 
 | Checkpoint | Target |
 | --- | --- |
 | V1 scope and stability checkpoint | 2026-11-15 |
 | Beta target | 2026-11-30 |
+| Feature freeze | 2026-12-01 |
+| Release candidate target | 2026-12-08 |
 | Store submission target | 2026-12-15 |
-| Public V1 release target | 2027-01-01 |
+| Google Play and App Store public-launch target | 2027-01-01 |
 
 At the 2026-11-15 checkpoint:
 
@@ -300,6 +307,12 @@ At the 2026-11-15 checkpoint:
 
 Release quality, security, accessibility, testing, and store readiness must not be
 traded away to fit a conditional AI feature.
+
+The 2027-01-01 date is a target public launch date, not the first submission date
+or a guarantee that either store will approve the application by then. The
+submission target intentionally leaves time for review, rejection fixes, and
+release-candidate re-verification. If external review timing prevents exact
+same-day availability, safety and compliance take priority over forcing the date.
 
 ---
 

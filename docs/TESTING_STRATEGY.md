@@ -415,6 +415,13 @@ Testing should verify platform-specific behavior including:
 
 Deep Focus should respect relevant iOS platform behavior while maintaining a consistent product experience.
 
+iOS validation must start before the Android feature set is complete. Periodic
+EAS cloud builds should catch signing, configuration, and native-dependency
+problems early. Stable beta builds should be distributed through TestFlight to
+representative iPhones and supported iOS versions. External TestFlight testing
+requires beta information and the first external build to pass TestFlight App
+Review.
+
 ### 3. Screen Size and Responsive Layout Testing
 
 ---
@@ -509,6 +516,35 @@ Cloud device testing can help:
 - Supplement locally available physical devices
 
 Cloud testing should be used according to release risk and project needs rather than treated as a requirement for every development change.
+
+Use a cost-controlled progression:
+
+```text
+Static analysis and automated tests
+        ↓
+Local Android and available iOS validation
+        ↓
+Stable Android and iOS build
+        ↓
+Selected real-device cloud run
+        ↓
+Collect evidence and stop paid testing
+        ↓
+Fix and verify locally
+        ↓
+Targeted cloud re-test when valuable
+```
+
+Do not upload every development build to a paid device service. Set a realistic
+run timeout and choose only representative devices needed for the risk being
+tested. AWS Device Farm pricing is usage-based after its current trial allowance
+and may change, so verify the pricing page before scheduling a paid run.
+
+Official references, last verified 2026-09-01:
+
+- <https://developer.apple.com/testflight/>
+- <https://aws.amazon.com/device-farm/pricing/>
+- <https://docs.aws.amazon.com/devicefarm/latest/developerguide/welcome.html>
 
 ### 7. Compatibility Issue Prioritization
 
@@ -1270,6 +1306,11 @@ Testing should use an appropriate combination of:
 Representative supported devices and operating system versions should be selected according to release risk.
 
 Platform-specific defects that significantly affect supported users should be resolved before release.
+
+For V1, release verification includes separate production-oriented Android and
+iOS builds from the same source revision. The Android release artifact is an
+`.aab`; the iOS release artifact is an `.ipa`. Approval or a passing result on
+one platform does not prove the other platform is ready.
 
 ### 4. Release Regression Testing
 

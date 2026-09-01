@@ -119,6 +119,8 @@ Only work that has actually been completed should be recorded here.
 - Simplified web navigation to the active Home route
 - Documented `Plan My Day` as required V1 scope and `Break Down This Task` plus `Review My Day Lite` as release-gated V1 targets
 - Documented the November 15 scope checkpoint, November 30 beta, December 15 store submission, and January 1, 2027 public-release targets
+- Aligned V1 documentation for one shared Android and iOS codebase, separate `.aab` and `.ipa` builds, and a January 1, 2027 target launch on Google Play Store and Apple App Store
+- Added cross-platform development, TestFlight, store-readiness, release-buffer, and cost-efficient device-testing guidance verified against current official platform documentation
 
 ### Removed
 
