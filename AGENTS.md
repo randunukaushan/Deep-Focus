@@ -80,6 +80,13 @@ The primary mobile stack is:
 
 Before writing Expo-specific code, consult the exact Expo SDK 56 documentation at <https://docs.expo.dev/versions/v56.0.0/> and verify compatibility with the versions in `package.json`.
 
+Deep Focus V1 targets a public launch on both Google Play Store and Apple App
+Store on 2027-01-01. Unless a task is explicitly platform-specific, design and
+verify it for Android and iOS from the shared React Native and Expo codebase.
+Generate separate Android and iOS native builds; never describe the workflow as
+converting an Android binary into an iOS application. The date is a target
+public launch date, not a guaranteed store-review completion date.
+
 Do not add or replace a framework, routing system, state-management solution, database, backend platform, AI provider, or major dependency without documented need and project-owner approval. Do not treat Firebase, Firestore, or Firebase Authentication as approved mandatory dependencies unless a later documented decision explicitly selects them.
 
 Prefer project-local tooling and supported, actively maintained Expo/React Native patterns. Keep `package-lock.json` synchronized when dependencies change.

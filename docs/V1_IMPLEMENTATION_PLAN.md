@@ -2682,6 +2682,10 @@ Phase 9 prepares the complete application for release.
 
 No major new V1 feature should normally be introduced during this phase.
 
+The V1 feature freeze begins on 2026-12-01. After that date, changes should be
+limited to release blockers, verified defect fixes, compliance work, and
+low-risk release preparation. The release-candidate target is 2026-12-08.
+
 The focus should shift toward:
 
 ```text
@@ -2786,6 +2790,8 @@ Performance
 
 Test the supported iOS experience using available:
 
+- Periodic Expo EAS cloud builds
+- TestFlight beta builds
 - Simulator
 - Physical iPhone/iPad where available
 - Relevant iOS versions
@@ -2802,6 +2808,11 @@ Appearance
 ```
 
 Where direct iOS hardware access is unavailable during development, required physical-device validation should remain a release requirement rather than being falsely marked complete.
+
+Do not defer the first iOS build until Android is complete. Validate iOS
+configuration and native dependencies periodically during feature development,
+then run TestFlight and representative-device regression testing before store
+submission.
 
 ### Performance Testing
 
@@ -2969,13 +2980,49 @@ The release should represent tested implementation rather than merely completed 
 | --- | --- |
 | V1 scope and stability checkpoint | 2026-11-15 |
 | Beta | 2026-11-30 |
+| Feature freeze | 2026-12-01 |
+| Release candidate | 2026-12-08 |
 | Store submission | 2026-12-15 |
-| Public V1 release | 2027-01-01 |
+| Google Play and App Store public launch | 2027-01-01 |
 
 At the scope checkpoint, `Plan My Day` remains required. `Break Down This Task`
 and `Review My Day Lite` remain in V1 only when their inclusion does not weaken
 core reliability, security, accessibility, testing, store readiness, or the
 public-release target.
+
+The 2027-01-01 date is the target public launch on both stores, not a guaranteed
+review-completion date. Apple and Google control review timing. The 2026-12-15
+submission target provides time for review questions, rejection fixes, renewed
+build validation, and controlled release preparation.
+
+### Cross-Platform Release Timeline
+
+#### September-October 2026
+
+- Continue core V1 development in the shared codebase.
+- Use Android for frequent local validation.
+- Consider iOS compatibility during each feature rather than after Android is
+  complete.
+- Run periodic iOS cloud-build checks and establish automated test foundations.
+
+#### November 2026
+
+- Set up or verify Google Play Console and Apple Developer membership.
+- Create the App Store Connect record and register the approved bundle ID.
+- Confirm signing and EAS credential workflows without committing credentials.
+- Prepare privacy policy, Data Safety/App Privacy answers, metadata, icons,
+  screenshots, testing tracks, and TestFlight information.
+- Begin internal testing and TestFlight preparation before the 2026-11-30 beta.
+
+#### December 2026
+
+- Freeze features on 2026-12-01 and stabilize the release candidate.
+- Run Android and iOS regression, accessibility, security, performance, and
+  representative real-device testing.
+- Complete Google closed testing if it applies to the developer account and
+  complete TestFlight beta feedback cycles.
+- Submit production candidates by 2026-12-15 and keep the remaining time for
+  review, rejection fixes, and final release checks.
 
 ### Release Candidate
 
@@ -3038,6 +3085,12 @@ Version information
 
 Development credentials or endpoints should not accidentally remain active in production builds.
 
+Repository configuration currently includes Android package
+`com.randunukaushan9.DeepFocus`. `ios.bundleIdentifier` is not yet present in
+`app.json`; the product owner must approve the permanent value before iOS
+credentials, App Store Connect records, or production builds are finalized.
+Do not invent or casually change either production identifier.
+
 ### Production Secrets
 
 Verify again that private secrets are not embedded in the mobile application.
@@ -3084,6 +3137,71 @@ Required platform declarations
 ```
 
 Store-specific requirements should be verified against current platform requirements during the actual release process.
+
+#### Google Play preparation
+
+- Complete Play Console account and identity verification.
+- Confirm the package ID and enroll the release in Play App Signing.
+- Produce a signed `.aab` and use internal testing before wider tracks.
+- Complete the store listing, app description, icon, required screenshots and
+  graphics, privacy policy, Data Safety, permissions, content declarations, and
+  reviewer access information.
+- If the account is a newly created personal developer account subject to the
+  current rule, run a closed test with at least 12 opted-in testers continuously
+  for 14 days, then apply for production access and answer the readiness
+  questions. Verify the rule in Play Console because account eligibility and
+  policy can change.
+- Use managed publishing or another supported release option only after review
+  behavior and launch timing are rechecked. Google states processing may take a
+  few hours, up to seven days, or longer in exceptional cases.
+
+#### Apple App Store preparation
+
+- Enroll in the Apple Developer Program and create the App Store Connect app
+  record using the approved bundle identifier.
+- Configure signing certificates, provisioning, and the EAS credential workflow
+  without committing private credentials.
+- Produce a signed `.ipa`, upload it to App Store Connect, and distribute stable
+  beta builds through TestFlight.
+- Complete metadata, screenshots, age rating, app privacy answers, privacy policy
+  URL, export-compliance information, review notes, and reviewer account access
+  where required.
+- Submit the final build for App Review early. Choose manual release or
+  automatic release no earlier than the target date only after considering that
+  post-release storefront availability may still take time.
+
+EAS Submit uploads binaries but does not complete store metadata or automatically
+release a TestFlight build to the public App Store.
+
+### Cost Classification
+
+| Category | Current planning treatment |
+| --- | --- |
+| One-time | Google Play Console registration; currently USD 25 |
+| Yearly recurring | Apple Developer Program; currently USD 99 per membership year, with regional variation |
+| Optional subscription | Paid Expo/EAS plan when free limits or queue priority are insufficient |
+| Usage-based | EAS overages on eligible paid plans and selective AWS Device Farm minutes |
+| Cost-minimizing default | Local checks, Android emulator/devices, available iPhones, free EAS allowance, and targeted cloud testing |
+
+Fees and allowances are time-sensitive. Verify them again before purchase rather
+than treating this table as a permanent price guarantee.
+
+Official release references, last verified 2026-09-01:
+
+- Google Play registration: <https://support.google.com/googleplay/android-developer/answer/6112435>
+- Google personal-account testing: <https://support.google.com/googleplay/android-developer/answer/14151465>
+- Google publishing control and review timing: <https://support.google.com/googleplay/android-developer/answer/9859654>
+- Google Data Safety: <https://support.google.com/googleplay/android-developer/answer/10787469>
+- Android App Bundles: <https://developer.android.com/guide/app-bundle>
+- Apple Developer enrollment: <https://developer.apple.com/programs/enroll/>
+- Apple TestFlight: <https://developer.apple.com/testflight/>
+- Apple App Review Guidelines: <https://developer.apple.com/app-store/review/guidelines/>
+- Apple release options: <https://developer.apple.com/help/app-store-connect/manage-your-apps-availability/select-an-app-store-version-release-option/>
+- Apple app privacy: <https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/>
+- Expo app-store submission: <https://docs.expo.dev/deploy/submit-to-app-stores/>
+- Expo iOS builds: <https://docs.expo.dev/build-reference/ios-builds/>
+- Expo plans and billing: <https://docs.expo.dev/billing/plans/>
+- AWS Device Farm pricing: <https://aws.amazon.com/device-farm/pricing/>
 
 ### Rollout
 
