@@ -66,7 +66,7 @@ The current mobile foundation uses:
 - TypeScript;
 - React Native;
 - React;
-- Expo SDK 56;
+- Expo SDK 57;
 - Expo Router;
 - functional React components and React Hooks.
 

@@ -1,11 +1,12 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
 const DURATION = 600;
+const SPLASH_DURATION = 2200;
 
 export function AnimatedSplashOverlay() {
   const [visible, setVisible] = useState(true);
@@ -14,33 +15,43 @@ export function AnimatedSplashOverlay() {
 
   const splashKeyframe = new Keyframe({
     0: {
-      transform: [{ scale: INITIAL_SCALE_FACTOR }],
-      opacity: 1,
-    },
-    20: {
       opacity: 1,
     },
     70: {
-      opacity: 0,
-      easing: Easing.elastic(0.7),
+      opacity: 1,
     },
     100: {
       opacity: 0,
-      transform: [{ scale: 1 }],
-      easing: Easing.elastic(0.7),
     },
   });
 
   return (
     <Animated.View
-      entering={splashKeyframe.duration(DURATION).withCallback((finished) => {
-        'worklet';
-        if (finished) {
-          scheduleOnRN(setVisible, false);
-        }
-      })}
-      style={styles.backgroundSolidColor}
-    />
+      entering={splashKeyframe
+        .duration(SPLASH_DURATION)
+        .withCallback((finished) => {
+          'worklet';
+
+          if (finished) {
+            scheduleOnRN(setVisible, false);
+          }
+        })}
+      style={styles.splashContainer}
+    >
+      <View style={styles.splashContent}>
+        <View style={styles.logoCircle}>
+          <View style={styles.logoInnerCircle}>
+            <View style={styles.logoDot} />
+          </View>
+        </View>
+
+        <Text style={styles.splashTitle}>Deep Focus</Text>
+
+        <Text style={styles.splashDescription}>
+          Protect your attention. Focus on what matters.
+        </Text>
+      </View>
+    </Animated.View>
   );
 }
 
@@ -83,28 +94,102 @@ const glowKeyframe = new Keyframe({
 export function AnimatedIcon() {
   return (
     <View style={styles.iconContainer}>
-      <Animated.View entering={glowKeyframe.duration(60 * 1000 * 4)} style={styles.glow}>
-        <Image style={styles.glow} source={require('@/assets/images/logo-glow.png')} />
+      <Animated.View
+        entering={glowKeyframe.duration(60 * 1000 * 4)}
+        style={styles.glow}
+      >
+        <Image
+          style={styles.glow}
+          source={require('@/assets/images/logo-glow.png')}
+        />
       </Animated.View>
 
-      <Animated.View entering={keyframe.duration(DURATION)} style={styles.background} />
-      <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
-        <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />
+      <Animated.View
+        entering={keyframe.duration(DURATION)}
+        style={styles.background}
+      />
+
+      <Animated.View
+        style={styles.imageContainer}
+        entering={logoKeyframe.duration(DURATION)}
+      >
+        <Image
+          style={styles.image}
+          source={require('@/assets/images/expo-logo.png')}
+        />
       </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  splashContainer: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: '#08131D',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+
+  splashContent: {
+    alignItems: 'center',
+    paddingHorizontal: 30,
+  },
+
+  logoCircle: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    backgroundColor: '#17354A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 28,
+  },
+
+  logoInnerCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 3,
+    borderColor: '#7FE5B6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  logoDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#7FE5B6',
+  },
+
+  splashTitle: {
+    color: '#FFFFFF',
+    fontSize: 38,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginBottom: 12,
+  },
+
+  splashDescription: {
+    color: '#8FAABD',
+    fontSize: 15,
+    lineHeight: 23,
+    textAlign: 'center',
+    maxWidth: 280,
+  },
+
   imageContainer: {
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   glow: {
     width: 201,
     height: 201,
     position: 'absolute',
   },
+
   iconContainer: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -112,21 +197,19 @@ const styles = StyleSheet.create({
     height: 128,
     zIndex: 100,
   },
+
   image: {
     position: 'absolute',
     width: 76,
     height: 71,
   },
+
   background: {
     borderRadius: 40,
-    experimental_backgroundImage: `linear-gradient(180deg, #3C9FFE, #0274DF)`,
+    experimental_backgroundImage:
+      'linear-gradient(180deg, #3C9FFE, #0274DF)',
     width: 128,
     height: 128,
     position: 'absolute',
-  },
-  backgroundSolidColor: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: '#208AEF',
-    zIndex: 1000,
   },
 });

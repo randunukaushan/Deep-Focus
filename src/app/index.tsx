@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import {
   SafeAreaView,
@@ -38,7 +39,10 @@ export default function HomeScreen() {
             Start a focused session and make progress on what matters.
           </Text>
 
-          <TouchableOpacity style={styles.startButton}>
+          <TouchableOpacity
+                 style={styles.startButton}
+                    onPress={() => router.push('/home/session-setup' as any)}>
+
             <Text style={styles.startButtonText}>Start Focus Session</Text>
 
             <Ionicons

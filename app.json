@@ -35,7 +35,11 @@
             "imageWidth": 76
           }
         }
-      ]
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -44,8 +48,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "745d3338-b0a8-4f8c-93ea-f189bc98a6e0"
+        "projectId": "4f5a788d-8977-47d1-8d77-4915b35a945d"
       }
-    }
+    },
+    "owner": "randunukaushan9"
   }
 }

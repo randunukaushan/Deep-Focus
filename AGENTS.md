@@ -73,12 +73,12 @@ The primary mobile stack is:
 
 - TypeScript;
 - React Native;
-- Expo SDK 56;
+- Expo SDK 57;
 - Expo Router;
 - functional React components;
 - React Hooks.
 
-Before writing Expo-specific code, consult the exact Expo SDK 56 documentation at <https://docs.expo.dev/versions/v56.0.0/> and verify compatibility with the versions in `package.json`.
+Before writing Expo-specific code, consult the exact Expo SDK 57 documentation at <https://docs.expo.dev/versions/v57.0.0/> and verify compatibility with the versions in `package.json`.
 
 Do not add or replace a framework, routing system, state-management solution, database, backend platform, AI provider, or major dependency without documented need and project-owner approval. Do not treat Firebase, Firestore, or Firebase Authentication as approved mandatory dependencies unless a later documented decision explicitly selects them.
 

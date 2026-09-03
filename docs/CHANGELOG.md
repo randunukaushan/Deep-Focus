@@ -113,6 +113,7 @@ Only work that has actually been completed should be recorded here.
 
 ### Changed
 
+- Upgraded the mobile foundation from Expo SDK 56 to Expo SDK 57 and aligned its supported React Native and Expo dependencies.
 - Renamed the application configuration and package metadata from MyFirstApp to Deep Focus
 - Replaced the experimental session setup entry screen with the Phase 0 Deep Focus home  screen
 - Simplified web navigation to the active Home route
