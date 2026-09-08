@@ -47,6 +47,17 @@ For the primary mobile application, use:
 - Functional Components
 - React Hooks
 
+Deep Focus V1 supports Android and iOS as first-class release targets from one
+shared React Native and Expo codebase. Unless work is explicitly
+platform-specific, features must be designed with compatibility for both
+platforms in mind. Platform differences should be isolated and documented
+rather than used to create independent application codebases.
+
+The target public launch is January 1, 2027 on Google Play Store and Apple App
+Store. This is a planning target, not a guarantee that either store will finish
+review by that date. Store preparation, beta testing, and submissions must be
+scheduled early enough to allow review and correction time.
+
 Avoid outdated or deprecated React Native patterns.
 
 Do not introduce a new framework, navigation system, state management solution, database, backend platform, or major dependency without first verifying that it aligns with the project architecture.

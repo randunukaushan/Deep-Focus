@@ -8,6 +8,18 @@ This vision acts as the foundation for every decision made throughout the design
 
 Every feature, interface, AI capability, and user experience should align with the principles defined in this document to ensure that Deep Focus continues to grow with a clear and consistent purpose.
 
+## Approved V1 Platform Direction
+
+Deep Focus V1 is a shared React Native and Expo mobile application for Android
+and iOS. The approved target is a public launch on both Google Play Store and
+Apple App Store on January 1, 2027.
+
+This does not mean completing an Android application and later converting its
+binary for iPhone. Shared source code produces separate Android and iOS native
+builds, with platform-specific implementation only where operating-system
+behavior genuinely differs. The launch date remains a target because external
+store review timing is not fully controlled by the project.
+
 ---
 
 ## 1. Introduction

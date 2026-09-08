@@ -4438,19 +4438,33 @@ Temporary development data may use simpler migration strategies when preserving 
 
 ---
 
-### 8. Platform Expansion
+### 8. V1 Mobile Platforms
 
-Deep Focus is initially focused on mobile experiences.
+Deep Focus V1 supports Android and iOS from one shared React Native and Expo
+codebase. Both platforms are immediate V1 release requirements rather than
+future platform expansion.
 
-Potential future platforms may include:
+The build architecture is:
 
-- Android
-- iOS
-- Web
-- Desktop
-- Wearable experiences
+```text
+Shared React Native / Expo source
+        |                 |
+        v                 v
+Android native build   iOS native build
+        |                 |
+        v                 v
+      .aab               .ipa
+        |                 |
+        v                 v
+Google Play Store   Apple App Store
+```
 
-Platform expansion should not be assumed as an immediate requirement.
+Android APK or AAB files are not converted into iOS applications. Each native
+artifact is built separately from the shared source code with the credentials,
+signing, and platform configuration required by its store.
+
+Web, desktop, and wearable experiences remain potential future expansion and
+are not V1 release requirements.
 
 Business and domain logic should remain independent from platform-specific implementation where doing so provides practical value.
 
@@ -4493,6 +4507,12 @@ Platform-specific areas may include:
 Shared architecture should not hide important platform differences merely to maximize code reuse.
 
 Correct platform behavior should take priority over artificial reuse.
+
+Development should continuously consider both platforms. Android may be used
+for frequent local testing on Windows, while periodic iOS validation should use
+supported iOS environments and Expo EAS cloud builds. A shared defect belongs
+in shared code; a genuine operating-system difference belongs behind a narrow,
+documented platform boundary.
 
 ---
 

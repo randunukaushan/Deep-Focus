@@ -2138,6 +2138,17 @@ The long-term mission remains:
 The canonical V1 feature boundary is defined in `V1_FEATURE_SCOPE.md`. Deferred
 and longer-term capabilities are defined in `POST_V1_FEATURE_SCOPE.md`.
 
+### Platform and Launch Target
+
+V1 is developed from one shared React Native and Expo codebase with Android and
+iOS as first-class release targets. The project generates separate Android
+`.aab` and iOS `.ipa` production builds; it does not convert an Android binary
+into an iPhone application.
+
+The target is a same-day public launch on Google Play Store and Apple App Store
+on 2027-01-01. That date is not a guarantee of store approval. Beta testing,
+store submissions, and rejection-fix buffers must occur before it.
+
 This decision is additive: previously approved V1 functionality remains in
 scope. The AI layer adds:
 

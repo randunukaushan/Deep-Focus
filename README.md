@@ -4,6 +4,20 @@
 
 Deep Focus is being developed as a cross-platform mobile application for people who want to work with greater intention without turning productivity into constant pressure. It combines focused work, thoughtful recovery, progress insights, and optional AI assistance while keeping the user in control.
 
+## V1 Platform and Release Target
+
+Deep Focus V1 is being developed from one shared React Native and Expo codebase
+for Android and iOS. Both platforms are first-class V1 release targets.
+
+- Target public launch: **January 1, 2027**
+- Stores: **Google Play Store and Apple App Store**
+- Production artifacts: Android `.aab` and iOS `.ipa`
+- Build model: separate native builds generated from the shared source code
+
+January 1, 2027 is the target public launch date, not a guaranteed store-review
+completion date. Beta testing, store preparation, and submissions must finish
+earlier so Apple and Google review or rejection fixes have a release buffer.
+
 ## Project Status
 
 Deep Focus is currently in **Phase 1 — Application Foundation**.
@@ -88,6 +102,11 @@ Deep Focus follows a modular, maintainable architecture with clear separation be
 - external services and infrastructure.
 
 Implementation should reuse the approved design system and components, keep route files lightweight, protect user privacy, and build complete vertical feature slices rather than disconnected layers.
+
+Shared application logic, UI, services, state, and feature code should support
+both mobile platforms unless an operating-system difference requires a small,
+isolated platform-specific implementation. An Android binary is never converted
+into an iOS binary.
 
 ## Getting Started
 

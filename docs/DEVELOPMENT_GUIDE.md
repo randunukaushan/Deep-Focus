@@ -81,7 +81,11 @@ The recommended development environment includes:
 - Android Studio
 - Android Emulator or a physical Android device
 
-Platform-specific development tools may be added when additional platforms are officially introduced.
+The normal Windows workflow uses Android Studio, an Android emulator, and
+physical Android devices for frequent local validation. iOS is also a V1 target,
+but an iOS native production build requires Apple build tooling on macOS. A Mac
+does not have to be owned by the developer when Expo EAS Build is used to run
+the iOS build on a cloud macOS worker.
 
 Developers should avoid relying on unnecessary globally installed development tools when the project provides its own supported tooling.
 
@@ -111,6 +115,34 @@ npx expo start
 Additional commands should be defined through project scripts when they become part of the standard development workflow.
 
 Every contributor should begin work from the latest appropriate version of the project and verify that the existing application works before introducing changes.
+
+### 2.1 Cross-Platform Development Workflow
+
+Use the following workflow for V1 features:
+
+1. Implement the feature in the shared Expo and React Native codebase.
+2. Run type checking, linting, and available automated tests.
+3. Validate frequently with Android local builds, an emulator, and physical
+   Android devices where practical.
+4. Consider iOS permissions, safe areas, keyboard behavior, background
+   behavior, notifications, storage, authentication, and native dependencies
+   while the feature is being designed.
+5. Run periodic EAS iOS builds and TestFlight checks; do not wait until Android
+   development is complete.
+6. Fix portable defects in shared code and isolate genuine platform-specific
+   fixes.
+7. Produce separate signed Android `.aab` and iOS `.ipa` release artifacts from
+   the shared source code.
+
+An Android APK or AAB is never converted into an iOS IPA. Expo documents that
+EAS Build creates iOS builds on fresh macOS virtual machines and that EAS Submit
+works from Windows, Linux, and macOS.
+
+Official references, last verified 2026-09-01:
+
+- <https://docs.expo.dev/build-reference/ios-builds/>
+- <https://docs.expo.dev/deploy/submit-to-app-stores/>
+- <https://docs.expo.dev/submit/ios/>
 
 ---
 
