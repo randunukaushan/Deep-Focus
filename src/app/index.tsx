@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+import { useRouter } from 'expo-router';
 import {
   SafeAreaView,
   StyleSheet,
@@ -9,6 +10,8 @@ import {
 } from 'react-native';
 
 export default function HomeScreen() {
+  const router = useRouter();
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
@@ -38,7 +41,11 @@ export default function HomeScreen() {
             Start a focused session and make progress on what matters.
           </Text>
 
-          <TouchableOpacity style={styles.startButton}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Start Focus Session"
+            onPress={() => router.push('/session-setup')}
+            style={styles.startButton}>
             <Text style={styles.startButtonText}>Start Focus Session</Text>
 
             <Ionicons
