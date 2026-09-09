@@ -126,6 +126,9 @@ Only work that has actually been completed should be recorded here.
   including accessible dark/light theme values and a distinct AI-only lavender accent
 - Refined the Home dashboard into a calm, premium zero-state experience with a
   clear session entry point and working quick-action routes
+- Added the first timestamp-based Focus Session vertical slice with live timer,
+  pause/resume, completion, cancellation, and session summary states
+- Added guarded local active-session and history persistence with a recovery route
 
 ### Removed
 

@@ -33,7 +33,7 @@ No authentication provider is selected by this map.
 | 06 | `/onboarding` | Onboarding Introduction | Required | Welcome or verification | Personal Assessment |
 | 07 | `/onboarding/assessment` | Personal Assessment | Required | Onboarding | Productivity Profile |
 | 08 | `/onboarding/productivity-profile` | Productivity Profile | Required | Assessment | Home |
-| 09 | `/` | Home | Required tab | Main application | Contextual workflow |
+| 09 | `/home` (`/` redirects here) | Home | Required tab | Main application | Contextual workflow |
 | 10 | `/focus` | Focus | Required tab | Main navigation | Session Setup or recovery |
 | 11 | `/analytics` | Analytics | Required tab | Main navigation | History or contextual detail |
 | 12 | `/rewards` | Rewards | Required tab | Main navigation | Contextual reward detail |

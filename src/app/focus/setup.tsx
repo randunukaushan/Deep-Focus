@@ -55,7 +55,7 @@ export default function SessionSetupRoute() {
           </View>
           <View style={styles.actions}>
             <Button accessibilityLabel="Start Focus Session" fullWidth label="Start Focus Session" onPress={start} />
-            <Button fullWidth label="Back to Home" onPress={() => router.back()} variant="ghost" />
+            <Button fullWidth label="Back to Home" onPress={() => router.dismissTo('/(tabs)/home')} variant="ghost" />
           </View>
         </View>
       </ScrollView>
