@@ -44,6 +44,10 @@ Version numbers should communicate meaningful differences between releases as cl
 
 Changes may be recorded under the following categories:
 
+## Unreleased
+
+- Implemented local focus-session history and session detail views.
+
 - Added
 - Changed
 - Improved
