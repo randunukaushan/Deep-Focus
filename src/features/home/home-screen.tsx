@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, type Href } from 'expo-router';
+import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useState } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -8,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { MaxContentWidth } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { Palette, Radius, Spacing, Typography } from '@/theme/tokens';
+import { loadSessionHistory } from '@/features/focus/session-storage';
 
 type QuickAction = {
   label: string;
@@ -28,10 +30,40 @@ function getGreeting(hour: number) {
   return 'Good evening';
 }
 
+function formatFocusTime(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes === 0 ? `${hours}h` : `${hours}h ${remainingMinutes}m`;
+}
+
 export function HomeScreen() {
   const router = useRouter();
   const theme = useTheme();
   const greeting = getGreeting(new Date().getHours());
+  const [todayProgress, setTodayProgress] = useState({ focusedSeconds: 0, sessionsCompleted: 0 });
+
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    void loadSessionHistory().then((sessions) => {
+      if (!active) return;
+      const today = new Date().toDateString();
+      const completedToday = sessions.filter((session) => session.status === 'completed'
+        && session.completedAt
+        && new Date(session.completedAt).toDateString() === today);
+      setTodayProgress({
+        focusedSeconds: completedToday.reduce((total, session) => total + session.focusedDurationSeconds, 0),
+        sessionsCompleted: completedToday.length,
+      });
+    });
+    return () => { active = false; };
+  }, []));
+
+  const hasProgress = todayProgress.sessionsCompleted > 0;
+  const progressLabel = hasProgress
+    ? `${formatFocusTime(todayProgress.focusedSeconds)} focused · ${todayProgress.sessionsCompleted} ${todayProgress.sessionsCompleted === 1 ? 'session' : 'sessions'} completed.`
+    : 'No sessions completed yet — your first focused block starts the day.';
 
   return (
     <ThemedView style={styles.screen}>
@@ -58,16 +90,15 @@ export function HomeScreen() {
             />
           </View>
 
-          <ThemedView accessibilityLabel="Today’s focus progress. No sessions completed yet." style={[styles.progressCard, { borderColor: theme.border }]} type="surface">
+          <ThemedView accessibilityLabel={`Today’s focus progress. ${progressLabel}`} style={[styles.progressCard, { borderColor: theme.border }]} type="surface">
             <View style={styles.cardHeading}>
               <View>
-                <ThemedText type="smallBold">TODAY’S FOCUS</ThemedText>
-                <ThemedText type="subtitle">Begin with one block.</ThemedText>
+                <ThemedText type="smallBold">TODAY’S PROGRESS</ThemedText>
+                <ThemedText type="subtitle">{hasProgress ? formatFocusTime(todayProgress.focusedSeconds) : 'Begin with one block.'}</ThemedText>
               </View>
               <View style={[styles.statusIcon, { backgroundColor: theme.background }]}><Ionicons color={Palette.mintPrimary} name="leaf-outline" size={20} /></View>
             </View>
-            <View accessibilityElementsHidden style={[styles.progressTrack, { backgroundColor: theme.backgroundElement }]}><View style={styles.progressEmpty} /></View>
-            <ThemedText themeColor="textSecondary" type="small">No sessions completed yet — your first focused block starts the day.</ThemedText>
+            <ThemedText themeColor="textSecondary" type="small">{progressLabel}</ThemedText>
           </ThemedView>
 
           <View style={styles.sectionHeader}>
@@ -108,8 +139,6 @@ const styles = StyleSheet.create({
   progressCard: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.md, padding: Spacing.lg },
   cardHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   statusIcon: { alignItems: 'center', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
-  progressTrack: { borderRadius: 999, height: 8, overflow: 'hidden', width: '100%' },
-  progressEmpty: { backgroundColor: Palette.mintPrimary, height: '100%', width: 0 },
   sectionHeader: { gap: Spacing.xs, paddingTop: Spacing.xs },
   quickActions: { gap: Spacing.sm },
   quickAction: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', gap: Spacing.md, minHeight: 76, padding: Spacing.md },
