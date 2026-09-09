@@ -419,7 +419,7 @@ Once required onboarding is complete, users should enter the main application.
 
 The primary navigation should use a simple bottom navigation structure supported by stack-based navigation for individual workflows.
 
-The initial navigation model may include the following primary destinations:
+The canonical V1 navigation model includes the following primary destinations:
 
 - Home
 - Focus
@@ -428,6 +428,10 @@ The initial navigation model may include the following primary destinations:
 - Profile
 
 Navigation implementation should follow the architecture defined for the application and remain consistent across supported platforms.
+
+The exact V1 route inventory, contextual workflows, and route-versus-state
+distinctions are defined in `V1_SCREEN_MAP.md`. AI remains contextual and is not
+a permanent primary-navigation destination.
 
 ---
 

@@ -111,6 +111,7 @@ Only work that has actually been completed should be recorded here.
 - Added the initial shared design-token foundation for colors, typography, spacing, radii, shadows, opacity, motion, and layout.
 - Added an accessible shared Button component with primary, secondary, ghost, destructive, disabled, and loading states
 - Added canonical V1 and post-V1 feature-scope documents, including permanent links to the pre-change documentation snapshot
+- Added a canonical V1 screen map covering full-screen routes, primary navigation, contextual interfaces, and unresolved implementation decisions
 
 ### Changed
 
@@ -119,6 +120,12 @@ Only work that has actually been completed should be recorded here.
 - Simplified web navigation to the active Home route
 - Documented `Plan My Day` as required V1 scope and `Break Down This Task` plus `Review My Day Lite` as release-gated V1 targets
 - Documented the November 15 scope checkpoint, November 30 beta, December 15 store submission, and January 1, 2027 public-release targets
+- Synchronized the Blueprint, UI specification, architecture, and implementation plan with the canonical five-tab V1 navigation model
+- Replaced the temporary Home and Explore navigation with a connected five-tab V1 route skeleton and contextual workflow routes
+- Canonicalized the shared visual tokens to the Deep Focus navy and mint palette,
+  including accessible dark/light theme values and a distinct AI-only lavender accent
+- Refined the Home dashboard into a calm, premium zero-state experience with a
+  clear session entry point and working quick-action routes
 
 ### Removed
 

@@ -1806,7 +1806,8 @@ Navigation should help users remain focused rather than forcing unnecessary scre
 
 ### 2. Navigation Structure
 
-The application may be organized into logical navigation groups such as:
+The V1 application is organized into the logical navigation groups defined in
+`V1_SCREEN_MAP.md`, including:
 
 - Authentication
 - Onboarding
@@ -1901,7 +1902,7 @@ When authentication is used:
 
 The primary application should provide fast access to frequently used destinations.
 
-The current product direction may include:
+The canonical V1 primary navigation includes:
 
 - Home
 - Focus
@@ -1910,6 +1911,9 @@ The current product direction may include:
 - Profile
 
 Primary navigation should remain stable and predictable throughout normal application usage.
+
+The canonical full-screen route inventory, non-route interfaces, and navigation
+flows are defined in `V1_SCREEN_MAP.md`.
 
 Changes to the primary navigation model should be treated as product-level decisions rather than casual implementation changes.
 

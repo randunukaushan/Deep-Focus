@@ -6,28 +6,31 @@
  */
 
 export const Palette = {
-  deepIndigo: '#4F46E5',
-  calmTeal: '#14B8A6',
-  softPurple: '#8B5CF6',
+  // Deep Focus brand palette: grounding navy surfaces with a mint action accent.
+  deepNavy: '#0F2537',
+  navySurface: '#17354A',
+  navySurfaceElevated: '#1B3B54',
+  mintPrimary: '#7FE5B6',
+  aiAccent: '#A78BFA',
 
   success: '#22C55E',
   warning: '#F59E0B',
   error: '#EF4444',
   achievement: '#FBBF24',
 
-  lightBackground: '#F8FAFC',
+  lightBackground: '#F4FBF8',
   lightSurface: '#FFFFFF',
-  lightBorder: '#E2E8F0',
-  lightTextPrimary: '#0F172A',
-  lightTextSecondary: '#475569',
-  lightTextMuted: '#64748B',
+  lightBorder: '#B9D9CB',
+  lightTextPrimary: '#0F2537',
+  lightTextSecondary: '#476578',
+  lightTextMuted: '#668493',
 
-  darkBackground: '#0F172A',
-  darkSurface: '#1E293B',
-  darkSurfaceElevated: '#334155',
-  darkTextPrimary: '#F8FAFC',
-  darkTextSecondary: '#CBD5E1',
-  darkTextMuted: '#94A3B8',
+  darkBackground: '#0F2537',
+  darkSurface: '#17354A',
+  darkSurfaceElevated: '#1B3B54',
+  darkTextPrimary: '#FFFFFF',
+  darkTextSecondary: '#A2BCCF',
+  darkTextMuted: '#8FAABD',
 } as const;
 
 export const Colors = {
@@ -41,9 +44,9 @@ export const Colors = {
     textSecondary: Palette.lightTextSecondary,
     textMuted: Palette.lightTextMuted,
 
-    primary: Palette.deepIndigo,
-    secondary: Palette.calmTeal,
-    aiAccent: Palette.softPurple,
+    primary: Palette.mintPrimary,
+    secondary: Palette.navySurface,
+    aiAccent: Palette.aiAccent,
 
     success: Palette.success,
     warning: Palette.warning,
@@ -61,9 +64,9 @@ export const Colors = {
     textSecondary: Palette.darkTextSecondary,
     textMuted: Palette.darkTextMuted,
 
-    primary: Palette.deepIndigo,
-    secondary: Palette.calmTeal,
-    aiAccent: Palette.softPurple,
+    primary: Palette.mintPrimary,
+    secondary: Palette.navySurfaceElevated,
+    aiAccent: Palette.aiAccent,
 
     success: Palette.success,
     warning: Palette.warning,

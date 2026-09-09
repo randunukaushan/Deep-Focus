@@ -314,6 +314,10 @@ This includes:
 
 Implement the primary navigation structure according to the approved UI/UX and architecture documentation.
 
+Use `V1_SCREEN_MAP.md` as the canonical route inventory. Introduce its connected
+route groups in the approved implementation order; route placeholders do not
+indicate that their feature behavior is complete.
+
 Navigation should support the V1 screen hierarchy without placing business logic inside route files.
 
 Conceptually:

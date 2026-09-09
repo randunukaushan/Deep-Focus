@@ -108,7 +108,7 @@ function getContainerStyle(variant: ButtonVariant): ViewStyle {
     case 'secondary':
       return {
         backgroundColor: 'transparent',
-        borderColor: Palette.deepIndigo,
+        borderColor: Palette.mintPrimary,
       };
 
     case 'ghost':
@@ -126,8 +126,8 @@ function getContainerStyle(variant: ButtonVariant): ViewStyle {
     case 'primary':
     default:
       return {
-        backgroundColor: Palette.deepIndigo,
-        borderColor: Palette.deepIndigo,
+        backgroundColor: Palette.mintPrimary,
+        borderColor: Palette.mintPrimary,
       };
   }
 }
@@ -135,12 +135,14 @@ function getContainerStyle(variant: ButtonVariant): ViewStyle {
 function getLabelColor(variant: ButtonVariant, themeText: string) {
   switch (variant) {
     case 'secondary':
-      return Palette.deepIndigo;
+      return Palette.mintPrimary;
 
     case 'ghost':
       return themeText;
 
     case 'primary':
+      return Palette.deepNavy;
+
     case 'destructive':
     default:
       return Palette.lightSurface;

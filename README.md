@@ -158,6 +158,7 @@ The documents in `docs/` are the primary implementation reference.
 - [`PROJECT_VISION.md`](docs/PROJECT_VISION.md) — mission, long-term vision, and values;
 - [`BLUEPRINT.md`](docs/BLUEPRINT.md) — product behavior, features, navigation, and roadmap;
 - [`V1_FEATURE_SCOPE.md`](docs/V1_FEATURE_SCOPE.md) — canonical V1 user-facing feature list and release guardrails;
+- [`V1_SCREEN_MAP.md`](docs/V1_SCREEN_MAP.md) — canonical V1 route, navigation, and route-versus-state map;
 - [`POST_V1_FEATURE_SCOPE.md`](docs/POST_V1_FEATURE_SCOPE.md) — deferred V1.1 and longer-term feature directions;
 - [`V1_IMPLEMENTATION_PLAN.md`](docs/V1_IMPLEMENTATION_PLAN.md) — approved V1 sequence, completion criteria, and scope control.
 

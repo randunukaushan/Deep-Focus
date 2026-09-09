@@ -775,7 +775,7 @@ Only one Primary Button should typically compete for attention within the same i
 #### Visual Characteristics
 
 - Filled background
-- Deep Indigo primary brand color
+- Deep Focus Mint primary action color
 - High-contrast text
 - Rounded corners
 - High visual emphasis

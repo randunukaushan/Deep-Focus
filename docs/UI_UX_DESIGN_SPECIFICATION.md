@@ -519,13 +519,13 @@ The color system should:
 
 ### 2. Primary Brand Color
 
-**Deep Indigo**
+**Deep Focus Mint**
 
 ```text
-#4F46E5
+#7FE5B6
 ```
 
-Deep Indigo is the primary Deep Focus brand color.
+Deep Focus Mint is the primary Deep Focus action and brand accent.
 
 **Represents**
 
@@ -543,19 +543,20 @@ Deep Indigo is the primary Deep Focus brand color.
 - Selected controls
 - Important interactive highlights
 
-Deep Indigo should not be applied to large areas unnecessarily when doing so increases visual intensity or reduces readability.
+Mint is an action and highlight color, not a large background. Use Deep Focus Navy
+for app surfaces so the interface remains calm and readable during long sessions.
 
 ---
 
-### 3. Secondary Color
+### 3. Grounding Surface Color
 
-**Calm Teal**
+**Deep Focus Navy**
 
 ```text
-#14B8A6
+#0F2537
 ```
 
-Calm Teal represents recovery, balance, and sustainable productivity.
+Deep Focus Navy provides the calm primary surface and grounding brand color.
 
 **Represents**
 
@@ -566,25 +567,25 @@ Calm Teal represents recovery, balance, and sustainable productivity.
 
 **Used for**
 
-- Recovery screens
-- Break-related interfaces
-- Wellness-oriented indicators
-- Positive recovery guidance
-- Supporting visual accents
+- Dark-mode application backgrounds
+- Cards, panels, and navigation surfaces
+- Recovery and break-related interfaces
+- Supporting visual structure
 
-Calm Teal should remain visually distinct from semantic Success states when both meanings appear within the same context.
+Navy is a neutral surface color, not a Success-state substitute. Recovery should
+use calm copy and layout rather than a competing accent color.
 
 ---
 
 ### 4. AI Accent Color
 
-**Soft Purple**
+**Supporting Lavender**
 
 ```text
-#8B5CF6
+#A78BFA
 ```
 
-Soft Purple provides a recognizable accent for AI-assisted experiences.
+Supporting Lavender provides a recognizable accent for AI-assisted experiences.
 
 **Represents**
 
@@ -681,7 +682,7 @@ Achievement styling should remain subtle enough that rewards do not compete with
 #### Background
 
 ```text
-#F8FAFC
+#F4FBF8
 ```
 
 Used for the primary application background.
@@ -697,7 +698,7 @@ Used for cards, panels, dialogs, inputs, and other foreground surfaces where app
 #### Border
 
 ```text
-#E2E8F0
+#B9D9CB
 ```
 
 Used for subtle structural separation.
@@ -705,7 +706,7 @@ Used for subtle structural separation.
 #### Primary Text
 
 ```text
-#0F172A
+#0F2537
 ```
 
 Used for headings, primary content, and important information.
@@ -713,7 +714,7 @@ Used for headings, primary content, and important information.
 #### Secondary Text
 
 ```text
-#475569
+#476578
 ```
 
 Used for supporting information and secondary content.
@@ -721,7 +722,7 @@ Used for supporting information and secondary content.
 #### Muted Text
 
 ```text
-#64748B
+#668493
 ```
 
 Used for lower-emphasis information when accessibility requirements remain satisfied.
@@ -733,7 +734,7 @@ Used for lower-emphasis information when accessibility requirements remain satis
 #### Background
 
 ```text
-#0F172A
+#0F2537
 ```
 
 Used for the primary dark-theme background.
@@ -741,7 +742,7 @@ Used for the primary dark-theme background.
 #### Surface
 
 ```text
-#1E293B
+#17354A
 ```
 
 Used for cards, panels, dialogs, and other foreground surfaces.
@@ -749,7 +750,7 @@ Used for cards, panels, dialogs, and other foreground surfaces.
 #### Elevated Surface
 
 ```text
-#334155
+#1B3B54
 ```
 
 Used to distinguish elevated or nested surfaces where additional separation is required.
@@ -757,7 +758,7 @@ Used to distinguish elevated or nested surfaces where additional separation is r
 #### Primary Text
 
 ```text
-#F8FAFC
+#FFFFFF
 ```
 
 Used for headings, primary content, and high-emphasis information.
@@ -765,7 +766,7 @@ Used for headings, primary content, and high-emphasis information.
 #### Secondary Text
 
 ```text
-#CBD5E1
+#A2BCCF
 ```
 
 Used for supporting information.
@@ -773,7 +774,7 @@ Used for supporting information.
 #### Muted Text
 
 ```text
-#94A3B8
+#8FAABD
 ```
 
 Used for lower-emphasis information when accessibility requirements remain satisfied.
@@ -848,7 +849,7 @@ Deep Focus may adapt supporting accent colors according to the user's current co
 
 #### Focus Session
 
-**Primary Accent:** Deep Indigo
+**Primary Accent:** Deep Focus Mint
 
 Focus session interfaces should minimize competing colors and emphasize only information required for the active session.
 
@@ -861,17 +862,19 @@ Typical emphasized elements may include:
 
 #### Recovery Mode
 
-**Primary Accent:** Calm Teal
+**Primary Accent:** Deep Focus Navy surfaces with restrained Mint only for the
+current action or progress state.
 
-Recovery experiences may use Calm Teal to create visual distinction from active focus periods.
+Recovery experiences create distinction through calmer content and less visual
+emphasis, not by assigning a different primary accent.
 
 The interface should remain calm and avoid unnecessary stimulation during recovery.
 
 #### AI-Assisted Experiences
 
-**Primary Accent:** Soft Purple
+**Primary Accent:** Supporting Lavender
 
-AI-generated recommendations and insights may use Soft Purple as a supporting identifier.
+AI-generated recommendations and insights may use Supporting Lavender as a supporting identifier.
 
 AI content should also be explicitly identified through text, icons, or other accessible indicators.
 
@@ -2372,7 +2375,7 @@ Typical semantic usage includes:
 |---|---|
 | Primary Action | Primary Brand Color |
 | AI-Assisted Feature | AI Accent Color |
-| Recovery | Secondary / Calm Teal |
+| Recovery | Deep Focus Navy surface with semantic state colors only when needed |
 | Success | Success Color |
 | Warning | Warning Color |
 | Error | Error Color |
@@ -11610,27 +11613,19 @@ Implementation should remain aligned with `ARCHITECTURE.md`, `COMPONENT_LIBRARY.
 
 ### 9.1 Screen List
 
-The initial Deep Focus product may include the following primary screens and workflows:
+The canonical V1 full-screen route inventory is defined in
+`V1_SCREEN_MAP.md`. It includes 26 routes: 23 required routes and three
+conditional routes. This specification remains the source for screen-level
+interaction and visual requirements, while `V1_FEATURE_SCOPE.md` remains the
+canonical feature boundary.
 
-1. Splash Screen
-2. Welcome Screen
-3. Sign In
-4. Sign Up
-5. Forgot Password
-6. Onboarding
-7. Personal Assessment
-8. Home Dashboard
-9. Focus Session
-10. True Zen Break
-11. Session Summary
-12. Analytics
-13. Rewards
-14. Profile
-15. Settings
+The native Splash presentation, dialogs, bottom sheets, overlays, and temporary
+loading, empty, offline, error, paused, recovery-validation, permission, and AI
+proposal states are not counted as independent full-screen routes.
 
-Some screens may be conditional depending on product requirements, authentication state, onboarding state, enabled features, and platform capabilities.
-
-Authentication-related screens should not automatically be treated as mandatory for local-only core functionality unless approved product requirements require authentication.
+Authentication and account functionality is part of V1. Password recovery and
+email verification behavior remains conditional on the approved authentication
+provider and policy. No provider is selected by this screen map.
 
 ---
 
@@ -18219,7 +18214,7 @@ The application should preserve valid break progress whenever possible.
 The True Zen Break should:
 
 - Use calm approved colors
-- Use the Recovery / Calm Teal accent where appropriate
+- Use Deep Focus Navy surfaces and reserve Mint for an explicit action or progress state
 - Reduce visual intensity
 - Maintain generous spacing
 - Use readable typography
