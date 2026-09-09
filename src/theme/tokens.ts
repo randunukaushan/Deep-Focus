@@ -25,6 +25,13 @@ export const Palette = {
   lightTextSecondary: '#476578',
   lightTextMuted: '#668493',
 
+  // Home light-mode atmosphere: soft sky canvas with a calm blue-teal action tone.
+  homeLightBackground: '#C9E5F7',
+  homeLightSurface: '#EAF6FF',
+  homeLightBorder: '#B0D4EA',
+  homeLightAction: '#55C5DB',
+  homeLightActionSoft: '#D8F1FA',
+
   darkBackground: '#0F2537',
   darkSurface: '#17354A',
   darkSurfaceElevated: '#1B3B54',
