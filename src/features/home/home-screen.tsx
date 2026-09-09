@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -45,15 +45,36 @@ export function HomeScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { height } = useWindowDimensions();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const refreshClock = () => setNow(new Date());
+    const interval = setInterval(refreshClock, 60_000);
+    return () => clearInterval(interval);
+  }, []);
+  const hour = now.getHours();
+  const isNight = hour >= 18 || hour < 6;
+  const isMorning = hour >= 6 && hour < 12;
+  const calmGreeting = isMorning
+    ? 'A calmer start to the day.'
+    : isNight
+      ? 'Make space for a quieter evening.'
+      : 'Make room for the work that matters today.';
   // Keep the complete home overview visible on common phone viewports while
   // retaining the scroll fallback for smaller screens and larger text sizes.
   const compact = height < 900;
-  const homeBackground = isDark ? theme.background : Palette.homeLightBackground;
+  const homeBackground = isDark
+    ? theme.background
+    : isNight
+      ? Palette.homeLightBackground
+      : isMorning
+        ? Palette.homeMorningBackground
+        : hour >= 17
+          ? Palette.homeEveningBackground
+          : Palette.homeLightBackground;
   const homeSurface = isDark ? theme.surface : Palette.homeLightSurface;
   const homeBorder = isDark ? theme.border : Palette.homeLightBorder;
   const homeAction = isDark ? Palette.mintPrimary : Palette.homeLightAction;
   const homeActionSoft = isDark ? theme.background : Palette.homeLightActionSoft;
-  const now = new Date();
   const greeting = getGreeting(now.getHours());
   const dateLabel = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
   const [todayProgress, setTodayProgress] = useState({ focusedSeconds: 0, sessionsCompleted: 0 });
@@ -82,9 +103,10 @@ export function HomeScreen() {
   return (
     <ThemedView style={[styles.screen, { backgroundColor: homeBackground }]}>
       <View accessibilityElementsHidden pointerEvents="none" style={styles.landscape}>
-        <View style={[styles.sun, { backgroundColor: isDark ? Palette.navySurfaceElevated : Palette.lightSurface }]} />
-        <View style={[styles.mountainBack, { backgroundColor: isDark ? Palette.navySurface : Palette.homeLightBorder }]} />
-        <View style={[styles.mountainFront, { backgroundColor: isDark ? Palette.navySurfaceElevated : Palette.homeLightActionSoft }]} />
+        <View style={[styles.sun, isMorning && styles.morningSun, { backgroundColor: isDark || isNight ? Palette.navySurfaceElevated : isMorning ? '#FFD08A' : Palette.lightSurface }]} />
+        {isNight ? <Ionicons color={isDark ? '#A9C8E6' : '#7EAED2'} name="moon" size={42} style={styles.moon} /> : null}
+        <View style={[styles.mountainBack, { backgroundColor: isDark || isNight ? Palette.navySurface : Palette.homeLightBorder }]} />
+        <View style={[styles.mountainFront, { backgroundColor: isDark || isNight ? Palette.navySurfaceElevated : Palette.homeLightActionSoft }]} />
       </View>
       <ScrollView contentContainerStyle={[styles.scrollContent, compact && styles.scrollContentCompact]} contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false}>
         <View style={[styles.content, compact && styles.contentCompact]}>
@@ -93,8 +115,8 @@ export function HomeScreen() {
             <Pressable accessibilityLabel="Open settings" accessibilityRole="button" onPress={() => router.push('/profile/settings')} style={({ pressed }) => [styles.settingsButton, { backgroundColor: homeSurface, borderColor: homeBorder }, pressed && styles.pressed]}><Ionicons color={theme.text} name="settings-outline" size={22} /></Pressable>
           </View>
           <View style={[styles.introduction, compact && styles.introductionCompact]}>
-            <ThemedText style={[styles.greeting, compact && styles.greetingCompact, { color: theme.text }]} accessibilityRole="header">{greeting}.</ThemedText>
-            <ThemedText themeColor="textSecondary">Make room for the work that matters today.</ThemedText>
+            <ThemedText style={[styles.greeting, compact && styles.greetingCompact, { color: isMorning && !isDark ? Palette.homeMorningAccent : theme.text }]} accessibilityRole="header">{greeting.toUpperCase()}</ThemedText>
+            <ThemedText themeColor="textSecondary">{calmGreeting}</ThemedText>
             {!compact ? <ThemedText style={styles.dateLabel} themeColor="textMuted" type="small">{dateLabel}</ThemedText> : null}
           </View>
 
@@ -169,7 +191,9 @@ export function HomeScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, overflow: 'hidden' },
   landscape: { height: 360, left: 0, overflow: 'hidden', position: 'absolute', right: 0, top: 0 },
-  sun: { borderRadius: 56, height: 112, opacity: 0.65, position: 'absolute', right: 42, top: 82, width: 112 },
+  sun: { borderRadius: 56, height: 112, opacity: 0.65, position: 'absolute', right: 42, shadowColor: '#6D9FC4', shadowOffset: { height: 8, width: 0 }, shadowOpacity: 0.18, shadowRadius: 18, top: 82, width: 112 },
+  morningSun: { right: 30, top: 42 },
+  moon: { opacity: 0.85, position: 'absolute', right: 78, top: 112 },
   mountainBack: { borderRadius: 48, height: 280, opacity: 0.28, position: 'absolute', right: -60, top: 155, transform: [{ rotate: '42deg' }], width: 330 },
   mountainFront: { borderRadius: 56, height: 250, left: 45, opacity: 0.72, position: 'absolute', top: 220, transform: [{ rotate: '38deg' }], width: 360 },
   scrollContent: { flexGrow: 1, alignItems: 'center', padding: Spacing.lg, paddingBottom: Spacing.xxl },
@@ -181,11 +205,11 @@ const styles = StyleSheet.create({
   settingsButton: { alignItems: 'center', borderRadius: 24, borderWidth: 1, height: 48, justifyContent: 'center', width: 48 },
   introduction: { gap: Spacing.xs, paddingVertical: Spacing.md },
   introductionCompact: { paddingVertical: Spacing.xs },
-  greeting: { fontSize: Typography.display.fontSize, fontWeight: '800', letterSpacing: -1.2, lineHeight: 48 },
-  greetingCompact: { fontSize: 30, lineHeight: 36 },
+  greeting: { fontSize: Typography.caption.fontSize, fontWeight: '800', letterSpacing: 2.2, lineHeight: 20 },
+  greetingCompact: { fontSize: Typography.caption.fontSize, lineHeight: 20 },
   dateLabel: { marginTop: Spacing.xs },
   eyebrow: { color: Palette.mintPrimary, fontSize: Typography.caption.fontSize, fontWeight: '700', letterSpacing: 1.6 },
-  heroCard: { borderRadius: Radius.card, borderWidth: 1, overflow: 'hidden', position: 'relative' },
+  heroCard: { borderRadius: Radius.card, borderWidth: 1, elevation: 2, overflow: 'hidden', position: 'relative', shadowColor: '#6A9DC2', shadowOffset: { height: 5, width: 0 }, shadowOpacity: 0.12, shadowRadius: 12 },
   heroContent: { gap: Spacing.md, padding: Spacing.lg, zIndex: 1 },
   heroContentCompact: { gap: Spacing.xs, padding: Spacing.md },
   heroGlow: { borderRadius: 180, height: 260, opacity: 0.75, position: 'absolute', right: -90, top: -120, width: 260 },
@@ -201,7 +225,7 @@ const styles = StyleSheet.create({
   heroFactsCompact: { marginTop: 0, paddingTop: Spacing.sm },
   heroFact: { alignItems: 'center', flex: 1, gap: 2 },
   heroFactDivider: { height: 48, width: 1 },
-  progressCard: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.md, padding: Spacing.lg },
+  progressCard: { borderRadius: Radius.card, borderWidth: 1, elevation: 1, gap: Spacing.md, padding: Spacing.lg, shadowColor: '#6A9DC2', shadowOffset: { height: 3, width: 0 }, shadowOpacity: 0.08, shadowRadius: 8 },
   progressCardCompact: { gap: Spacing.sm, padding: Spacing.md },
   cardTitleCompact: { fontSize: 23, lineHeight: 28 },
   cardHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
