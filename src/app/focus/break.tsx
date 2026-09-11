@@ -9,12 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Palette, Radius, Spacing, Typography } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+import { loadSettings } from '@/features/settings/settings-storage';
 
 export default function TrueZenBreakRoute() {
   const router = useRouter();
   const isDark = useColorScheme() === 'dark';
   const theme = useTheme();
-  const [duration, setDuration] = useState(5);
+  const [duration, setDuration] = useState<5 | 10 | 15>(5);
   const [started, setStarted] = useState(false);
   const [remaining, setRemaining] = useState(0);
   const background = isDark ? theme.background : Palette.homeLightBackground;
@@ -22,6 +23,12 @@ export default function TrueZenBreakRoute() {
   const border = isDark ? theme.border : Palette.homeLightBorder;
   const action = isDark ? Palette.mintPrimary : Palette.homeLightAction;
   const softAction = isDark ? Palette.navySurfaceElevated : Palette.homeLightActionSoft;
+
+  useEffect(() => {
+    void loadSettings().then((settings) => {
+      if (!started) setDuration(settings.defaultBreakDurationMinutes);
+    });
+  }, [started]);
 
   useEffect(() => {
     if (!started || remaining <= 0) return;
@@ -47,7 +54,7 @@ export default function TrueZenBreakRoute() {
           <ThemedView accessibilityLabel={started ? `${formatTime(remaining)} remaining in break` : 'Choose a break duration'} style={[styles.card, { backgroundColor: surface, borderColor: border }]}>
             <ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">OPTIONAL BREAK</ThemedText>
             <ThemedText type="subtitle">{started ? (remaining === 0 ? 'Break complete.' : 'Let your attention settle.') : 'Choose a gentle pause.'}</ThemedText>
-            {started ? <ThemedText accessibilityRole="timer" style={[styles.timer, { color: action }]}>{formatTime(remaining)}</ThemedText> : <View accessibilityRole="radiogroup" style={styles.durationRow}>{[5, 10, 15].map((value) => { const selected = value === duration; return <Pressable accessibilityLabel={`${value} minute break`} accessibilityRole="radio" accessibilityState={{ selected }} key={value} onPress={() => setDuration(value)} style={({ pressed }) => [styles.duration, { backgroundColor: selected ? action : 'transparent', borderColor: selected ? action : border }, pressed && styles.pressed]}><ThemedText style={selected ? { color: Palette.deepNavy } : undefined} type="smallBold">{value} min</ThemedText></Pressable>; })}</View>}
+            {started ? <ThemedText accessibilityRole="timer" style={[styles.timer, { color: action }]}>{formatTime(remaining)}</ThemedText> : <View accessibilityRole="radiogroup" style={styles.durationRow}>{[5, 10, 15].map((value) => { const selected = value === duration; return <Pressable accessibilityLabel={`${value} minute break`} accessibilityRole="radio" accessibilityState={{ selected }} key={value} onPress={() => setDuration(value as 5 | 10 | 15)} style={({ pressed }) => [styles.duration, { backgroundColor: selected ? action : 'transparent', borderColor: selected ? action : border }, pressed && styles.pressed]}><ThemedText style={selected ? { color: Palette.deepNavy } : undefined} type="smallBold">{value} min</ThemedText></Pressable>; })}</View>}
             <View style={styles.guidance}><Guidance action={action} icon="water-outline" text="Drink some water" /><Guidance action={action} icon="walk-outline" text="Move away from the screen" /><Guidance action={action} icon="eye-outline" text="Let your eyes rest" /></View>
           </ThemedView>
           {!started ? <Button accentColor={action} fullWidth label={`Start ${duration}-minute break`} onPress={startBreak} style={{ backgroundColor: action, borderColor: action }} /> : <Button accentColor={action} fullWidth label="Resume Focus" onPress={() => router.replace({ pathname: '/focus/session', params: { resume: '1' } })} style={{ backgroundColor: action, borderColor: action }} />}

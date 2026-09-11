@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -8,6 +8,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { Palette, Radius, Spacing } from '@/theme/tokens';
+import { loadSettings, saveSettings } from '@/features/settings/settings-storage';
 
 export default function SettingsRoute() {
   const router = useRouter();
@@ -19,6 +20,15 @@ export default function SettingsRoute() {
   const action = isDark ? Palette.mintPrimary : Palette.homeLightAction;
   const softAction = isDark ? theme.background : Palette.homeLightActionSoft;
   const [breakDuration, setBreakDuration] = useState(5);
+
+  useEffect(() => {
+    void loadSettings().then((settings) => setBreakDuration(settings.defaultBreakDurationMinutes));
+  }, []);
+
+  function updateBreakDuration(value: 5 | 10 | 15) {
+    setBreakDuration(value);
+    void saveSettings({ defaultBreakDurationMinutes: value });
+  }
 
   return (
     <ThemedView style={[styles.screen, { backgroundColor: background }]}>
@@ -38,7 +48,7 @@ export default function SettingsRoute() {
           <SettingsRow action={action} border={border} icon="timer-outline" label="Default focus duration" detail="25 minutes · used for new sessions" onPress={() => router.push('/focus/setup')} />
           <ThemedView accessibilityLabel={`Default break duration: ${breakDuration} minutes`} style={[styles.durationCard, { backgroundColor: surface, borderColor: border }]}>
             <View style={[styles.infoIcon, { backgroundColor: softAction }]}><Ionicons color={action} name="cafe-outline" size={22} /></View>
-            <View style={styles.durationCopy}><ThemedText type="smallBold">Default break duration</ThemedText><ThemedText themeColor="textSecondary" type="small">Choose a gentle starting point for new breaks.</ThemedText><View accessibilityRole="radiogroup" style={styles.durationOptions}>{[5, 10, 15].map((value) => { const selected = value === breakDuration; return <Pressable accessibilityLabel={`${value} minute default break`} accessibilityRole="radio" accessibilityState={{ selected }} key={value} onPress={() => setBreakDuration(value)} style={({ pressed }) => [styles.durationOption, { backgroundColor: selected ? action : 'transparent', borderColor: selected ? action : border }, pressed && styles.pressed]}><ThemedText style={selected ? { color: Palette.deepNavy } : undefined} type="smallBold">{value}m</ThemedText></Pressable>; })}</View></View>
+            <View style={styles.durationCopy}><ThemedText type="smallBold">Default break duration</ThemedText><ThemedText themeColor="textSecondary" type="small">Saved on this device for future breaks.</ThemedText><View accessibilityRole="radiogroup" style={styles.durationOptions}>{[5, 10, 15].map((value) => { const selected = value === breakDuration; return <Pressable accessibilityLabel={`${value} minute default break`} accessibilityRole="radio" accessibilityState={{ selected }} key={value} onPress={() => updateBreakDuration(value as 5 | 10 | 15)} style={({ pressed }) => [styles.durationOption, { backgroundColor: selected ? action : 'transparent', borderColor: selected ? action : border }, pressed && styles.pressed]}><ThemedText style={selected ? { color: Palette.deepNavy } : undefined} type="smallBold">{value}m</ThemedText></Pressable>; })}</View></View>
           </ThemedView>
 
           <SettingsSection action={action} label="APPEARANCE & ACCESSIBILITY" />

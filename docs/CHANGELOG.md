@@ -51,6 +51,8 @@ Changes may be recorded under the following categories:
 - Added focus break, recovery, and automatic pause/resume navigation.
 - Added Plan My Day proposal UI and connected account access from Profile and Settings.
 - Improved settings with selectable break-duration controls while keeping unsupported sync, notification, and authentication behavior explicit.
+- Persisted the selected default break duration locally across app restarts.
+- Added a visible Session Recovery entry point under Profile > Your Focus.
 - Fixed navigation wiring for Sign In, Create Account, Email Verification, and Forgot Password routes.
 
 - Added

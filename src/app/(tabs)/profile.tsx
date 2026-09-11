@@ -18,7 +18,7 @@ export default function ProfileRoute() {
   const action = isDark ? Palette.mintPrimary : Palette.homeLightAction;
   const softAction = isDark ? theme.background : Palette.homeLightActionSoft;
 
-  const open = (path: '/onboarding/productivity-profile' | '/analytics/history' | '/goals' | '/tasks' | '/profile/settings' | '/auth/sign-in') => router.push(path);
+  const open = (path: '/onboarding/productivity-profile' | '/analytics/history' | '/goals' | '/tasks' | '/profile/settings' | '/auth/sign-in' | '/focus/recovery') => router.push(path);
 
   return (
     <ThemedView style={[styles.screen, { backgroundColor: background }]}>
@@ -50,6 +50,7 @@ export default function ProfileRoute() {
             <ProfileRow action={action} border={border} icon="time-outline" label="Focus history" detail="See the time you chose to protect." onPress={() => open('/analytics/history')} />
             <ProfileRow action={action} border={border} icon="flag-outline" label="Goals" detail="Keep meaningful progress visible." onPress={() => open('/goals')} />
             <ProfileRow action={action} border={border} icon="checkmark-circle-outline" label="Tasks" detail="Choose what deserves your attention." onPress={() => open('/tasks')} />
+            <ProfileRow action={action} border={border} icon="refresh-outline" label="Session recovery" detail="Check for an interrupted focus session." onPress={() => open('/focus/recovery')} />
           </View>
 
           <View style={styles.section}>
