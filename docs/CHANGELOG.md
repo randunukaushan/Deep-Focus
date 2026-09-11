@@ -54,6 +54,8 @@ Changes may be recorded under the following categories:
 - Persisted the selected default break duration locally across app restarts.
 - Added a visible Session Recovery entry point under Profile > Your Focus.
 - Fixed navigation wiring for Sign In, Create Account, Email Verification, and Forgot Password routes.
+- Added `COLOR_SYSTEM.md` as the canonical source for Light/Dark palette values, semantic color meanings, component color mapping, and theme-governance rules.
+- Replaced the implementation color foundation with the approved blue/teal productivity palette, calm light neutrals, deep navy dark surfaces, and consistent success/warning/danger/achievement roles.
 
 - Added
 - Changed
@@ -125,6 +127,7 @@ Only work that has actually been completed should be recorded here.
 - Added a canonical V1 screen map covering full-screen routes, primary navigation, contextual interfaces, and unresolved implementation decisions
 - Added local task and weekly-goal creation, detail, completion, and progress flows.
 - Added Home-matched Focus, Analytics, Rewards, Profile, Settings, Task, and Goal screens with accessible empty and loading states.
+- Added `COLOR_SYSTEM.md` as the canonical design-system reference for Light/Dark colors and semantic color roles.
 
 ### Changed
 
@@ -137,6 +140,8 @@ Only work that has actually been completed should be recorded here.
 - Replaced the temporary Home and Explore navigation with a connected five-tab V1 route skeleton and contextual workflow routes
 - Canonicalized the shared visual tokens to the Deep Focus navy and mint palette,
   including accessible dark/light theme values and a distinct AI-only lavender accent
+- Replaced the current canonical theme-token mapping with the approved focus-blue, progress-teal, achievement-purple, semantic status, and neutral Light/Dark palette defined in `COLOR_SYSTEM.md`.
+- Fixed legacy Home theme aliases to resolve to the canonical Light palette so time-of-day copy does not silently introduce separate morning/evening color systems.
 - Refined the Home dashboard into a calm, premium zero-state experience with a
   clear session entry point and working quick-action routes
 - Added the first timestamp-based Focus Session vertical slice with live timer,
