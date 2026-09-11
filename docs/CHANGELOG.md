@@ -47,6 +47,11 @@ Changes may be recorded under the following categories:
 ## Unreleased
 
 - Implemented local focus-session history and session detail views.
+- Added welcome, onboarding, assessment, productivity profile, and account-access UI flows.
+- Added focus break, recovery, and automatic pause/resume navigation.
+- Added Plan My Day proposal UI and connected account access from Profile and Settings.
+- Improved settings with selectable break-duration controls while keeping unsupported sync, notification, and authentication behavior explicit.
+- Fixed navigation wiring for Sign In, Create Account, Email Verification, and Forgot Password routes.
 
 - Added
 - Changed

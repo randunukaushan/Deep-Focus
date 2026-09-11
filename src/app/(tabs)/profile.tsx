@@ -18,7 +18,7 @@ export default function ProfileRoute() {
   const action = isDark ? Palette.mintPrimary : Palette.homeLightAction;
   const softAction = isDark ? theme.background : Palette.homeLightActionSoft;
 
-  const open = (path: '/onboarding/productivity-profile' | '/analytics/history' | '/goals' | '/tasks' | '/profile/settings') => router.push(path);
+  const open = (path: '/onboarding/productivity-profile' | '/analytics/history' | '/goals' | '/tasks' | '/profile/settings' | '/auth/sign-in') => router.push(path);
 
   return (
     <ThemedView style={[styles.screen, { backgroundColor: background }]}>
@@ -55,6 +55,7 @@ export default function ProfileRoute() {
           <View style={styles.section}>
             <ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">PREFERENCES</ThemedText>
             <ProfileRow action={action} border={border} icon="settings-outline" label="Settings" detail="Manage supported app preferences." onPress={() => open('/profile/settings')} />
+            <ProfileRow action={action} border={border} icon="log-in-outline" label="Sign In" detail="Access your Deep Focus account when authentication is enabled." onPress={() => open('/auth/sign-in')} />
           </View>
 
           <View style={styles.privateNote}>

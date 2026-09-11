@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -27,10 +27,17 @@ export default function ActiveSessionRoute() {
   const homeSurface = isDark ? theme.surface : Palette.homeLightSurface;
   const homeBorder = isDark ? theme.border : Palette.homeLightBorder;
   const homeAction = isDark ? Palette.mintPrimary : Palette.homeLightAction;
-  const { durationMinutes, taskName } = useLocalSearchParams<{ durationMinutes?: string; taskName?: string }>();
+  const { durationMinutes, resume, taskName } = useLocalSearchParams<{ durationMinutes?: string; resume?: string; taskName?: string }>();
   const duration = Math.max(5, Number(durationMinutes) || 25);
   const task = typeof taskName === 'string' ? taskName : '';
-  const { session, projection, pause, resume, complete, cancel } = useFocusSession(duration, task);
+  const { session, projection, pause, resume: resumeSession, complete, cancel, hydrated } = useFocusSession(duration, task);
+  const resumedFromBreak = useRef(false);
+
+  useEffect(() => {
+    if (resume !== '1' || !hydrated || resumedFromBreak.current || session.status !== 'paused') return;
+    resumedFromBreak.current = true;
+    resumeSession();
+  }, [hydrated, resume, resumeSession, session.status]);
 
   useEffect(() => {
     if (session.status !== 'completed' && session.status !== 'cancelled') return;
@@ -66,7 +73,8 @@ export default function ActiveSessionRoute() {
           <ThemedText themeColor="textSecondary" type="small">{Math.round(projection.progress * 100)}% of your focus block</ThemedText>
         </ThemedView>
         <View style={styles.actions}>
-          {session.status === 'paused' ? <Button accentColor={homeAction} fullWidth label="Resume Focus" onPress={resume} style={{ backgroundColor: homeAction, borderColor: homeAction }} /> : session.status === 'active' ? <Button accentColor={homeAction} fullWidth label="Pause Focus" onPress={pause} style={{ backgroundColor: homeAction, borderColor: homeAction }} /> : null}
+          {session.status === 'paused' ? <Button accentColor={homeAction} fullWidth label="Resume Focus" onPress={resumeSession} style={{ backgroundColor: homeAction, borderColor: homeAction }} /> : session.status === 'active' ? <Button accentColor={homeAction} fullWidth label="Pause Focus" onPress={pause} style={{ backgroundColor: homeAction, borderColor: homeAction }} /> : null}
+          {session.status === 'active' ? <Button accentColor={homeAction} fullWidth label="Take a Break" onPress={() => { pause(); router.push('/focus/break'); }} variant="secondary" /> : null}
           {session.status === 'active' || session.status === 'paused' ? <>
             <Button accentColor={homeAction} fullWidth label="Complete Session" onPress={() => finish('completed')} variant="secondary" />
             <Button fullWidth label="End Session" onPress={() => Alert.alert('End Focus Session?', 'Your planned focus period has not been completed.', [{ text: 'Continue Focusing', style: 'cancel' }, { text: 'End Session', style: 'destructive', onPress: () => finish('cancelled') }])} variant="destructive" />
