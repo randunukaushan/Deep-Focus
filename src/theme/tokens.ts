@@ -1,87 +1,119 @@
 /**
  * Deep Focus design tokens.
  *
- * Values in this file come from the approved
- * UI/UX Design Specification and Component Library.
+ * Canonical color values are defined in docs/COLOR_SYSTEM.md.
+ * Components should prefer semantic values from `Colors` rather than hard-coded
+ * hex values or legacy palette names.
  */
 
 export const Palette = {
-  // Deep Focus brand palette: grounding navy surfaces with a mint action accent.
-  deepNavy: '#0F2537',
-  navySurface: '#17354A',
-  navySurfaceElevated: '#1B3B54',
-  mintPrimary: '#7FE5B6',
-  aiAccent: '#A78BFA',
+  // Canonical brand colors.
+  focusBlue: '#3B82F6',
+  focusBlueDark: '#2982F6',
+  focusBluePressed: '#2563EB',
+  progressTeal: '#14B8A6',
+  achievementPurple: '#8B5CF6',
 
   success: '#22C55E',
   warning: '#F59E0B',
   error: '#EF4444',
-  achievement: '#FBBF24',
+  achievement: '#8B5CF6',
 
-  lightBackground: '#F4FBF8',
+  // Light theme.
+  lightBackground: '#F8FAFC',
   lightSurface: '#FFFFFF',
-  lightBorder: '#B9D9CB',
-  lightTextPrimary: '#0F2537',
-  lightTextSecondary: '#476578',
-  lightTextMuted: '#668493',
+  lightSurfaceElevated: '#FFFFFF',
+  lightBorder: '#E2E8F0',
+  lightTextPrimary: '#0F172A',
+  lightTextSecondary: '#64748B',
+  lightTextMuted: '#94A3B8',
+  lightPrimarySoft: '#DBEAFE',
+  lightSecondarySoft: '#CCFBF1',
 
-  // Home light-mode atmosphere: soft sky canvas with a calm blue-teal action tone.
-  homeLightBackground: '#C9E5F7',
-  homeMorningBackground: '#C9E5F7',
-  homeMorningAccent: '#E4773C',
-  homeEveningBackground: '#F5D8D1',
-  homeLightSurface: '#EAF6FF',
-  homeLightBorder: '#B0D4EA',
-  homeLightAction: '#55C5DB',
-  homeLightActionSoft: '#D8F1FA',
+  // Dark theme.
+  darkBackground: '#0B1220',
+  darkSurface: '#111827',
+  darkSurfaceElevated: '#1F2937',
+  darkBorder: '#1F2937',
+  darkTextPrimary: '#F8FAFC',
+  darkTextSecondary: '#94A3B8',
+  darkTextMuted: '#64748B',
+  darkPrimarySoft: '#102A56',
+  darkSecondarySoft: '#0F3D3A',
 
-  darkBackground: '#0F2537',
-  darkSurface: '#17354A',
-  darkSurfaceElevated: '#1B3B54',
-  darkTextPrimary: '#FFFFFF',
-  darkTextSecondary: '#A2BCCF',
-  darkTextMuted: '#8FAABD',
+  /**
+   * Legacy compatibility aliases.
+   *
+   * Keep these while existing components migrate to semantic theme tokens.
+   * New code should not introduce new dependencies on these names.
+   */
+  deepNavy: '#0B1220',
+  navySurface: '#111827',
+  navySurfaceElevated: '#1F2937',
+  mintPrimary: '#3B82F6',
+  aiAccent: '#8B5CF6',
+
+  // Legacy Home aliases now map back to the canonical fixed theme.
+  // Time-of-day copy may change, but the approved palette must not.
+  homeLightBackground: '#F8FAFC',
+  homeMorningBackground: '#F8FAFC',
+  homeMorningAccent: '#3B82F6',
+  homeEveningBackground: '#F8FAFC',
+  homeLightSurface: '#FFFFFF',
+  homeLightBorder: '#E2E8F0',
+  homeLightAction: '#3B82F6',
+  homeLightActionSoft: '#DBEAFE',
 } as const;
 
 export const Colors = {
   light: {
     background: Palette.lightBackground,
     surface: Palette.lightSurface,
-    surfaceElevated: Palette.lightSurface,
+    surfaceElevated: Palette.lightSurfaceElevated,
     border: Palette.lightBorder,
+    borderFocus: Palette.focusBlue,
 
     textPrimary: Palette.lightTextPrimary,
     textSecondary: Palette.lightTextSecondary,
     textMuted: Palette.lightTextMuted,
 
-    primary: Palette.mintPrimary,
-    secondary: Palette.navySurface,
-    aiAccent: Palette.aiAccent,
+    primary: Palette.focusBlue,
+    primaryPressed: Palette.focusBluePressed,
+    secondary: Palette.progressTeal,
+    progress: Palette.progressTeal,
+    aiAccent: Palette.achievementPurple,
+    info: Palette.achievementPurple,
 
     success: Palette.success,
     warning: Palette.warning,
     error: Palette.error,
-    achievement: Palette.achievement,
+    danger: Palette.error,
+    achievement: Palette.achievementPurple,
   },
 
   dark: {
     background: Palette.darkBackground,
     surface: Palette.darkSurface,
     surfaceElevated: Palette.darkSurfaceElevated,
-    border: Palette.darkSurfaceElevated,
+    border: Palette.darkBorder,
+    borderFocus: Palette.focusBlueDark,
 
     textPrimary: Palette.darkTextPrimary,
     textSecondary: Palette.darkTextSecondary,
     textMuted: Palette.darkTextMuted,
 
-    primary: Palette.mintPrimary,
-    secondary: Palette.navySurfaceElevated,
-    aiAccent: Palette.aiAccent,
+    primary: Palette.focusBlueDark,
+    primaryPressed: Palette.focusBluePressed,
+    secondary: Palette.progressTeal,
+    progress: Palette.progressTeal,
+    aiAccent: Palette.achievementPurple,
+    info: Palette.achievementPurple,
 
     success: Palette.success,
     warning: Palette.warning,
     error: Palette.error,
-    achievement: Palette.achievement,
+    danger: Palette.error,
+    achievement: Palette.achievementPurple,
   },
 } as const;
 
