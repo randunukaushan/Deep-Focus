@@ -29,7 +29,8 @@ Use this routing guide:
 | --- | --- |
 | Product purpose, user value, or feature scope | `docs/PROJECT_VISION.md`, `docs/BLUEPRINT.md`, `docs/V1_FEATURE_SCOPE.md`, `docs/POST_V1_FEATURE_SCOPE.md`, `docs/V1_IMPLEMENTATION_PLAN.md` |
 | Architecture, folders, state, navigation, services, or dependencies | `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT_GUIDE.md` |
-| UI, interaction, tokens, responsive behavior, or accessibility | `docs/UI_UX_DESIGN_SPECIFICATION.md`, `docs/COMPONENT_LIBRARY.md` |
+| UI, interaction, responsive behavior, or accessibility | `docs/UI_UX_DESIGN_SPECIFICATION.md`, `docs/COMPONENT_LIBRARY.md`, `docs/COLOR_SYSTEM.md` |
+| Colors, theme behavior, semantic color roles, or palette tokens | `docs/COLOR_SYSTEM.md`, `src/theme/tokens.ts`, `docs/UI_UX_DESIGN_SPECIFICATION.md`, `docs/COMPONENT_LIBRARY.md` |
 | Domain entities or lifecycle rules | `docs/DATA_MODEL.md` |
 | API contracts or remote behavior | `docs/API_SPEC.md`, `docs/SECURITY.md` |
 | Database schema, constraints, ownership, or migrations | `docs/DATABASE_SCHEMA.md`, `docs/DATA_MODEL.md`, `docs/SECURITY.md` |
@@ -39,6 +40,8 @@ Use this routing guide:
 | Version or completed user-visible change | `docs/CHANGELOG.md` |
 
 The approved documents are the primary implementation reference. Do not silently redefine documented behavior or treat planned functionality as already implemented.
+
+For color-specific decisions, `docs/COLOR_SYSTEM.md` is the canonical source of truth. If an older color value in another design document conflicts with `COLOR_SYSTEM.md`, follow `COLOR_SYSTEM.md` and synchronize the older reference when the affected document is next edited.
 
 If relevant documents conflict:
 
@@ -103,12 +106,15 @@ For focus sessions, elapsed time and completion must be derived from reliable ti
 ## UI and Accessibility Rules
 
 - Use the approved colors, typography, spacing, radii, icon style, component states, layout patterns, animations, and tokens.
+- Treat `docs/COLOR_SYSTEM.md` as authoritative for Light/Dark palette values, semantic color roles, and theme color behavior.
 - Check `docs/COMPONENT_LIBRARY.md` before creating a component.
 - Do not hard-code design values when an approved token exists.
+- Do not introduce feature-local hex colors when the canonical semantic color system can represent the state.
 - Keep the interface calm, clear, responsive, and low in cognitive load.
 - Support light/dark behavior where specified, dynamic text, sufficient contrast, screen readers, logical focus order, keyboard behavior where applicable, and adequate touch targets.
 - Do not rely on color alone to convey meaning.
 - Respect reduced-motion preferences and avoid decorative effects that harm clarity or performance.
+- Time-of-day copy may change, but morning/evening state must not silently replace the approved Light/Dark palette unless a future documented design decision explicitly introduces that behavior.
 
 Accessibility is a requirement, not a later enhancement.
 
