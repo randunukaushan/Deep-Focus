@@ -16,6 +16,7 @@ Core project documentation includes:
 - BLUEPRINT.md
 - V1_FEATURE_SCOPE.md
 - POST_V1_FEATURE_SCOPE.md
+- COLOR_SYSTEM.md
 - UI_UX_DESIGN_SPECIFICATION.md
 - COMPONENT_LIBRARY.md
 - ARCHITECTURE.md
@@ -28,7 +29,9 @@ Project documentation defines the product vision, architecture, design direction
 
 Never knowingly ignore documented project decisions.
 
-If two documents appear to conflict, identify the conflict and request clarification before introducing a breaking or irreversible change.
+For color-specific decisions, `COLOR_SYSTEM.md` is the canonical source of truth. If an older palette reference in `UI_UX_DESIGN_SPECIFICATION.md`, `COMPONENT_LIBRARY.md`, or another document conflicts with `COLOR_SYSTEM.md`, use `COLOR_SYSTEM.md` for the color decision and synchronize the older reference when that document is next edited.
+
+If two documents appear to conflict outside this explicit color-system precedence, identify the conflict and request clarification before introducing a breaking or irreversible change.
 
 For non-breaking work, avoid inventing a resolution to a meaningful documentation conflict. Clearly identify relevant assumptions or uncertainties when necessary.
 
@@ -91,9 +94,13 @@ Architecture decisions should reflect actual product requirements rather than sp
 
 All user interface implementation must follow the approved Deep Focus design documentation and established design tokens.
 
+`COLOR_SYSTEM.md` defines the approved Light/Dark palettes, semantic color meanings, theme behavior, and component color mapping. `src/theme/tokens.ts` is the implementation source for those approved values.
+
 Do not arbitrarily change:
 
 - Brand colors
+- Semantic color meanings
+- Theme palette behavior
 - Typography
 - Spacing
 - Border radii
@@ -102,6 +109,10 @@ Do not arbitrarily change:
 - Layout patterns
 - Animation behavior
 - Design tokens
+
+Do not introduce feature-local hex colors when an approved semantic token can represent the required state.
+
+Time-of-day personalization may change copy such as morning/evening greetings, but it must not silently replace the approved Light/Dark palette with separate time-of-day palettes unless a future documented decision explicitly approves that behavior.
 
 New UI patterns should only be introduced when existing patterns cannot appropriately solve the required user experience.
 
@@ -169,6 +180,7 @@ Always:
 - Maintain sufficient color contrast
 - Respect reduced motion settings
 - Support keyboard navigation where applicable
+- Avoid relying on color alone to convey meaning
 
 Accessibility is never optional.
 
@@ -338,7 +350,7 @@ AI assistants should not:
 - Claim that code has been tested when it has not actually been verified
 - Hide known limitations, uncertainty, or implementation risks
 
-When documentation conflicts, the AI assistant should identify the conflict rather than silently choosing one interpretation.
+When documentation conflicts, the AI assistant should identify the conflict rather than silently choosing one interpretation, except for color-specific conflicts where `COLOR_SYSTEM.md` has explicit precedence.
 
 When a requested change may significantly affect architecture, security, privacy, user data, or existing functionality, the AI assistant should explain the impact before proceeding.
 
