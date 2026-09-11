@@ -89,6 +89,8 @@ Deep Focus follows a modular, maintainable architecture with clear separation be
 
 Implementation should reuse the approved design system and components, keep route files lightweight, protect user privacy, and build complete vertical feature slices rather than disconnected layers.
 
+The canonical Light/Dark color roles and semantic token mapping are defined in [`docs/COLOR_SYSTEM.md`](docs/COLOR_SYSTEM.md). UI implementation should use the shared theme tokens in [`src/theme/tokens.ts`](src/theme/tokens.ts) rather than introducing feature-local hex values.
+
 ## Getting Started
 
 ### Prerequisites
@@ -164,9 +166,12 @@ The documents in `docs/` are the primary implementation reference.
 
 ### Design and architecture
 
+- [`COLOR_SYSTEM.md`](docs/COLOR_SYSTEM.md) — canonical Light/Dark palettes, semantic color roles, component mapping, and theme rules;
 - [`UI_UX_DESIGN_SPECIFICATION.md`](docs/UI_UX_DESIGN_SPECIFICATION.md) — interface and interaction requirements;
 - [`COMPONENT_LIBRARY.md`](docs/COMPONENT_LIBRARY.md) — approved reusable UI patterns;
 - [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) — layers, data flow, navigation, security, and technology direction.
+
+For color-specific decisions, `COLOR_SYSTEM.md` is authoritative if an older palette reference elsewhere has not yet been synchronized.
 
 ### Data, API, and security
 
