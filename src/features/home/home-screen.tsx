@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useCallback, useEffect, useState } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
@@ -10,7 +10,7 @@ import { MaxContentWidth } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { Palette, Radius, Spacing, Typography } from '@/theme/tokens';
-import { loadSessionHistory } from '@/features/focus/session-storage';
+import { loadActiveSession, loadSessionHistory } from '@/features/focus/session-storage';
 
 type QuickAction = {
   label: string;
@@ -20,8 +20,8 @@ type QuickAction = {
 };
 
 const QUICK_ACTIONS: QuickAction[] = [
-  { label: 'Tasks', detail: 'Choose what matters next', icon: 'checkbox-outline', route: '/tasks/index' },
-  { label: 'Goals', detail: 'Keep your direction clear', icon: 'flag-outline', route: '/goals/index' },
+  { label: 'Tasks', detail: 'Choose what matters next', icon: 'checkbox-outline', route: '/tasks' },
+  { label: 'Goals', detail: 'Keep your direction clear', icon: 'flag-outline', route: '/goals' },
   { label: 'Plan My Day', detail: 'Create a calm starting point', icon: 'sparkles-outline', route: '/plan-my-day' },
 ];
 
@@ -62,15 +62,7 @@ export function HomeScreen() {
   // Keep the complete home overview visible on common phone viewports while
   // retaining the scroll fallback for smaller screens and larger text sizes.
   const compact = height < 900;
-  const homeBackground = isDark
-    ? theme.background
-    : isNight
-      ? Palette.homeLightBackground
-      : isMorning
-        ? Palette.homeMorningBackground
-        : hour >= 17
-          ? Palette.homeEveningBackground
-          : Palette.homeLightBackground;
+  const homeBackground = isDark ? theme.background : Palette.homeLightBackground;
   const homeSurface = isDark ? theme.surface : Palette.homeLightSurface;
   const homeBorder = isDark ? theme.border : Palette.homeLightBorder;
   const homeAction = isDark ? Palette.mintPrimary : Palette.homeLightAction;
@@ -78,9 +70,13 @@ export function HomeScreen() {
   const greeting = getGreeting(now.getHours());
   const dateLabel = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
   const [todayProgress, setTodayProgress] = useState({ focusedSeconds: 0, sessionsCompleted: 0 });
+  const [pausedSession, setPausedSession] = useState<Awaited<ReturnType<typeof loadActiveSession>>>(null);
 
   useFocusEffect(useCallback(() => {
     let active = true;
+    void loadActiveSession().then((session) => {
+      if (active) setPausedSession(session?.status === 'paused' ? session : null);
+    });
     void loadSessionHistory().then((sessions) => {
       if (!active) return;
       const today = new Date().toDateString();
@@ -111,11 +107,15 @@ export function HomeScreen() {
       <ScrollView contentContainerStyle={[styles.scrollContent, compact && styles.scrollContentCompact]} contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false}>
         <View style={[styles.content, compact && styles.contentCompact]}>
           <View style={styles.topBar}>
-            <View style={styles.brandBlock}><ThemedText style={[styles.eyebrow, { color: homeAction }]}>DEEP FOCUS</ThemedText>{!compact ? <ThemedText themeColor="textSecondary" type="small">A calmer, more intentional you.</ThemedText> : null}</View>
+            <View style={styles.topBarSpacer} />
+            <View style={styles.brandIdentity}>
+              <View style={styles.brandLogoFrame}><Image source={require('@/assets/branding/deep-focus-logo.png')} style={styles.brandLogoImage} /></View>
+              <View style={styles.brandBlock}><ThemedText style={[styles.eyebrow, styles.brandMark, { color: homeAction }]}>DEEP FOCUS</ThemedText>{!compact ? <ThemedText themeColor="textSecondary" type="small">Focus on what matters.</ThemedText> : null}</View>
+            </View>
             <Pressable accessibilityLabel="Open settings" accessibilityRole="button" onPress={() => router.push('/profile/settings')} style={({ pressed }) => [styles.settingsButton, { backgroundColor: homeSurface, borderColor: homeBorder }, pressed && styles.pressed]}><Ionicons color={theme.text} name="settings-outline" size={22} /></Pressable>
           </View>
           <View style={[styles.introduction, compact && styles.introductionCompact]}>
-            <ThemedText style={[styles.greeting, compact && styles.greetingCompact, { color: isMorning && !isDark ? Palette.homeMorningAccent : theme.text }]} accessibilityRole="header">{greeting.toUpperCase()}</ThemedText>
+            <ThemedText style={[styles.greeting, compact && styles.greetingCompact, { color: isMorning && !isDark ? Palette.homeMorningAccent : theme.text }]} accessibilityRole="header">{greeting}.</ThemedText>
             <ThemedText themeColor="textSecondary">{calmGreeting}</ThemedText>
             {!compact ? <ThemedText style={styles.dateLabel} themeColor="textMuted" type="small">{dateLabel}</ThemedText> : null}
           </View>
@@ -149,11 +149,20 @@ export function HomeScreen() {
             </View>
           </View>
 
+          {pausedSession ? <View accessibilityLabel={`Paused focus session: ${pausedSession.taskName || 'Focus session'}`} style={[styles.recoveryCard, { backgroundColor: homeActionSoft, borderColor: homeBorder }]}>
+            <View style={styles.recoveryCopy}>
+              <ThemedText style={[styles.sectionEyebrow, { color: homeAction }]} type="smallBold">FOCUS SESSION PAUSED</ThemedText>
+              <ThemedText type="subtitle">{pausedSession.taskName || 'Focus session'}</ThemedText>
+              <ThemedText themeColor="textSecondary" type="small">{formatFocusTime(Math.max(0, pausedSession.plannedDurationSeconds - pausedSession.focusedDurationSeconds))} remaining</ThemedText>
+            </View>
+            <Button label="Continue" onPress={() => router.push({ pathname: '/focus/session', params: { durationMinutes: String(pausedSession.plannedDurationSeconds / 60), taskName: pausedSession.taskName || '' } })} />
+          </View> : null}
+
           <ThemedView accessibilityLabel={`Today’s focus progress. ${progressLabel}`} style={[styles.progressCard, { backgroundColor: homeSurface, borderColor: homeBorder }, compact && styles.progressCardCompact]}>
             <View style={styles.cardHeading}>
               <View>
-                <ThemedText style={[styles.sectionEyebrow, { color: homeAction }]} type="smallBold">TODAY’S RHYTHM</ThemedText>
-                <ThemedText style={compact && styles.cardTitleCompact} type="subtitle">{hasProgress ? 'Steady progress.' : 'Begin with one block.'}</ThemedText>
+                <ThemedText style={[styles.sectionEyebrow, { color: homeAction }]} type="smallBold">YOUR FOCUS SO FAR</ThemedText>
+                <ThemedText style={compact && styles.cardTitleCompact} type="subtitle">{hasProgress ? formatFocusTime(todayProgress.focusedSeconds) : 'No focus time yet.'}</ThemedText>
               </View>
               <View style={[styles.statusIcon, { backgroundColor: homeActionSoft }]}><Ionicons color={homeAction} name="leaf-outline" size={20} /></View>
             </View>
@@ -182,6 +191,7 @@ export function HomeScreen() {
               </Pressable>
             ))}
           </View>
+
         </View>
       </ScrollView>
     </ThemedView>
@@ -197,18 +207,23 @@ const styles = StyleSheet.create({
   mountainBack: { borderRadius: 48, height: 280, opacity: 0.28, position: 'absolute', right: -60, top: 155, transform: [{ rotate: '42deg' }], width: 330 },
   mountainFront: { borderRadius: 56, height: 250, left: 45, opacity: 0.72, position: 'absolute', top: 220, transform: [{ rotate: '38deg' }], width: 360 },
   scrollContent: { flexGrow: 1, alignItems: 'center', padding: Spacing.lg, paddingBottom: Spacing.xxl },
-  scrollContentCompact: { paddingBottom: Spacing.md, paddingHorizontal: Spacing.md, paddingTop: Spacing.sm },
-  content: { width: '100%', maxWidth: MaxContentWidth, gap: Spacing.lg },
-  contentCompact: { gap: Spacing.sm },
+  scrollContentCompact: { paddingBottom: Spacing.xs, paddingHorizontal: Spacing.md, paddingTop: Spacing.sm },
+  content: { flexGrow: 1, justifyContent: 'space-between', width: '100%', maxWidth: MaxContentWidth },
+  contentCompact: { gap: Spacing.sm, justifyContent: 'flex-start' },
   topBar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  brandIdentity: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: Spacing.sm, justifyContent: 'center' },
   brandBlock: { gap: 2 },
+  brandLogoFrame: { backgroundColor: Palette.deepNavy, borderColor: Palette.homeLightAction, borderRadius: 28, borderWidth: 1, height: 56, overflow: 'hidden', width: 56 },
+  brandLogoImage: { height: 180, left: -51, position: 'absolute', top: -37, width: 180 },
+  topBarSpacer: { height: 48, width: 48 },
   settingsButton: { alignItems: 'center', borderRadius: 24, borderWidth: 1, height: 48, justifyContent: 'center', width: 48 },
-  introduction: { gap: Spacing.xs, paddingVertical: Spacing.md },
+  introduction: { gap: Spacing.xs, paddingVertical: Spacing.sm },
   introductionCompact: { paddingVertical: Spacing.xs },
-  greeting: { fontSize: Typography.caption.fontSize, fontWeight: '800', letterSpacing: 2.2, lineHeight: 20 },
-  greetingCompact: { fontSize: Typography.caption.fontSize, lineHeight: 20 },
+  greeting: { fontSize: 32, fontWeight: '800', letterSpacing: -0.8, lineHeight: 38 },
+  greetingCompact: { fontSize: 28, lineHeight: 34 },
   dateLabel: { marginTop: Spacing.xs },
   eyebrow: { color: Palette.mintPrimary, fontSize: Typography.caption.fontSize, fontWeight: '700', letterSpacing: 1.6 },
+  brandMark: { fontSize: 22, letterSpacing: 3.6, lineHeight: 27 },
   heroCard: { borderRadius: Radius.card, borderWidth: 1, elevation: 2, overflow: 'hidden', position: 'relative', shadowColor: '#6A9DC2', shadowOffset: { height: 5, width: 0 }, shadowOpacity: 0.12, shadowRadius: 12 },
   heroContent: { gap: Spacing.md, padding: Spacing.lg, zIndex: 1 },
   heroContentCompact: { gap: Spacing.xs, padding: Spacing.md },
@@ -225,8 +240,10 @@ const styles = StyleSheet.create({
   heroFactsCompact: { marginTop: 0, paddingTop: Spacing.sm },
   heroFact: { alignItems: 'center', flex: 1, gap: 2 },
   heroFactDivider: { height: 48, width: 1 },
-  progressCard: { borderRadius: Radius.card, borderWidth: 1, elevation: 1, gap: Spacing.md, padding: Spacing.lg, shadowColor: '#6A9DC2', shadowOffset: { height: 3, width: 0 }, shadowOpacity: 0.08, shadowRadius: 8 },
-  progressCardCompact: { gap: Spacing.sm, padding: Spacing.md },
+  progressCard: { borderRadius: Radius.card, borderWidth: 1, elevation: 1, gap: Spacing.md, marginTop: Spacing.xxxl + Spacing.lg + Spacing.xs, padding: Spacing.lg, shadowColor: '#6A9DC2', shadowOffset: { height: 3, width: 0 }, shadowOpacity: 0.08, shadowRadius: 8 },
+  recoveryCard: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', gap: Spacing.md, justifyContent: 'space-between', padding: Spacing.md },
+  recoveryCopy: { flex: 1, gap: Spacing.xs },
+  progressCardCompact: { gap: Spacing.sm, marginTop: 0, padding: Spacing.md },
   cardTitleCompact: { fontSize: 23, lineHeight: 28 },
   cardHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   statusIcon: { alignItems: 'center', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },

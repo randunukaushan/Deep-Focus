@@ -2,11 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { Palette, Radius, Spacing } from '@/theme/tokens';
 import { useFocusSession } from '@/features/focus/use-focus-session';
@@ -21,6 +22,11 @@ function formatTime(totalSeconds: number) {
 export default function ActiveSessionRoute() {
   const router = useRouter();
   const theme = useTheme();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const homeSurface = isDark ? theme.surface : Palette.homeLightSurface;
+  const homeBorder = isDark ? theme.border : Palette.homeLightBorder;
+  const homeAction = isDark ? Palette.mintPrimary : Palette.homeLightAction;
   const { durationMinutes, taskName } = useLocalSearchParams<{ durationMinutes?: string; taskName?: string }>();
   const duration = Math.max(5, Number(durationMinutes) || 25);
   const task = typeof taskName === 'string' ? taskName : '';
@@ -32,7 +38,7 @@ export default function ActiveSessionRoute() {
     async function finishPersistence() {
       await clearActiveSession();
       await appendSessionHistory(session);
-      if (mounted) router.replace({ pathname: '/focus/summary', params: { status: session.status, focusedSeconds: String(session.focusedDurationSeconds), taskName: task } });
+    if (mounted) router.replace({ pathname: '/focus/summary', params: { status: session.status, focusedSeconds: String(session.focusedDurationSeconds), plannedSeconds: String(session.plannedDurationSeconds), plannedMinutes: String(session.plannedDurationSeconds / 60), taskName: task } });
     }
     void finishPersistence();
     return () => { mounted = false; };
@@ -44,7 +50,7 @@ export default function ActiveSessionRoute() {
   }
 
   return (
-    <ThemedView style={styles.screen}>
+      <ThemedView style={[styles.screen, { backgroundColor: isDark ? theme.background : Palette.homeLightBackground }]}>
       <StatusBar style="auto" />
       <View style={styles.content}>
         <View style={styles.header}>
@@ -52,18 +58,18 @@ export default function ActiveSessionRoute() {
           <ThemedText accessibilityRole="header" type="subtitle">Stay with one thing.</ThemedText>
           <ThemedText themeColor="textSecondary">{task || 'Your chosen focus block'}</ThemedText>
         </View>
-        <ThemedView accessibilityLabel={`${formatTime(projection.remainingSeconds)} remaining, ${session.status}`} style={[styles.timerCard, { borderColor: theme.border }]} type="surface">
-          <View style={[styles.timerIcon, { backgroundColor: theme.background }]}><Ionicons color={Palette.mintPrimary} name="timer-outline" size={24} /></View>
+        <ThemedView accessibilityLabel={`${formatTime(projection.remainingSeconds)} remaining, ${session.status}, ${Math.round(projection.progress * 100)} percent complete`} style={[styles.timerCard, { backgroundColor: homeSurface, borderColor: homeBorder }]}>
+          <View style={[styles.timerIcon, { backgroundColor: Palette.homeLightActionSoft }]}><Ionicons color={homeAction} name="timer-outline" size={24} /></View>
           <ThemedText style={[styles.timer, { color: theme.text }]}>{formatTime(projection.remainingSeconds)}</ThemedText>
           <ThemedText themeColor="textSecondary" type="smallBold">{session.status === 'paused' ? 'PAUSED' : 'IN FOCUS'}</ThemedText>
-          <View accessibilityElementsHidden style={[styles.track, { backgroundColor: theme.backgroundElement }]}><View style={[styles.fill, { width: `${Math.round(projection.progress * 100)}%` }]} /></View>
+          <View accessibilityElementsHidden style={[styles.track, { backgroundColor: homeBorder }]}><View style={[styles.fill, { backgroundColor: homeAction, width: `${Math.round(projection.progress * 100)}%` }]} /></View>
           <ThemedText themeColor="textSecondary" type="small">{Math.round(projection.progress * 100)}% of your focus block</ThemedText>
         </ThemedView>
         <View style={styles.actions}>
-          {session.status === 'paused' ? <Button fullWidth label="Resume Focus" onPress={resume} /> : session.status === 'active' ? <Button fullWidth label="Pause Focus" onPress={pause} variant="secondary" /> : null}
+          {session.status === 'paused' ? <Button accentColor={homeAction} fullWidth label="Resume Focus" onPress={resume} style={{ backgroundColor: homeAction, borderColor: homeAction }} /> : session.status === 'active' ? <Button accentColor={homeAction} fullWidth label="Pause Focus" onPress={pause} style={{ backgroundColor: homeAction, borderColor: homeAction }} /> : null}
           {session.status === 'active' || session.status === 'paused' ? <>
-            <Button fullWidth label="Complete Session" onPress={() => finish('completed')} />
-            <Button fullWidth label="Cancel Session" onPress={() => finish('cancelled')} variant="ghost" />
+            <Button accentColor={homeAction} fullWidth label="Complete Session" onPress={() => finish('completed')} variant="secondary" />
+            <Button fullWidth label="End Session" onPress={() => Alert.alert('End Focus Session?', 'Your planned focus period has not been completed.', [{ text: 'Continue Focusing', style: 'cancel' }, { text: 'End Session', style: 'destructive', onPress: () => finish('cancelled') }])} variant="destructive" />
           </> : null}
         </View>
       </View>
@@ -79,6 +85,6 @@ const styles = StyleSheet.create({
   timerIcon: { alignItems: 'center', borderRadius: 24, height: 48, justifyContent: 'center', width: 48 },
   timer: { fontSize: 64, fontWeight: '700', letterSpacing: -1, lineHeight: 72 },
   track: { borderRadius: 999, height: 8, overflow: 'hidden', width: '100%' },
-  fill: { backgroundColor: Palette.mintPrimary, height: '100%' },
+  fill: { height: '100%' },
   actions: { gap: Spacing.sm },
 });

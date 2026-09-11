@@ -35,6 +35,7 @@ export type ButtonProps = Omit<
   loading?: boolean;
   fullWidth?: boolean;
   icon?: ReactNode;
+  accentColor?: string;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -45,6 +46,7 @@ export function Button({
   loading = false,
   fullWidth = false,
   icon,
+  accentColor,
   style,
   accessibilityLabel,
   accessibilityState,
@@ -54,8 +56,8 @@ export function Button({
   const theme = useTheme();
   const isDisabled = disabled || loading;
 
-  const containerStyle = getContainerStyle(variant);
-  const labelColor = getLabelColor(variant, theme.text);
+  const containerStyle = getContainerStyle(variant, accentColor);
+  const labelColor = getLabelColor(variant, theme.text, accentColor);
   const disabledBackground = theme.backgroundElement;
   const disabledText = theme.textSecondary;
 
@@ -103,12 +105,12 @@ export function Button({
   );
 }
 
-function getContainerStyle(variant: ButtonVariant): ViewStyle {
+function getContainerStyle(variant: ButtonVariant, accentColor: string = Palette.mintPrimary): ViewStyle {
   switch (variant) {
     case 'secondary':
       return {
         backgroundColor: 'transparent',
-        borderColor: Palette.mintPrimary,
+        borderColor: accentColor,
       };
 
     case 'ghost':
@@ -132,10 +134,10 @@ function getContainerStyle(variant: ButtonVariant): ViewStyle {
   }
 }
 
-function getLabelColor(variant: ButtonVariant, themeText: string) {
+function getLabelColor(variant: ButtonVariant, themeText: string, accentColor: string = Palette.mintPrimary) {
   switch (variant) {
     case 'secondary':
-      return Palette.mintPrimary;
+      return accentColor;
 
     case 'ghost':
       return themeText;

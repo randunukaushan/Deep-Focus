@@ -9,12 +9,19 @@ import { Button } from '@/components/ui/button';
 import { MaxContentWidth } from '@/constants/theme';
 import { formatSessionDate, formatSessionDuration, getHistoricalSessions } from '@/features/focus/session-history';
 import { loadSessionHistory } from '@/features/focus/session-storage';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { Palette, Radius, Spacing } from '@/theme/tokens';
 
 export default function SessionHistoryRoute() {
   const router = useRouter();
   const theme = useTheme();
+  const isDark = useColorScheme() === 'dark';
+  const background = isDark ? theme.background : Palette.homeLightBackground;
+  const surface = isDark ? theme.surface : Palette.homeLightSurface;
+  const border = isDark ? theme.border : Palette.homeLightBorder;
+  const action = isDark ? Palette.mintPrimary : Palette.homeLightAction;
+  const softAction = isDark ? theme.background : Palette.homeLightActionSoft;
   const [sessions, setSessions] = useState<ReturnType<typeof getHistoricalSessions>>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'completed' | 'cancelled'>('all');
@@ -35,11 +42,11 @@ export default function SessionHistoryRoute() {
   }, []));
 
   return (
-    <ThemedView style={styles.screen}>
+    <ThemedView style={[styles.screen, { backgroundColor: background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           <View style={styles.navigation}>
-            <Button label="Back to Analytics" onPress={() => router.replace('/analytics')} variant="ghost" />
+              <Button accentColor={action} label="Back to Analytics" onPress={() => router.replace('/analytics')} variant="ghost" />
           </View>
           <View style={styles.titleBlock}>
             <ThemedText accessibilityRole="header" type="subtitle">Session History</ThemedText>
@@ -48,10 +55,11 @@ export default function SessionHistoryRoute() {
           {loading ? (
             <View accessibilityLabel="Loading session history" style={styles.state}><ActivityIndicator color={Palette.mintPrimary} /></View>
           ) : sessions.length === 0 ? (
-            <ThemedView accessibilityLabel="No focus sessions recorded yet" style={styles.emptyCard} type="surface">
+            <ThemedView accessibilityLabel="No focus sessions recorded yet" style={[styles.emptyCard, { backgroundColor: surface, borderColor: border }]}>
+              <View style={[styles.emptyIcon, { backgroundColor: softAction }]}><Ionicons color={action} name="time-outline" size={26} /></View>
               <ThemedText type="smallBold">NO SESSIONS YET</ThemedText>
               <ThemedText themeColor="textSecondary">Completed focus sessions will appear here.</ThemedText>
-              <Button label="Start Focus Session" onPress={() => router.push('/focus/setup')} />
+              <Button accentColor={action} label="Start Focus Session" onPress={() => router.push('/focus/setup')} style={{ backgroundColor: action, borderColor: action }} />
             </ThemedView>
           ) : (
             <>
@@ -70,16 +78,16 @@ export default function SessionHistoryRoute() {
                 {(['all', 'completed', 'cancelled'] as const).map((value) => {
                   const selected = filter === value;
                   const label = value === 'all' ? 'All sessions' : value === 'completed' ? 'Completed' : 'Cancelled';
-                  return <Pressable accessibilityRole="button" accessibilityState={{ selected }} key={value} onPress={() => setFilter(value)} style={[styles.filterChip, { backgroundColor: selected ? Palette.deepNavy : theme.surface, borderColor: selected ? Palette.deepNavy : theme.border }]}><ThemedText style={{ color: selected ? Palette.lightSurface : theme.text }} type="smallBold">{label}</ThemedText></Pressable>;
+                  return <Pressable accessibilityRole="button" accessibilityState={{ selected }} key={value} onPress={() => setFilter(value)} style={[styles.filterChip, { backgroundColor: selected ? action : surface, borderColor: selected ? action : border }]}><ThemedText style={{ color: selected ? Palette.deepNavy : theme.text }} type="smallBold">{label}</ThemedText></Pressable>;
                 })}
               </ScrollView>
               {filteredSessions.length === 0 ? (
-                <ThemedView accessibilityLabel={`No ${filter} sessions`} style={styles.emptyFilterCard} type="surface">
+              <ThemedView accessibilityLabel={`No ${filter} sessions`} style={[styles.emptyFilterCard, { backgroundColor: surface, borderColor: border }]}>
                   <ThemedText type="smallBold">NO MATCHING SESSIONS</ThemedText>
                   <ThemedText themeColor="textSecondary">Try another filter to review your focus history.</ThemedText>
                 </ThemedView>
               ) : <View accessibilityLabel={`${filteredSessions.length} focus sessions`} style={styles.list}>
-              <ThemedText style={styles.sectionLabel} type="smallBold">RECENT SESSIONS</ThemedText>
+              <ThemedText style={[styles.sectionLabel, { color: action }]} type="smallBold">RECENT SESSIONS</ThemedText>
               {filteredSessions.map((session) => {
                 const cancelled = session.status === 'cancelled';
                 return (
@@ -89,7 +97,7 @@ export default function SessionHistoryRoute() {
                     accessibilityRole="button"
                     key={session.id}
                     onPress={() => router.push({ pathname: '/analytics/history/[sessionId]', params: { sessionId: session.id } })}
-                    style={({ pressed }) => [styles.sessionCard, { backgroundColor: theme.surface, borderColor: theme.border }, pressed && styles.pressed]}>
+                    style={({ pressed }) => [styles.sessionCard, { backgroundColor: surface, borderColor: border }, pressed && styles.pressed]}>
                     <View style={styles.sessionIcon}><Ionicons color={cancelled ? Palette.warning : Palette.success} name={cancelled ? 'close-circle-outline' : 'checkmark-circle-outline'} size={22} /></View>
                     <View style={styles.sessionBody}>
                       <View style={styles.sessionHeader}>
@@ -122,7 +130,8 @@ const styles = StyleSheet.create({
   navigation: { alignItems: 'flex-start', marginLeft: -Spacing.md },
   titleBlock: { gap: Spacing.xs },
   state: { alignItems: 'center', minHeight: 120, justifyContent: 'center' },
-  emptyCard: { borderRadius: Radius.card, gap: Spacing.md, padding: Spacing.lg },
+  emptyCard: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.md, padding: Spacing.lg },
+  emptyIcon: { alignItems: 'center', borderRadius: 24, height: 48, justifyContent: 'center', width: 48 },
   summaryCard: { alignItems: 'center', backgroundColor: Palette.deepNavy, borderRadius: Radius.card, flexDirection: 'row', gap: Spacing.md, padding: Spacing.lg },
   summaryIcon: { alignItems: 'center', backgroundColor: Palette.mintPrimary, borderRadius: 24, height: 48, justifyContent: 'center', width: 48 },
   summaryMetric: { flex: 1, gap: Spacing.xs },
@@ -130,9 +139,9 @@ const styles = StyleSheet.create({
   summaryValue: { color: Palette.darkTextPrimary },
   filters: { gap: Spacing.sm, paddingVertical: Spacing.xs },
   filterChip: { borderRadius: 999, borderWidth: 1, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
-  emptyFilterCard: { borderRadius: Radius.card, gap: Spacing.sm, padding: Spacing.lg },
+  emptyFilterCard: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.sm, padding: Spacing.lg },
   list: { gap: Spacing.sm },
-  sectionLabel: { color: Palette.mintPrimary, letterSpacing: 1.1, marginTop: Spacing.sm },
+  sectionLabel: { letterSpacing: 1.1, marginTop: Spacing.sm },
   sessionCard: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', gap: Spacing.md, padding: Spacing.lg },
   sessionIcon: { alignItems: 'center', height: 32, justifyContent: 'center', width: 32 },
   sessionBody: { flex: 1, gap: Spacing.xs },

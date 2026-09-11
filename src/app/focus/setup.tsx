@@ -5,6 +5,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { Palette, Radius, Spacing, Typography } from '@/theme/tokens';
 
@@ -15,6 +16,10 @@ const MINUTES_MAX = 180;
 export default function SessionSetupRoute() {
   const router = useRouter();
   const theme = useTheme();
+  const isDark = useColorScheme() === 'dark';
+  const homeSurface = isDark ? theme.surface : Palette.homeLightSurface;
+  const homeBorder = isDark ? theme.border : Palette.homeLightBorder;
+  const homeAction = isDark ? Palette.mintPrimary : Palette.homeLightAction;
   const [taskName, setTaskName] = useState('');
   const [duration, setDuration] = useState<number>(25);
   const [customDuration, setCustomDuration] = useState('');
@@ -30,7 +35,7 @@ export default function SessionSetupRoute() {
     router.push({ pathname: '/focus/session', params: { durationMinutes: String(durationValue), taskName: taskName.trim() } });
   }
 
-  return <ThemedView style={styles.screen}>
+  return <ThemedView style={[styles.screen, { backgroundColor: isDark ? theme.background : Palette.homeLightBackground }]}>
     <StatusBar style="auto" />
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
@@ -41,21 +46,21 @@ export default function SessionSetupRoute() {
           </View>
           <View style={styles.group}>
             <ThemedText type="smallBold">Task name (optional)</ThemedText>
-            <TextInput accessibilityLabel="Task name, optional" autoCapitalize="sentences" maxLength={120} onChangeText={setTaskName} placeholder="What would you like to focus on?" placeholderTextColor={theme.textMuted} style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]} value={taskName} />
+            <TextInput accessibilityLabel="Task name, optional" autoCapitalize="sentences" maxLength={120} onChangeText={setTaskName} placeholder="What would you like to focus on?" placeholderTextColor={theme.textMuted} style={[styles.input, { backgroundColor: homeSurface, borderColor: homeBorder, color: theme.text }]} value={taskName} />
           </View>
           <View style={styles.group}>
             <ThemedText type="smallBold">Focus duration</ThemedText>
             <View accessibilityRole="radiogroup" style={styles.options}>
-              {PRESETS.map((value) => <Pressable accessibilityLabel={`${value} minutes`} accessibilityRole="radio" accessibilityState={{ selected: duration === value }} key={value} onPress={() => choosePreset(value)} style={({ pressed }) => [styles.option, { borderColor: duration === value ? theme.primary : theme.border }, duration === value && { backgroundColor: theme.primary }, pressed && styles.pressed]}><ThemedText style={duration === value ? styles.selected : undefined}>{value} min</ThemedText></Pressable>)}
-              <Pressable accessibilityLabel="Custom duration" accessibilityRole="radio" accessibilityState={{ selected: custom }} onPress={() => { setDuration(0); setSubmitted(false); }} style={({ pressed }) => [styles.option, { borderColor: custom ? theme.primary : theme.border }, custom && { backgroundColor: theme.primary }, pressed && styles.pressed]}><ThemedText style={custom ? styles.selected : undefined}>Custom</ThemedText></Pressable>
+              {PRESETS.map((value) => <Pressable accessibilityLabel={`${value} minutes`} accessibilityRole="radio" accessibilityState={{ selected: duration === value }} key={value} onPress={() => choosePreset(value)} style={({ pressed }) => [styles.option, { borderColor: duration === value ? homeAction : homeBorder }, duration === value && { backgroundColor: homeAction }, pressed && styles.pressed]}><ThemedText style={duration === value ? styles.selected : undefined}>{value} min</ThemedText></Pressable>)}
+              <Pressable accessibilityLabel="Custom duration" accessibilityRole="radio" accessibilityState={{ selected: custom }} onPress={() => { setDuration(0); setSubmitted(false); }} style={({ pressed }) => [styles.option, { borderColor: custom ? homeAction : homeBorder }, custom && { backgroundColor: homeAction }, pressed && styles.pressed]}><ThemedText style={custom ? styles.selected : undefined}>Custom</ThemedText></Pressable>
             </View>
-            {custom ? <TextInput accessibilityLabel="Custom duration in minutes" keyboardType="number-pad" maxLength={3} onChangeText={setCustomDuration} placeholder="Minutes" placeholderTextColor={theme.textMuted} style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]} value={customDuration} /> : null}
+            {custom ? <TextInput accessibilityLabel="Custom duration in minutes" keyboardType="number-pad" maxLength={3} onChangeText={setCustomDuration} placeholder="Minutes" placeholderTextColor={theme.textMuted} style={[styles.input, { backgroundColor: homeSurface, borderColor: homeBorder, color: theme.text }]} value={customDuration} /> : null}
             <ThemedText themeColor="textSecondary" type="small">Choose between 5 and 180 minutes.</ThemedText>
             {submitted && !valid ? <ThemedText accessibilityLiveRegion="polite" style={styles.error}>Session duration must be between 5 and 180 minutes.</ThemedText> : null}
           </View>
           <View style={styles.actions}>
-            <Button accessibilityLabel="Start Focus Session" fullWidth label="Start Focus Session" onPress={start} />
-            <Button fullWidth label="Back to Home" onPress={() => router.dismissTo('/(tabs)/home')} variant="ghost" />
+            <Button accentColor={homeAction} accessibilityLabel="Start Focus Session" fullWidth label="Start Focus Session" onPress={start} style={{ backgroundColor: homeAction, borderColor: homeAction }} />
+            <Button accentColor={homeAction} fullWidth label="Back to Home" onPress={() => router.dismissTo('/(tabs)/home')} variant="secondary" />
           </View>
         </View>
       </ScrollView>

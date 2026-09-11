@@ -734,6 +734,12 @@ Possible responsibilities may include:
 
 Storage access should remain isolated from presentation logic.
 
+The current mobile vertical slices use feature-local storage adapters under
+`src/features/` for focus-session history, tasks, and goals. These adapters keep
+serialization and recovery outside route components; they may move behind a
+shared storage boundary when synchronization or a local database creates a
+clear need.
+
 Sensitive information should use storage mechanisms appropriate to its security requirements.
 
 Specific storage technologies should be selected according to approved technical requirements.

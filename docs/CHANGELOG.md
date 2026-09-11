@@ -116,6 +116,8 @@ Only work that has actually been completed should be recorded here.
 - Added an accessible shared Button component with primary, secondary, ghost, destructive, disabled, and loading states
 - Added canonical V1 and post-V1 feature-scope documents, including permanent links to the pre-change documentation snapshot
 - Added a canonical V1 screen map covering full-screen routes, primary navigation, contextual interfaces, and unresolved implementation decisions
+- Added local task and weekly-goal creation, detail, completion, and progress flows.
+- Added Home-matched Focus, Analytics, Rewards, Profile, Settings, Task, and Goal screens with accessible empty and loading states.
 
 ### Changed
 
@@ -133,6 +135,12 @@ Only work that has actually been completed should be recorded here.
 - Added the first timestamp-based Focus Session vertical slice with live timer,
   pause/resume, completion, cancellation, and session summary states
 - Added guarded local active-session and history persistence with a recovery route
+- Extended the local focus workflow with session-history details, derived analytics, calm milestone progress, and local task/goal progress views.
+
+### Fixed
+
+- Fixed Quick Action and profile links so Tasks and Goals resolve to their list routes instead of the dynamic detail routes.
+- Fixed Welcome and authentication links so the onboarding index resolves through its canonical `/onboarding` route.
 
 ### Removed
 
