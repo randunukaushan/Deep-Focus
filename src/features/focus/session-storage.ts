@@ -73,13 +73,35 @@ function parseSession(raw: string): FocusSession | null {
 function isFocusSession(value: unknown): value is FocusSession {
   if (!value || typeof value !== 'object') return false;
   const session = value as Partial<FocusSession>;
-  return typeof session.id === 'string'
-    && (session.status === 'active' || session.status === 'paused' || session.status === 'completed' || session.status === 'cancelled')
-    && typeof session.plannedDurationSeconds === 'number'
-    && typeof session.focusedDurationSeconds === 'number'
-    && typeof session.pausedDurationSeconds === 'number'
-    && typeof session.createdAt === 'string'
-    && typeof session.startedAt === 'string';
+  if (
+    typeof session.id !== 'string'
+    || !['active', 'paused', 'completed', 'cancelled'].includes(session.status ?? '')
+    || !isPositiveFiniteNumber(session.plannedDurationSeconds)
+    || !isNonNegativeFiniteNumber(session.focusedDurationSeconds)
+    || !isNonNegativeFiniteNumber(session.pausedDurationSeconds)
+    || !isValidTimestamp(session.createdAt)
+    || !isValidTimestamp(session.startedAt)
+  ) return false;
+
+  if (session.status === 'paused' && !isValidTimestamp(session.lastPausedAt)) return false;
+  if (session.lastPausedAt !== undefined && !isValidTimestamp(session.lastPausedAt)) return false;
+  if (session.lastResumedAt !== undefined && !isValidTimestamp(session.lastResumedAt)) return false;
+  if (session.completedAt !== undefined && !isValidTimestamp(session.completedAt)) return false;
+  if (session.cancelledAt !== undefined && !isValidTimestamp(session.cancelledAt)) return false;
+
+  return true;
+}
+
+function isPositiveFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0;
+}
+
+function isNonNegativeFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+}
+
+function isValidTimestamp(value: unknown): value is string {
+  return typeof value === 'string' && Number.isFinite(Date.parse(value));
 }
 
 async function safely<T>(operation: () => Promise<T>): Promise<T | undefined>;

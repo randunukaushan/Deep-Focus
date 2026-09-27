@@ -33,11 +33,14 @@ export function projectFocusSession(session: FocusSession, now = Date.now()): Se
 export function pauseFocusSession(session: FocusSession, now = Date.now()): FocusSession {
   if (session.status !== 'active') return session;
   const projection = projectFocusSession(session, now);
+  if (projection.remainingSeconds === 0) return completeFocusSession(session, now);
   return { ...session, status: 'paused', focusedDurationSeconds: projection.focusedSeconds, lastPausedAt: new Date(now).toISOString() };
 }
 
 export function resumeFocusSession(session: FocusSession, now = Date.now()): FocusSession {
   if (session.status !== 'paused' || !session.lastPausedAt) return session;
+  const projection = projectFocusSession(session, now);
+  if (projection.remainingSeconds === 0) return completeFocusSession(session, now);
   return {
     ...session,
     status: 'active',
@@ -50,6 +53,7 @@ export function resumeFocusSession(session: FocusSession, now = Date.now()): Foc
 export function completeFocusSession(session: FocusSession, now = Date.now()): FocusSession {
   if (session.status === 'completed' || session.status === 'cancelled') return session;
   const projection = projectFocusSession(session, now);
+  if (projection.remainingSeconds > 0) return session;
   return { ...session, status: 'completed', focusedDurationSeconds: projection.focusedSeconds, pausedDurationSeconds: projection.pausedSeconds, lastPausedAt: undefined, completedAt: new Date(now).toISOString() };
 }
 
