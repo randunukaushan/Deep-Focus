@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppState } from 'react-native';
 
+import { clearActiveBreak } from './break-storage';
 import { cancelFocusSession, completeFocusSession, createFocusSession, pauseFocusSession, projectFocusSession, resumeFocusSession } from './session-engine';
 import { loadActiveSession, saveActiveSession } from './session-storage';
 import type { FocusSession } from './session-types';
@@ -41,9 +42,9 @@ export function useFocusSession(durationMinutes: number, taskName?: string) {
     setSession((current) => transition(current, timestamp));
   }, []);
   const pause = useCallback(() => update(pauseFocusSession), [update]);
-  const resume = useCallback(() => update(resumeFocusSession), [update]);
-  const complete = useCallback(() => update(completeFocusSession), [update]);
-  const cancel = useCallback(() => update(cancelFocusSession), [update]);
+  const resume = useCallback(() => { void clearActiveBreak(); update(resumeFocusSession); }, [update]);
+  const complete = useCallback(() => { void clearActiveBreak(); update(completeFocusSession); }, [update]);
+  const cancel = useCallback(() => { void clearActiveBreak(); update(cancelFocusSession); }, [update]);
 
   useEffect(() => {
     if (session.status !== 'active' || projection.remainingSeconds !== 0) return;
