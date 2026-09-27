@@ -69,7 +69,7 @@ export default function ActiveSessionRoute() {
         </ThemedView>
         <View style={styles.actions}>
           {session.status === 'paused' ? <Button accentColor={homeAction} fullWidth label="Resume Focus" onPress={resumeSession} style={{ backgroundColor: homeAction, borderColor: homeAction }} /> : session.status === 'active' ? <Button accentColor={homeAction} fullWidth label="Pause Focus" onPress={pause} style={{ backgroundColor: homeAction, borderColor: homeAction }} /> : null}
-          {session.status === 'active' ? <Button accentColor={homeAction} fullWidth label="Take a Break" onPress={() => { pause(); router.push('/focus/break'); }} variant="secondary" /> : null}
+          {session.status === 'active' ? <Button accentColor={homeAction} fullWidth label="Take a Break" onPress={() => { pause(); router.push({ pathname: '/focus/break', params: { sessionId: session.id } }); }} variant="secondary" /> : null}
           {session.status === 'active' || session.status === 'paused' ? <>
             <Button fullWidth label="End Session" onPress={() => Alert.alert('End Focus Session?', 'Your planned focus period has not been completed.', [{ text: 'Continue Focusing', style: 'cancel' }, { text: 'End Session', style: 'destructive', onPress: cancel }])} variant="destructive" />
           </> : null}
