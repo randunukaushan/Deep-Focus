@@ -12,7 +12,7 @@
 
 ## 2. Assessment Rules
 
-The OWASP Mobile Application Security Verification Standard (MASVS), Testing Guide (MASTG), and Weakness Enumeration (MASWE) are used as a control and test planning framework. Before a formal verification pass, record the exact MASVS release/tag/commit and MASTG/MASWE snapshot used. Assess only controls applicable to the actual release architecture; justify exclusions.
+As checked on 2026-10-06, the current stable OWASP references are MASVS v2.1.0 (latest tagged release shown), MASTG v2.0.0 (stable release dated 2026-06-30), and MASWE v1.0.0 (first stable release announced 2026-07-16). Use the corresponding current stable reference set for this baseline, and record the exact tag/commit and retrieval date for each formal verification pass because the online guides and catalogs continue to evolve. Assess only controls applicable to the actual release architecture; justify exclusions.
 
 Do not add expensive anti-tampering or root/jailbreak controls without a threat-based need. MASVS resilience controls are reviewed proportionately because client-side tamper resistance cannot replace server-side security or safe product design.
 
