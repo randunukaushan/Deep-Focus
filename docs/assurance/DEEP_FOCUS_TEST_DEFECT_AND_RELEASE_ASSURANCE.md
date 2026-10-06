@@ -45,9 +45,11 @@ Define quantitative tolerances and supported OS/device coverage before executing
 
 | Defect ID | Discovery | Description | Severity | Affected baseline | Fix reference | Verification / retest | Status |
 |---|---|---|---|---|---|---|---|
-| DF-D-001 | 2026-10-06 repository review | Main session engine can transition an active session to completed before planned duration; PR #14 proposes preventing early completion and removing premature manual completion action. | High candidate; confirm product rule and active branch | Main commit c5f2d238…; SDK57 branch requires recheck | Draft PR #14, head 92719e1914bbacac4afa54946b32cd502e7d8ff0 | PR body lists lint, TypeScript, timer completion, early-cancel, Android recovery tests as required; no check results observed. | Open / Needs Review |
+| DF-D-001 | 2026-10-06 source audit | On SDK 57, the session UI exposes “Complete Session” for active/paused sessions and the engine permits completion while time remains; completed sessions feed goal progress. | High; confirmed source defect against the documented completion rule | upgrade/sdk-57 commit 77682543… | Draft PR #14 proposes a fix but targets main on SDK56; no SDK57 fix is present | Retest required: unit tests for active/paused/elapsed states, lint/type-check, Android device session completion and early-end scenarios; no results yet. | Open; fix and retest pending |
 | DF-D-002 | PR #14 description | Active break state/recovery may be lost or become stale across app restart/session transitions; PR proposes persisted break state and cleanup. | Medium candidate | PR branch; SDK57 applicability unknown | Draft PR #14 | Android force-close/reopen and background/foreground retests listed but not recorded. | Open / Needs Review |
 | DF-D-003 | 2026-10-06 repository review | Branch/EAS project mismatch may produce builds from an unintended project configuration. | High | main vs upgrade/sdk-57 | No change made | Confirm in Expo account/build history; compare exact project and build IDs. | Open |
+
+| DF-D-004 | 2026-10-06 source audit | Session persistence helpers swallow file write errors and expose no save outcome to the UI; durability failure may be invisible. | Medium candidate; assess expected offline/recovery behavior | upgrade/sdk-57 commit 77682543… | No fix proposed | Inject/simulate write failure and verify recovery/user feedback; no test result yet. | Open / Needs Review |
 
 ### 4.1 Defect lifecycle
 
