@@ -1,0 +1,942 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:deep-focus:replication-v2:2026-09-20",
+  "title": "Draft seven-entity replication and plans export section",
+  "description": "No runtime implementation. Ownership, transaction grouping, semantic bounds, JCS, privacy suppression and release policies remain mandatory.",
+  "definitions": {
+    "Epoch": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{0,18}$"
+    },
+    "SnapshotRecord": {
+      "oneOf": [
+        {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/SnapshotRecord"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "entity",
+            "entityId",
+            "version",
+            "payload"
+          ],
+          "properties": {
+            "entity": {
+              "const": "plan"
+            },
+            "entityId": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+            },
+            "version": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Version"
+            },
+            "payload": {
+              "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/SavedPlan"
+            }
+          }
+        }
+      ]
+    },
+    "SyncChange": {
+      "oneOf": [
+        {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/SyncChange"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sequence",
+            "entity",
+            "entityId",
+            "version",
+            "operation",
+            "payload"
+          ],
+          "properties": {
+            "sequence": {
+              "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Sequence"
+            },
+            "entity": {
+              "const": "plan"
+            },
+            "entityId": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+            },
+            "version": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Version"
+            },
+            "operation": {
+              "const": "upsert"
+            },
+            "payload": {
+              "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/SavedPlan"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sequence",
+            "entity",
+            "entityId",
+            "version",
+            "operation",
+            "payload"
+          ],
+          "properties": {
+            "sequence": {
+              "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Sequence"
+            },
+            "entity": {
+              "const": "plan"
+            },
+            "entityId": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+            },
+            "version": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Version"
+            },
+            "operation": {
+              "const": "delete"
+            },
+            "payload": {
+              "type": "null"
+            }
+          }
+        }
+      ]
+    },
+    "PlanMutation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mutationId",
+            "command",
+            "targetId",
+            "body"
+          ],
+          "properties": {
+            "mutationId": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+            },
+            "command": {
+              "const": "plan.edit"
+            },
+            "targetId": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+            },
+            "body": {
+              "$ref": "urn:deep-focus:plan-management:2026-09-19#/definitions/PlanEditInput"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mutationId",
+            "command",
+            "targetId",
+            "body"
+          ],
+          "properties": {
+            "mutationId": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+            },
+            "command": {
+              "const": "plan.archive"
+            },
+            "targetId": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+            },
+            "body": {
+              "allOf": [
+                {
+                  "$ref": "urn:deep-focus:plan-management:2026-09-19#/definitions/PlanActionInput"
+                },
+                {
+                  "properties": {
+                    "action": {
+                      "const": "archive"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mutationId",
+            "command",
+            "targetId",
+            "body"
+          ],
+          "properties": {
+            "mutationId": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+            },
+            "command": {
+              "const": "plan.restore"
+            },
+            "targetId": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+            },
+            "body": {
+              "allOf": [
+                {
+                  "$ref": "urn:deep-focus:plan-management:2026-09-19#/definitions/PlanActionInput"
+                },
+                {
+                  "properties": {
+                    "action": {
+                      "const": "restore"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mutationId",
+            "command",
+            "targetId",
+            "body"
+          ],
+          "properties": {
+            "mutationId": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+            },
+            "command": {
+              "const": "plan.delete"
+            },
+            "targetId": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+            },
+            "body": {
+              "allOf": [
+                {
+                  "$ref": "urn:deep-focus:plan-management:2026-09-19#/definitions/PlanActionInput"
+                },
+                {
+                  "properties": {
+                    "action": {
+                      "const": "delete"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "Mutation": {
+      "oneOf": [
+        {
+          "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/SyncMutation"
+        },
+        {
+          "$ref": "#/definitions/PlanMutation"
+        }
+      ]
+    },
+    "PushInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "privacyEpoch",
+        "items"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 2
+        },
+        "privacyEpoch": {
+          "$ref": "#/definitions/Epoch"
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 25,
+          "items": {
+            "$ref": "#/definitions/Mutation"
+          }
+        }
+      }
+    },
+    "PlanOutcome": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mutationId",
+            "command",
+            "targetId",
+            "status",
+            "receipt"
+          ],
+          "properties": {
+            "mutationId": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+            },
+            "command": {
+              "enum": [
+                "plan.edit",
+                "plan.archive",
+                "plan.restore",
+                "plan.delete"
+              ]
+            },
+            "targetId": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+            },
+            "status": {
+              "enum": [
+                "applied",
+                "replayed"
+              ]
+            },
+            "receipt": {
+              "$ref": "urn:deep-focus:plan-management:2026-09-19#/definitions/MutationReceipt"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mutationId",
+            "command",
+            "targetId",
+            "status",
+            "code"
+          ],
+          "properties": {
+            "mutationId": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+            },
+            "command": {
+              "enum": [
+                "plan.edit",
+                "plan.archive",
+                "plan.restore",
+                "plan.delete"
+              ]
+            },
+            "targetId": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+            },
+            "status": {
+              "const": "rejected"
+            },
+            "code": {
+              "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/SafeErrorCode"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mutationId",
+            "command",
+            "targetId",
+            "status",
+            "code"
+          ],
+          "properties": {
+            "mutationId": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+            },
+            "command": {
+              "enum": [
+                "plan.edit",
+                "plan.archive",
+                "plan.restore",
+                "plan.delete"
+              ]
+            },
+            "targetId": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+            },
+            "status": {
+              "const": "retryable"
+            },
+            "code": {
+              "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/SafeErrorCode"
+            },
+            "retryAfterSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483647
+            }
+          }
+        }
+      ]
+    },
+    "Outcome": {
+      "oneOf": [
+        {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/SyncOutcome"
+        },
+        {
+          "$ref": "#/definitions/PlanOutcome"
+        }
+      ]
+    },
+    "PushResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "privacyEpoch",
+            "outcomes"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": 2
+            },
+            "privacyEpoch": {
+              "$ref": "#/definitions/Epoch"
+            },
+            "outcomes": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 25,
+              "items": {
+                "$ref": "#/definitions/Outcome"
+              }
+            }
+          }
+        }
+      }
+    },
+    "ChangeGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "transactionId",
+        "committedThrough",
+        "changes",
+        "changeCount",
+        "groupDigest"
+      ],
+      "properties": {
+        "transactionId": {
+          "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+        },
+        "committedThrough": {
+          "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Sequence"
+        },
+        "changes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/definitions/SyncChange"
+          }
+        },
+        "changeCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        },
+        "groupDigest": {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/Digest"
+        }
+      }
+    },
+    "PullResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data",
+        "meta"
+      ],
+      "properties": {
+        "data": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/definitions/ChangeGroup"
+          }
+        },
+        "meta": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "privacyEpoch",
+            "highWater",
+            "nextCursor",
+            "caughtUp"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": 2
+            },
+            "privacyEpoch": {
+              "$ref": "#/definitions/Epoch"
+            },
+            "highWater": {
+              "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Sequence"
+            },
+            "nextCursor": {
+              "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Cursor"
+            },
+            "caughtUp": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "SnapshotCreate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 2
+        }
+      }
+    },
+    "SnapshotAccepted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "privacyEpoch",
+            "job"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": 2
+            },
+            "privacyEpoch": {
+              "$ref": "#/definitions/Epoch"
+            },
+            "job": {
+              "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/SnapshotJob"
+            }
+          }
+        }
+      }
+    },
+    "SnapshotMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "snapshotId",
+        "contractVersion",
+        "privacyEpoch",
+        "highWater",
+        "createdAt",
+        "expiresAt",
+        "pageCount",
+        "manifestDigest",
+        "firstPageCursor",
+        "resumeCursor"
+      ],
+      "properties": {
+        "snapshotId": {
+          "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+        },
+        "contractVersion": {
+          "const": 2
+        },
+        "privacyEpoch": {
+          "$ref": "#/definitions/Epoch"
+        },
+        "highWater": {
+          "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Sequence"
+        },
+        "createdAt": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/UtcInstant"
+        },
+        "expiresAt": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/UtcInstant"
+        },
+        "pageCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "manifestDigest": {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/Digest"
+        },
+        "firstPageCursor": {
+          "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Cursor"
+        },
+        "resumeCursor": {
+          "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Cursor"
+        }
+      }
+    },
+    "SnapshotStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "privacyEpoch",
+            "job",
+            "snapshot"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": 2
+            },
+            "privacyEpoch": {
+              "$ref": "#/definitions/Epoch"
+            },
+            "job": {
+              "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/SnapshotJob"
+            },
+            "snapshot": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/SnapshotMeta"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "job": {
+                    "properties": {
+                      "state": {
+                        "const": "succeeded"
+                      }
+                    }
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "snapshot": {
+                    "$ref": "#/definitions/SnapshotMeta"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "snapshot": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "SnapshotPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data",
+        "meta"
+      ],
+      "properties": {
+        "data": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/definitions/SnapshotRecord"
+          }
+        },
+        "meta": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "privacyEpoch",
+            "snapshotId",
+            "pageIndex",
+            "pageCount",
+            "highWater",
+            "pageDigest",
+            "nextCursor"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": 2
+            },
+            "privacyEpoch": {
+              "$ref": "#/definitions/Epoch"
+            },
+            "snapshotId": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+            },
+            "pageIndex": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "pageCount": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483647
+            },
+            "highWater": {
+              "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Sequence"
+            },
+            "pageDigest": {
+              "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/Digest"
+            },
+            "nextCursor": {
+              "anyOf": [
+                {
+                  "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Cursor"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "PlanList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data",
+        "meta"
+      ],
+      "properties": {
+        "data": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 100,
+          "items": {
+            "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/SavedPlan"
+          }
+        },
+        "meta": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "privacyEpoch",
+            "nextCursor"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": 2
+            },
+            "privacyEpoch": {
+              "$ref": "#/definitions/Epoch"
+            },
+            "nextCursor": {
+              "anyOf": [
+                {
+                  "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Cursor"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "PullQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cursor"
+      ],
+      "properties": {
+        "cursor": {
+          "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Cursor"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50
+        }
+      }
+    },
+    "PageQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cursor"
+      ],
+      "properties": {
+        "cursor": {
+          "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Cursor"
+        }
+      }
+    },
+    "PlanListQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "state": {
+          "enum": [
+            "active",
+            "archived",
+            "all"
+          ],
+          "default": "active"
+        },
+        "cursor": {
+          "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Cursor"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50
+        }
+      }
+    },
+    "ExportPlansManifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "section",
+        "exportJobId",
+        "snapshotAt",
+        "highWater",
+        "privacyEpoch",
+        "planCount",
+        "pageCount",
+        "manifestDigest"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 2
+        },
+        "section": {
+          "const": "plans"
+        },
+        "exportJobId": {
+          "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+        },
+        "snapshotAt": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/UtcInstant"
+        },
+        "highWater": {
+          "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Sequence"
+        },
+        "privacyEpoch": {
+          "$ref": "#/definitions/Epoch"
+        },
+        "planCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "pageCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "manifestDigest": {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/Digest"
+        }
+      }
+    },
+    "ExportPlansPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pageIndex",
+        "plans",
+        "pageDigest"
+      ],
+      "properties": {
+        "pageIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "plans": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 100,
+          "items": {
+            "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/SavedPlan"
+          }
+        },
+        "pageDigest": {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/Digest"
+        }
+      }
+    },
+    "ExportPlansSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifest",
+        "pages"
+      ],
+      "properties": {
+        "manifest": {
+          "$ref": "#/definitions/ExportPlansManifest"
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2147483647,
+          "items": {
+            "$ref": "#/definitions/ExportPlansPage"
+          }
+        }
+      }
+    }
+  }
+}

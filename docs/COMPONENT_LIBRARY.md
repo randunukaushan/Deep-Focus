@@ -775,7 +775,8 @@ Only one Primary Button should typically compete for attention within the same i
 #### Visual Characteristics
 
 - Filled background
-- Deep Focus Mint primary action color
+- Semantic primary/onPrimary pair using the approved blue brand direction;
+  exact replacement values require token approval and contrast verification
 - High-contrast text
 - Rounded corners
 - High visual emphasis
@@ -2670,7 +2671,9 @@ Future enhancements may include:
 - Predictive Insights with Documented Limitations
 - Customizable Analytics Widgets
 
-Health or burnout-related analytics should only be introduced after appropriate validation, privacy, and safety requirements are defined.
+Health or burnout-related analytics are not approved; a future proposal needs
+separate owner scope approval and appropriate evidence/privacy/safety review.
+Defining validation requirements alone does not admit a feature or its claims.
 
 ---
 
@@ -3468,7 +3471,11 @@ Possible future cards include:
 - Advanced Recovery Insight Card
 - Productivity Forecast Card where sufficiently validated
 
-A `Burnout Risk Card` should not be introduced unless the underlying feature has clearly defined inputs, validation, safety boundaries, limitations, and appropriate non-medical positioning.
+A `Burnout Risk Card` is not an approved component. Use factual work-pattern or
+explicitly self-reported reflection designs only when their own feature is
+approved. A future health-prediction proposal requires separate owner scope
+approval and appropriate evidence/privacy/safety review; generic model validation
+or a component example is not permission to introduce it.
 
 New card components should:
 
@@ -3580,10 +3587,14 @@ The Bottom Navigation Bar provides access to the major top-level destinations of
 For the current Deep Focus navigation architecture, the primary destinations are:
 
 - Home
+- Plan
 - Focus
-- Analytics
-- Rewards
+- Progress
 - Profile
+
+Rewards and history are nested under Progress, not independent tabs. The active
+bottom-tab label remains Progress while viewing its nested content when the bar
+is visible. The canonical route and compatibility map is `V1_SCREEN_MAP.md`.
 
 Only one primary destination should be active at a time.
 
@@ -5053,7 +5064,7 @@ Its role is to support users through useful recommendations without becoming dis
 - Session Preparation
 - Productivity Tips
 - Motivation
-- Burnout Prevention
+- Optional break planning without health-prevention claims
 - Session Review
 - Recovery Recommendations
 
@@ -5732,7 +5743,10 @@ Future enhancements may include:
 - Comparison Views
 - Advanced Focus Pattern Analysis
 
-A future burnout visualization should only be introduced if the underlying model, safety boundaries, limitations, and non-medical positioning are clearly defined.
+Burnout prediction/visualization is not approved. No heat map may infer a person's
+health state from focus minutes. Future proposals need separate scope approval
+and evidence/privacy/safety review; the current contract permits factual activity
+or clearly identified self-reports, not a disguised diagnostic score.
 
 ---
 
@@ -6238,7 +6252,9 @@ Future versions of the analytics system may introduce:
 
 A generalized `Focus Score` should only be introduced after its calculation, meaning, inputs, limitations, and validation requirements are formally defined.
 
-Burnout-related prediction or visualization should only be introduced after the required safety, validation, privacy, non-medical positioning, and data-sufficiency rules are established.
+Burnout-related prediction or visualization is not approved. A future proposal
+requires separate owner scope approval and evidence/privacy/safety/claims review.
+Do not relabel a health-risk score as non-medical to bypass this boundary.
 
 Predictive analytics should communicate uncertainty rather than present forecasts as guaranteed outcomes.
 
@@ -7371,7 +7387,9 @@ Avoid labels such as:
 - Mental Exhaustion Detected
 - Burnout Diagnosis
 
-unless a future validated system has appropriate evidence, safety review, and positioning.
+These labels are not approved. A future health-related proposal requires a
+separate owner scope decision and appropriate evidence, privacy and safety
+review; this component does not authorize it.
 
 #### Example
 
@@ -8329,7 +8347,8 @@ Avoid unsupported health statements such as:
 
     Burnout Risk Detected
 
-unless a future validated system explicitly supports that claim.
+That claim is not approved; a separate future scope/evidence/privacy/safety
+review would be required, not just a component or model implementation.
 
 Prefer:
 
@@ -12485,7 +12504,7 @@ Examples:
 
 - Focus Timer
 - Session Control Panel
-- Burnout Risk Indicator
+- Work Pattern Summary based on verified activity, without health-risk scoring
 - Focus Streak Component
 - Productivity Summary
 - AI Assistant Panel
@@ -14267,7 +14286,7 @@ Example:
 Version 1.1
 
 Added
-- Burnout Risk Card
+- Work Pattern Summary Card
 - Compact Statistics Card
 
 Updated
@@ -15783,8 +15802,8 @@ Analytics may contain:
 - Focus History
 - Productivity Scores
 - Streak Information
-- Energy Patterns
-- Burnout Indicators
+- Explicitly Self-Reported Energy, only in an approved reflection feature
+- Non-Clinical Work/Break Patterns
 - AI Insights
 
 Future sharing features should always require intentional user action.

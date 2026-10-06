@@ -1,0 +1,204 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Deep Focus draft saved-plan management",
+    "version": "0.1.0-draft"
+  },
+  "servers": [
+    {
+      "url": "/v1"
+    }
+  ],
+  "security": [
+    {
+      "UserBearer": []
+    }
+  ],
+  "paths": {
+    "/plans/{id}": {
+      "patch": {
+        "operationId": "editDailyPlan",
+        "x-plan-management-id": "PM-01",
+        "x-active-account-required": true,
+        "x-unknown-query-keys": "reject",
+        "x-generation-unit-debit": 0,
+        "x-max-body-bytes": 65536,
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Plan-Contract-Version",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "const": 2
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "plan-management.schema.json#/definitions/PlanEditInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Minimal committed receipt, including identical authorized replay; fetch current plan separately.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              },
+              "Plan-Contract-Version": {
+                "schema": {
+                  "type": "integer",
+                  "const": 2
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "plan-management.schema.json#/definitions/MutationResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/plans/{id}/actions": {
+      "post": {
+        "operationId": "actOnDailyPlan",
+        "x-plan-management-id": "PM-02",
+        "x-active-account-required": true,
+        "x-unknown-query-keys": "reject",
+        "x-generation-unit-debit": 0,
+        "x-max-body-bytes": 65536,
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Plan-Contract-Version",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "const": 2
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "plan-management.schema.json#/definitions/PlanActionInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Minimal committed receipt, including identical authorized replay; fetch current plan separately.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              },
+              "Plan-Contract-Version": {
+                "schema": {
+                  "type": "integer",
+                  "const": 2
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "plan-management.schema.json#/definitions/MutationResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "UserBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Supabase user access JWT"
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Shared safe error; no private reference disclosure.",
+        "headers": {
+          "Cache-Control": {
+            "schema": {
+              "type": "string",
+              "const": "private, no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "personal-api.schema.json#/definitions/Error"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -6,9 +6,52 @@ It converts the approved project vision, architecture, data model, API specifica
 
 The purpose of this document is not to introduce new product scope.
 
+The [Final Build Guide](revision/49-BUILD-ENTRY-HANDOFF-SI.md) is the consolidated
+working entry point. Its phase table maps to this plan; its first L-02A harness
+is readiness work, not a reversal of the foundation/auth/focus sequence. Use it
+to select the next bounded task and feature-specific prerequisites. The broad
+documentation consolidation is closed; unresolved details are completed with
+the selected feature's contract before dependent implementation.
+
 Its purpose is to define how the already approved V1 scope should be built.
 
-Once this implementation plan is complete, V1 development should move from documentation planning into active implementation.
+The owner has reopened enterprise and expanded-V1 documentation planning.
+The phase order below remains the implementation dependency baseline; it is not
+permission to start app changes during this documentation-only work. The
+[revision register](revision/01-REQUIREMENTS-AND-DECISIONS.md) owns the new
+decisions and the [playbook](revision/07-LUNA-IMPLEMENTATION-PLAYBOOK.md) owns
+bounded task preparation. Production implementation resumes only for reconciled,
+approved tasks, not for the entire future inventory at once.
+
+The current [readiness sheet](revision/18-IMPLEMENTATION-READINESS-AND-OWNER-DECISIONS.md)
+maps completed document artifacts and unresolved implementation gates. Backend
+BE/BX and experience UX cards, plus the January Website/Portal WP subcards, refine
+the phases below; they do not imply those phases are implemented. Consult the
+[portal publication runbook](revision/17-WEBSITE-PORTAL-AND-RELEASE-RUNBOOK.md)
+for the separate mandatory web surface and explicit deploy/rollback authority.
+
+The saved-plan chain now has PL-01–05 draft packets, ending with
+[activation/recovery gates](revision/31-PLAN-ACTIVATION-AND-RECOVERY-GATES.md).
+They refine dependency preparation, not this phase order or feature admission.
+Actual server/mobile evidence, independent review and exact production authority
+are required; five written packets do not make plan capability release-ready.
+
+September 25's [release map](revision/32-JANUARY-RELEASE-SCOPE-AND-DECISIONS.md)
+records Android+iOS, required Website/Portal, O/L/A/L/higher-stage audience,
+independent personal-teacher launch, si/ta/en and paid cloud placement. It does
+not reorder foundations. [Cloud cards](revision/33-PAID-CLOUD-ADMISSION-AND-RECOVERY.md)
+depend on local-resource/identity and verified billing/quota/privacy foundations;
+no provider setup or payment is authorized just because the date is required.
+
+The classroom amendment recorded September 29 adds bounded private invitations,
+assignments, learner-selected completion/progress and feedback to the V1 target;
+it does not move classroom work ahead of core, auth, ownership and recovery.
+Use education 11's admitted subset and release map 32 for dependent task
+preparation; no full LMS, general chat or classroom file service is admitted.
+January 1 takes priority over retaining every feature: if measured work indicates
+date risk, document candidate deferrals and the revised launch set, retaining
+safety/quality gates. No feature is already cut and full productivity web remains
+later; Website/Portal remain required. Scope approval is not implementation readiness.
 
 ---
 
@@ -149,7 +192,21 @@ Complex infrastructure should not be introduced solely for hypothetical future s
 
 After this implementation plan is completed, additional documentation should only be created when it solves a concrete development, security, testing, or release requirement.
 
-The project should not delay V1 implementation by continuously expanding planning documents.
+The current owner-requested revision is an explicit exception to the previous
+documentation freeze. Close concrete contract/decision gaps, preserve the phase
+dependency order and avoid adding speculative scope. A documentation task is
+finished by verified specifications, not by pretending the corresponding feature
+has been implemented.
+
+### January Website and Account Portal Lane
+
+Both surfaces are required in [V1 scope section 15](V1_FEATURE_SCOPE.md).
+Schedule the WEB-01–06 chain from the
+[web contract](revision/05-WEB-AND-INTEGRATIONS.md) alongside the relevant shared
+identity, preferences, privacy and billing foundations. This is sequencing for
+one contributor, not extra staffing or permission to create agents. Do not leave
+the complete web lane until mobile Phase 10. The full productivity Web App is
+later; exact hosting, commercial and production gates still apply.
 
 ---
 
@@ -2313,7 +2370,11 @@ said` without receiving and validating the exact approved structured actions.
 
 ### AI Access and Rewarded Unlock
 
-The first five eligible AI actions are introductory free actions.
+Limited free AI allowance plus optional paid AI access was approved on September
+16. Exact allowance/renewal/prices remain open; do not implement a hard-coded five.
+Unobtrusive initial-release ads are required, but their provider/format/placement
+and age-safe delivery still need contracts. The following flow applies only if
+rewarded AI access is selected, not as the only way to obtain additional access.
 
 After those actions are exhausted:
 
@@ -2429,9 +2490,11 @@ Task Breakdown → Reject
 Task Breakdown → Confirm
 Review My Day Lite With Empty Activity
 Review My Day Lite With Verified Activity
-Five Introductory AI Actions Exhausted
-Unverified Rewarded-Ad Claim
-Verified Rewarded-Ad Grant
+Configured Free AI Allowance Exhausted
+Verified Paid AI Grant / Duplicate Purchase Evidence
+Core Usable Without AI or Ads
+Unverified Rewarded-Ad Claim (If This Format Is Selected)
+Verified Rewarded-Ad Grant (If This Format Is Selected)
 Advertisement Failure / Cancellation
 ```
 
@@ -3331,7 +3394,11 @@ A phase should only be marked complete after its completion criteria have been v
 
 ## 19. Documentation Freeze for V1 Implementation
 
-After this implementation plan is approved, the project should move into active V1 development.
+The earlier freeze is superseded narrowly by the owner's current request to
+research and reconcile the enterprise/V1 documentation. This does not discard
+the approved mobile baseline or approve every new draft. Re-freeze each bounded
+contract after its dependencies and conflicts are resolved, using the READY gate
+in the revision playbook, before authorising its implementation.
 
 The existing documentation set should be treated as the primary implementation reference.
 
@@ -3344,9 +3411,10 @@ Documentation may still be:
 - Updated to match implementation
 - Extended when an actual technical requirement is discovered
 
-However, documentation work should no longer delay the start of V1 coding.
+Do not use the old freeze as a reason to skip the requested revision, nor the
+revision as a reason to keep adding requirements without resolving existing gaps.
 
-The default workflow from this point should become:
+After a bounded task is implementation-ready, its workflow becomes:
 
 ```text
 Read Relevant Specification

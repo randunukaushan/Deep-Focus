@@ -109,7 +109,7 @@ export function HomeScreen() {
           <View style={styles.topBar}>
             <View style={styles.topBarSpacer} />
             <View style={styles.brandIdentity}>
-              <View style={styles.brandLogoFrame}><Image source={require('@/assets/branding/deep-focus-logo.png')} style={styles.brandLogoImage} /></View>
+              <View style={[styles.brandLogoFrame, { borderColor: homeAction }]}><Image source={require('@/assets/branding/deep-focus-logo.png')} style={styles.brandLogoImage} /></View>
               <View style={styles.brandBlock}><ThemedText style={[styles.eyebrow, styles.brandMark, { color: homeAction }]}>DEEP FOCUS</ThemedText>{!compact ? <ThemedText themeColor="textSecondary" type="small">Focus on what matters.</ThemedText> : null}</View>
             </View>
             <Pressable accessibilityLabel="Open settings" accessibilityRole="button" onPress={() => router.push('/profile/settings')} style={({ pressed }) => [styles.settingsButton, { backgroundColor: homeSurface, borderColor: homeBorder }, pressed && styles.pressed]}><Ionicons color={theme.text} name="settings-outline" size={22} /></Pressable>
@@ -155,7 +155,7 @@ export function HomeScreen() {
               <ThemedText type="subtitle">{pausedSession.taskName || 'Focus session'}</ThemedText>
               <ThemedText themeColor="textSecondary" type="small">{formatFocusTime(Math.max(0, pausedSession.plannedDurationSeconds - pausedSession.focusedDurationSeconds))} remaining</ThemedText>
             </View>
-            <Button label="Continue" onPress={() => router.push({ pathname: '/focus/session', params: { durationMinutes: String(pausedSession.plannedDurationSeconds / 60), taskName: pausedSession.taskName || '' } })} />
+            <Button label="Continue" onPress={() => router.push({ pathname: '/focus/session', params: { durationMinutes: String(pausedSession.plannedDurationSeconds / 60), taskName: pausedSession.taskName || '', resume: '1' } })} />
           </View> : null}
 
           <ThemedView accessibilityLabel={`Today’s focus progress. ${progressLabel}`} style={[styles.progressCard, { backgroundColor: homeSurface, borderColor: homeBorder }, compact && styles.progressCardCompact]}>
@@ -208,12 +208,12 @@ const styles = StyleSheet.create({
   mountainFront: { borderRadius: 56, height: 250, left: 45, opacity: 0.72, position: 'absolute', top: 220, transform: [{ rotate: '38deg' }], width: 360 },
   scrollContent: { flexGrow: 1, alignItems: 'center', padding: Spacing.lg, paddingBottom: Spacing.xxl },
   scrollContentCompact: { paddingBottom: Spacing.xs, paddingHorizontal: Spacing.md, paddingTop: Spacing.sm },
-  content: { flexGrow: 1, justifyContent: 'space-between', width: '100%', maxWidth: MaxContentWidth },
+  content: { flexGrow: 1, gap: Spacing.xl, width: '100%', maxWidth: MaxContentWidth },
   contentCompact: { gap: Spacing.sm, justifyContent: 'flex-start' },
   topBar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   brandIdentity: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: Spacing.sm, justifyContent: 'center' },
   brandBlock: { gap: 2 },
-  brandLogoFrame: { backgroundColor: Palette.deepNavy, borderColor: Palette.homeLightAction, borderRadius: 28, borderWidth: 1, height: 56, overflow: 'hidden', width: 56 },
+  brandLogoFrame: { backgroundColor: Palette.deepNavy, borderRadius: 28, borderWidth: 1, height: 56, overflow: 'hidden', width: 56 },
   brandLogoImage: { height: 180, left: -51, position: 'absolute', top: -37, width: 180 },
   topBarSpacer: { height: 48, width: 48 },
   settingsButton: { alignItems: 'center', borderRadius: 24, borderWidth: 1, height: 48, justifyContent: 'center', width: 48 },
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
   heroFactsCompact: { marginTop: 0, paddingTop: Spacing.sm },
   heroFact: { alignItems: 'center', flex: 1, gap: 2 },
   heroFactDivider: { height: 48, width: 1 },
-  progressCard: { borderRadius: Radius.card, borderWidth: 1, elevation: 1, gap: Spacing.md, marginTop: Spacing.xxxl + Spacing.lg + Spacing.xs, padding: Spacing.lg, shadowColor: '#6A9DC2', shadowOffset: { height: 3, width: 0 }, shadowOpacity: 0.08, shadowRadius: 8 },
+  progressCard: { borderRadius: Radius.card, borderWidth: 1, elevation: 1, gap: Spacing.md, padding: Spacing.lg, shadowColor: '#6A9DC2', shadowOffset: { height: 3, width: 0 }, shadowOpacity: 0.08, shadowRadius: 8 },
   recoveryCard: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', gap: Spacing.md, justifyContent: 'space-between', padding: Spacing.md },
   recoveryCopy: { flex: 1, gap: Spacing.xs },
   progressCardCompact: { gap: Spacing.sm, marginTop: 0, padding: Spacing.md },
@@ -253,9 +253,9 @@ const styles = StyleSheet.create({
   progressDivider: { height: 48, width: 1 },
   sectionEyebrow: { color: Palette.mintPrimary, letterSpacing: 1.2 },
   sectionHeader: { alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'space-between', paddingTop: Spacing.xs },
-  quickActions: { flexDirection: 'row', gap: Spacing.sm },
+  quickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   quickAction: { borderRadius: Radius.card, borderWidth: 1, flex: 1, gap: Spacing.sm, minHeight: 154, padding: Spacing.md, position: 'relative' },
-  quickActionCompact: { minHeight: 88, padding: Spacing.sm },
+  quickActionCompact: { flexBasis: '48%', minHeight: 112, padding: Spacing.sm },
   quickActionChevron: { position: 'absolute', right: Spacing.sm, top: Spacing.md },
   actionIcon: { alignItems: 'center', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
   actionCopy: { flex: 1, gap: 2, justifyContent: 'flex-end' },

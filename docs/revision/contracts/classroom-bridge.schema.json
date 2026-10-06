@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:deep-focus:classroom-bridge:2026-10-01",
+  "title": "EB-00 internal bridge candidate — DRAFT, not public wire",
+  "definitions": {
+    "Id": { "type": "string", "format": "uuid", "pattern": "^[0-9a-f-]{36}$" },
+    "KeyId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+    "Version": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+    "Instant": { "type": "string", "format": "date-time", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}Z$" },
+    "Hex32": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "Operation": { "enum": ["CW-01", "CW-04", "CW-05", "CW-06", "CW-08", "CW-09", "CW-10", "CW-11", "CW-12", "CW-14", "CW-15", "CW-16", "CW-17"] },
+    "Scope": {
+      "type": "object", "additionalProperties": false, "required": ["kind", "id"],
+      "properties": { "kind": { "enum": ["creator", "class"] }, "id": { "$ref": "#/definitions/Id" } }
+    },
+    "DigestRef": {
+      "type": "object", "additionalProperties": false, "required": ["version", "keyId"],
+      "properties": { "version": { "const": 1 }, "keyId": { "$ref": "#/definitions/KeyId" } }
+    },
+    "DigestMaterial": {
+      "type": "object", "additionalProperties": false, "required": ["version", "keyId", "macHex"],
+      "properties": { "version": { "const": 1 }, "keyId": { "$ref": "#/definitions/KeyId" }, "macHex": { "$ref": "#/definitions/Hex32" } }
+    },
+    "IssuePlan": {
+      "type": "object", "additionalProperties": false,
+      "required": ["inviteId", "classId", "issuerId", "expiresAt", "keyId"],
+      "properties": {
+        "inviteId": { "$ref": "#/definitions/Id" }, "classId": { "$ref": "#/definitions/Id" },
+        "issuerId": { "$ref": "#/definitions/Id" }, "expiresAt": { "$ref": "#/definitions/Instant" },
+        "keyId": { "$ref": "#/definitions/KeyId" }
+      }
+    },
+    "PreparedInvite": {
+      "type": "object", "additionalProperties": false,
+      "required": ["inviteId", "classId", "issuerId", "expiresAt", "keyId", "encryptionVersion", "tokenDigestHex", "nonceHex", "ciphertextHex", "tagHex"],
+      "properties": {
+        "inviteId": { "$ref": "#/definitions/Id" }, "classId": { "$ref": "#/definitions/Id" },
+        "issuerId": { "$ref": "#/definitions/Id" }, "expiresAt": { "$ref": "#/definitions/Instant" },
+        "keyId": { "$ref": "#/definitions/KeyId" }, "encryptionVersion": { "const": 1 },
+        "tokenDigestHex": { "$ref": "#/definitions/Hex32" }, "nonceHex": { "type": "string", "pattern": "^[0-9a-f]{24}$" },
+        "ciphertextHex": { "$ref": "#/definitions/Hex32" }, "tagHex": { "type": "string", "pattern": "^[0-9a-f]{32}$" }
+      }
+    },
+    "Preparation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["bridgeVersion", "operation", "commandId", "scope", "mode", "policyRevision", "digest", "issue", "deliveryKeyId"],
+      "properties": {
+        "bridgeVersion": { "const": 1 }, "operation": { "$ref": "#/definitions/Operation" },
+        "commandId": { "$ref": "#/definitions/Id" }, "scope": { "$ref": "#/definitions/Scope" },
+        "mode": { "enum": ["fresh", "replay"] }, "policyRevision": { "$ref": "#/definitions/Version" },
+        "digest": { "$ref": "#/definitions/DigestRef" },
+        "issue": { "anyOf": [{ "$ref": "#/definitions/IssuePlan" }, { "type": "null" }] },
+        "deliveryKeyId": { "anyOf": [{ "$ref": "#/definitions/KeyId" }, { "type": "null" }] }
+      },
+      "allOf": [
+        { "if": { "properties": { "operation": { "const": "CW-01" } } }, "then": { "properties": { "scope": { "properties": { "kind": { "const": "creator" } } } } }, "else": { "properties": { "scope": { "properties": { "kind": { "const": "class" } } } } } },
+        { "if": { "properties": { "operation": { "const": "CW-05" }, "mode": { "const": "fresh" } } }, "then": { "properties": { "issue": { "$ref": "#/definitions/IssuePlan" }, "deliveryKeyId": { "type": "null" } } }, "else": { "properties": { "issue": { "type": "null" } } } },
+        { "if": { "properties": { "operation": { "const": "CW-05" } } }, "else": { "properties": { "deliveryKeyId": { "type": "null" } } } }
+      ]
+    },
+    "MutationMaterial": {
+      "type": "object", "additionalProperties": false,
+      "required": ["bridgeVersion", "operation", "commandId", "scope", "policyRevision", "digest", "issue"],
+      "properties": {
+        "bridgeVersion": { "const": 1 }, "operation": { "$ref": "#/definitions/Operation" },
+        "commandId": { "$ref": "#/definitions/Id" }, "scope": { "$ref": "#/definitions/Scope" },
+        "policyRevision": { "$ref": "#/definitions/Version" }, "digest": { "$ref": "#/definitions/DigestMaterial" },
+        "issue": { "anyOf": [{ "$ref": "#/definitions/PreparedInvite" }, { "type": "null" }] }
+      },
+      "allOf": [
+        { "if": { "properties": { "operation": { "const": "CW-01" } } }, "then": { "properties": { "scope": { "properties": { "kind": { "const": "creator" } } } } }, "else": { "properties": { "scope": { "properties": { "kind": { "const": "class" } } } } } },
+        { "if": { "properties": { "operation": { "const": "CW-05" } } }, "else": { "properties": { "issue": { "type": "null" } } } }
+      ]
+    },
+    "InviteMetadata": {
+      "type": "object", "additionalProperties": false,
+      "required": ["inviteId", "classId", "version", "state", "expiresAt"],
+      "properties": {
+        "inviteId": { "$ref": "#/definitions/Id" }, "classId": { "$ref": "#/definitions/Id" },
+        "version": { "$ref": "#/definitions/Version" }, "state": { "enum": ["issued", "consumed", "revoked", "expired"] },
+        "expiresAt": { "$ref": "#/definitions/Instant" }
+      }
+    },
+    "BridgeInviteResult": {
+      "type": "object", "additionalProperties": false, "required": ["bridgeVersion", "view", "delivery"],
+      "properties": {
+        "bridgeVersion": { "const": 1 }, "view": { "$ref": "#/definitions/InviteMetadata" },
+        "delivery": { "anyOf": [{ "$ref": "#/definitions/PreparedInvite" }, { "type": "null" }] }
+      },
+      "if": { "properties": { "view": { "properties": { "state": { "const": "issued" } } } } },
+      "then": { "properties": { "delivery": { "$ref": "#/definitions/PreparedInvite" } } },
+      "else": { "properties": { "delivery": { "type": "null" } } }
+    }
+  }
+}

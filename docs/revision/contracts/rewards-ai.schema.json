@@ -1,0 +1,1048 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:deep-focus:rewards-ai:2026-09-19",
+  "title": "Proposed reward/goal/AI response contracts",
+  "description": "Documentation only. No numeric reward/allowance policy or deployed security. Shape validation cannot prove ownership, arithmetic, graph closure, hashing or transactions.",
+  "definitions": {
+    "Id": {
+      "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+    },
+    "Instant": {
+      "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Instant"
+    },
+    "Version": {
+      "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Version"
+    },
+    "Sequence": {
+      "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Sequence"
+    },
+    "ProjectionMeta": {
+      "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/ProjectionMeta"
+    },
+    "Policy": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "\\S"
+    },
+    "Count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "Digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "RewardSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "totalXp",
+        "level",
+        "currentStreakDays",
+        "longestStreakDays",
+        "lastQualifyingDate",
+        "timeZone",
+        "achievementCount"
+      ],
+      "properties": {
+        "totalXp": {
+          "$ref": "#/definitions/Count"
+        },
+        "level": {
+          "$ref": "#/definitions/Version"
+        },
+        "currentStreakDays": {
+          "$ref": "#/definitions/Count"
+        },
+        "longestStreakDays": {
+          "$ref": "#/definitions/Count"
+        },
+        "lastQualifyingDate": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "timeZone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "achievementCount": {
+          "$ref": "#/definitions/Count"
+        }
+      }
+    },
+    "GoalProgress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "currentValue",
+        "contributionCount"
+      ],
+      "properties": {
+        "currentValue": {
+          "$ref": "#/definitions/Count"
+        },
+        "contributionCount": {
+          "$ref": "#/definitions/Count"
+        }
+      }
+    },
+    "RewardsResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "meta",
+            "summary"
+          ],
+          "properties": {
+            "meta": {
+              "$ref": "#/definitions/ProjectionMeta"
+            },
+            "summary": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/RewardSummary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "meta": {
+                    "properties": {
+                      "status": {
+                        "const": "unavailable"
+                      }
+                    }
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "summary": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "summary": {
+                    "$ref": "#/definitions/RewardSummary"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "GoalProgressResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "goal",
+            "meta",
+            "progress"
+          ],
+          "properties": {
+            "goal": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Goal"
+            },
+            "meta": {
+              "$ref": "#/definitions/ProjectionMeta"
+            },
+            "progress": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/GoalProgress"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "meta": {
+                    "properties": {
+                      "status": {
+                        "const": "unavailable"
+                      }
+                    }
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "progress": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "progress": {
+                    "$ref": "#/definitions/GoalProgress"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "RewardEntry": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "ledgerSequence",
+            "sourceType",
+            "sourceId",
+            "awardKind",
+            "ruleVersion",
+            "recordedAt",
+            "kind",
+            "deltaXp",
+            "correctsEntryId",
+            "reason"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/definitions/Id"
+            },
+            "ledgerSequence": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Sequence"
+                },
+                {
+                  "not": {
+                    "const": "0"
+                  }
+                }
+              ]
+            },
+            "sourceType": {
+              "enum": [
+                "focus_session",
+                "task_completion",
+                "achievement"
+              ]
+            },
+            "sourceId": {
+              "$ref": "#/definitions/Id"
+            },
+            "awardKind": {
+              "$ref": "#/definitions/Policy"
+            },
+            "ruleVersion": {
+              "$ref": "#/definitions/Policy"
+            },
+            "recordedAt": {
+              "$ref": "#/definitions/Instant"
+            },
+            "kind": {
+              "const": "award"
+            },
+            "deltaXp": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "correctsEntryId": {
+              "type": "null"
+            },
+            "reason": {
+              "const": "earned"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "ledgerSequence",
+            "sourceType",
+            "sourceId",
+            "awardKind",
+            "ruleVersion",
+            "recordedAt",
+            "kind",
+            "deltaXp",
+            "correctsEntryId",
+            "reason"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/definitions/Id"
+            },
+            "ledgerSequence": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Sequence"
+                },
+                {
+                  "not": {
+                    "const": "0"
+                  }
+                }
+              ]
+            },
+            "sourceType": {
+              "enum": [
+                "focus_session",
+                "task_completion",
+                "achievement"
+              ]
+            },
+            "sourceId": {
+              "$ref": "#/definitions/Id"
+            },
+            "awardKind": {
+              "$ref": "#/definitions/Policy"
+            },
+            "ruleVersion": {
+              "$ref": "#/definitions/Policy"
+            },
+            "recordedAt": {
+              "$ref": "#/definitions/Instant"
+            },
+            "kind": {
+              "const": "correction"
+            },
+            "deltaXp": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "not": {
+                "const": 0
+              }
+            },
+            "correctsEntryId": {
+              "$ref": "#/definitions/Id"
+            },
+            "reason": {
+              "enum": [
+                "duplicate_grant_reversal",
+                "verified_source_correction"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "RewardHistoryResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data",
+        "meta"
+      ],
+      "properties": {
+        "data": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/definitions/RewardEntry"
+          }
+        },
+        "meta": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "nextCursor",
+            "ledgerHighWater"
+          ],
+          "properties": {
+            "nextCursor": {
+              "anyOf": [
+                {
+                  "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Cursor"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "ledgerHighWater": {
+              "$ref": "#/definitions/Sequence"
+            }
+          }
+        }
+      }
+    },
+    "UsageBucket": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "availableActions",
+        "reservedActions"
+      ],
+      "properties": {
+        "source": {
+          "enum": [
+            "free",
+            "paid",
+            "rewarded"
+          ]
+        },
+        "availableActions": {
+          "$ref": "#/definitions/Count"
+        },
+        "reservedActions": {
+          "$ref": "#/definitions/Count"
+        }
+      }
+    },
+    "ActionType": {
+      "enum": [
+        "plan_my_day",
+        "break_down_task",
+        "review_my_day_lite"
+      ]
+    },
+    "CurrentUsage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "policyVersion",
+        "checkedAt",
+        "unit",
+        "availableActions",
+        "reservedActions",
+        "buckets",
+        "enabledActions",
+        "nextRefreshAt"
+      ],
+      "properties": {
+        "status": {
+          "const": "current"
+        },
+        "policyVersion": {
+          "$ref": "#/definitions/Policy"
+        },
+        "checkedAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "unit": {
+          "const": "action"
+        },
+        "availableActions": {
+          "$ref": "#/definitions/Count"
+        },
+        "reservedActions": {
+          "$ref": "#/definitions/Count"
+        },
+        "buckets": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/definitions/UsageBucket"
+          }
+        },
+        "enabledActions": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/definitions/ActionType"
+          },
+          "uniqueItems": true
+        },
+        "nextRefreshAt": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Instant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "UnknownUsage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "policyVersion",
+        "checkedAt",
+        "unit",
+        "availableActions",
+        "reservedActions",
+        "buckets",
+        "enabledActions",
+        "nextRefreshAt"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "unconfigured",
+            "unavailable"
+          ]
+        },
+        "policyVersion": {
+          "type": "null"
+        },
+        "checkedAt": {
+          "type": "null"
+        },
+        "unit": {
+          "const": "action"
+        },
+        "availableActions": {
+          "type": "null"
+        },
+        "reservedActions": {
+          "type": "null"
+        },
+        "buckets": {
+          "type": "null"
+        },
+        "enabledActions": {
+          "type": "null"
+        },
+        "nextRefreshAt": {
+          "type": "null"
+        }
+      }
+    },
+    "AiUsageResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/CurrentUsage"
+            },
+            {
+              "$ref": "#/definitions/UnknownUsage"
+            }
+          ]
+        }
+      }
+    },
+    "InputVersion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entity",
+        "entityId",
+        "version"
+      ],
+      "properties": {
+        "entity": {
+          "enum": [
+            "task",
+            "goal"
+          ]
+        },
+        "entityId": {
+          "$ref": "#/definitions/Id"
+        },
+        "version": {
+          "$ref": "#/definitions/Version"
+        }
+      }
+    },
+    "ProposalOperation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "command",
+            "targetId",
+            "dependsOn",
+            "payload"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/definitions/Id"
+            },
+            "command": {
+              "const": "task.create"
+            },
+            "targetId": {
+              "$ref": "#/definitions/Id"
+            },
+            "dependsOn": {
+              "type": "array",
+              "minItems": 0,
+              "maxItems": 25,
+              "items": {
+                "$ref": "#/definitions/Id"
+              },
+              "uniqueItems": true
+            },
+            "payload": {
+              "$ref": "#/definitions/ProposalTaskCreate"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "command",
+            "targetId",
+            "dependsOn",
+            "payload"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/definitions/Id"
+            },
+            "command": {
+              "const": "task.patch"
+            },
+            "targetId": {
+              "$ref": "#/definitions/Id"
+            },
+            "dependsOn": {
+              "type": "array",
+              "minItems": 0,
+              "maxItems": 25,
+              "items": {
+                "$ref": "#/definitions/Id"
+              },
+              "uniqueItems": true
+            },
+            "payload": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/TaskPatch"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "command",
+            "targetId",
+            "dependsOn",
+            "payload"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/definitions/Id"
+            },
+            "command": {
+              "const": "reminder.create"
+            },
+            "targetId": {
+              "$ref": "#/definitions/Id"
+            },
+            "dependsOn": {
+              "type": "array",
+              "minItems": 0,
+              "maxItems": 25,
+              "items": {
+                "$ref": "#/definitions/Id"
+              },
+              "uniqueItems": true
+            },
+            "payload": {
+              "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/ReminderCreate"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "command",
+            "targetId",
+            "dependsOn",
+            "payload"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/definitions/Id"
+            },
+            "command": {
+              "const": "plan.create"
+            },
+            "targetId": {
+              "$ref": "#/definitions/Id"
+            },
+            "dependsOn": {
+              "type": "array",
+              "minItems": 0,
+              "maxItems": 25,
+              "items": {
+                "$ref": "#/definitions/Id"
+              },
+              "uniqueItems": true
+            },
+            "payload": {
+              "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/PlanCreate"
+            }
+          }
+        }
+      ]
+    },
+    "ReviewableProposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "id",
+        "version",
+        "generationRequestId",
+        "actionType",
+        "expiresAt",
+        "reviewDigest",
+        "state",
+        "inputVersions",
+        "operations"
+      ],
+      "properties": {
+        "contractVersion": {
+          "enum": [
+            1,
+            2
+          ]
+        },
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "version": {
+          "$ref": "#/definitions/Version"
+        },
+        "generationRequestId": {
+          "$ref": "#/definitions/Id"
+        },
+        "actionType": {
+          "enum": [
+            "plan_my_day",
+            "break_down_task"
+          ]
+        },
+        "expiresAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "reviewDigest": {
+          "$ref": "#/definitions/Digest"
+        },
+        "state": {
+          "const": "ready"
+        },
+        "inputVersions": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/definitions/InputVersion"
+          }
+        },
+        "operations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 25,
+          "items": {
+            "$ref": "#/definitions/ProposalOperation"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "contractVersion": {
+                "const": 1
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "operations": {
+                "items": {
+                  "properties": {
+                    "command": {
+                      "enum": [
+                        "task.create",
+                        "task.patch",
+                        "reminder.create"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "actionType": {
+                "const": "plan_my_day"
+              },
+              "operations": {
+                "contains": {
+                  "properties": {
+                    "command": {
+                      "const": "plan.create"
+                    }
+                  },
+                  "required": [
+                    "command"
+                  ]
+                },
+                "items": {
+                  "properties": {
+                    "command": {
+                      "enum": [
+                        "plan.create",
+                        "reminder.create"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "AppliedProposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "id",
+        "version",
+        "generationRequestId",
+        "actionType",
+        "expiresAt",
+        "reviewDigest",
+        "state",
+        "appliedAt",
+        "selectedOperationIds"
+      ],
+      "properties": {
+        "contractVersion": {
+          "enum": [
+            1,
+            2
+          ]
+        },
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "version": {
+          "$ref": "#/definitions/Version"
+        },
+        "generationRequestId": {
+          "$ref": "#/definitions/Id"
+        },
+        "actionType": {
+          "enum": [
+            "plan_my_day",
+            "break_down_task"
+          ]
+        },
+        "expiresAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "reviewDigest": {
+          "$ref": "#/definitions/Digest"
+        },
+        "state": {
+          "const": "applied"
+        },
+        "appliedAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "selectedOperationIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 25,
+          "items": {
+            "$ref": "#/definitions/Id"
+          },
+          "uniqueItems": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "contractVersion": {
+                "const": 2
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "actionType": {
+                "const": "plan_my_day"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ProposalResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/ReviewableProposal"
+            },
+            {
+              "$ref": "#/definitions/AppliedProposal"
+            }
+          ]
+        }
+      }
+    },
+    "ApplyResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operationId",
+        "command",
+        "targetId",
+        "entityVersion"
+      ],
+      "properties": {
+        "operationId": {
+          "$ref": "#/definitions/Id"
+        },
+        "command": {
+          "enum": [
+            "task.create",
+            "task.patch",
+            "reminder.create",
+            "plan.create"
+          ]
+        },
+        "targetId": {
+          "$ref": "#/definitions/Id"
+        },
+        "entityVersion": {
+          "$ref": "#/definitions/Version"
+        }
+      }
+    },
+    "ApplyReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "proposalId",
+        "proposalVersion",
+        "reviewDigest",
+        "mutationId",
+        "appliedAt",
+        "committedThrough",
+        "results"
+      ],
+      "properties": {
+        "proposalId": {
+          "$ref": "#/definitions/Id"
+        },
+        "proposalVersion": {
+          "$ref": "#/definitions/Version"
+        },
+        "reviewDigest": {
+          "$ref": "#/definitions/Digest"
+        },
+        "mutationId": {
+          "$ref": "#/definitions/Id"
+        },
+        "appliedAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "committedThrough": {
+          "$ref": "#/definitions/Sequence"
+        },
+        "results": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 25,
+          "items": {
+            "$ref": "#/definitions/ApplyResult"
+          }
+        }
+      }
+    },
+    "ProposalApplyResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/ApplyReceipt"
+        }
+      }
+    },
+    "ProposalTaskCreate": {
+      "allOf": [
+        {
+          "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/TaskCreate"
+        },
+        {
+          "required": [
+            "description",
+            "priority",
+            "goalId",
+            "due"
+          ]
+        }
+      ]
+    }
+  }
+}

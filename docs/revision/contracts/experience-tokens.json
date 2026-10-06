@@ -1,0 +1,34 @@
+{
+  "contractVersion": 1,
+  "status": "proposed-values-not-production-approval",
+  "colorSpace": "sRGB-opaque",
+  "themes": {
+    "light": {
+      "background": "#F8FAFC", "surface": "#FFFFFF", "elevated": "#FFFFFF",
+      "text": "#0F172A", "secondaryText": "#475569", "mutedText": "#64748B",
+      "primary": "#1D4ED8", "onPrimary": "#FFFFFF", "focusRing": "#1D4ED8",
+      "controlBorder": "#64748B", "decorativeBorder": "#E2E8F0",
+      "success": "#166534", "warning": "#92400E", "danger": "#B91C1C",
+      "brandCoral": "#FF6B61"
+    },
+    "dark": {
+      "background": "#071426", "surface": "#10243B", "elevated": "#18324F",
+      "text": "#F8FAFC", "secondaryText": "#B7C9E2", "mutedText": "#95AAC6",
+      "primary": "#60A5FA", "onPrimary": "#061426", "focusRing": "#60A5FA",
+      "controlBorder": "#7791B2", "decorativeBorder": "#274260",
+      "success": "#6EE7B7", "warning": "#FBBF24", "danger": "#FDA4AF",
+      "brandCoral": "#FF6B61"
+    }
+  },
+  "surfaces": ["background", "surface", "elevated"],
+  "textOnSurfaces": ["text", "secondaryText", "mutedText", "primary", "success", "warning", "danger"],
+  "nonTextOnSurfaces": ["controlBorder", "focusRing"],
+  "filledTextPairs": [["onPrimary", "primary"]],
+  "decorativeOnly": ["decorativeBorder", "brandCoral"],
+  "minimumContrast": {"text": 4.5, "nonText": 3},
+  "spacing": [0, 4, 8, 12, 16, 24, 32, 48],
+  "radii": {"control": 12, "card": 20, "pill": 999},
+  "minimumTarget": {"iosPt": 44, "androidDp": 48, "webCssPx": 44},
+  "motionMs": {"feedback": 120, "transition": 180, "reducedMotion": 0},
+  "ambientMotionDuringFocus": false
+}

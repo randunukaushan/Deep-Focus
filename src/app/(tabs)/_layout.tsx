@@ -19,22 +19,22 @@ export default function TabsLayout() {
           src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="home-outline" />}
         />
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="plan">
+        <NativeTabs.Trigger.Label>Plan</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="list-outline" />}
+        />
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="focus">
         <NativeTabs.Trigger.Label>Focus</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="timer-outline" />}
         />
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="analytics">
-        <NativeTabs.Trigger.Label>Analytics</NativeTabs.Trigger.Label>
+      <NativeTabs.Trigger name="progress">
+        <NativeTabs.Trigger.Label>Progress</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="bar-chart-outline" />}
-        />
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="rewards">
-        <NativeTabs.Trigger.Label>Rewards</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="ribbon-outline" />}
         />
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">

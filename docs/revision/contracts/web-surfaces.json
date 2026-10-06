@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "status": "proposed-route-and-security-contract-not-a-deployed-site",
+  "framework": "Next.js",
+  "hosting": "owner-decision-required",
+  "launchSurfaces": ["public_website", "account_portal"],
+  "laterSurface": "full_productivity_web",
+  "routes": [
+    {"path": "/", "surface": "public", "cache": "public-content-only", "index": true},
+    {"path": "/features", "surface": "public", "cache": "public-content-only", "index": true},
+    {"path": "/solutions/personal", "surface": "public", "cache": "public-content-only", "index": true},
+    {"path": "/solutions/education", "surface": "public", "cache": "public-content-only", "index": true},
+    {"path": "/plans", "surface": "public", "cache": "public-content-only", "index": true},
+    {"path": "/roadmap", "surface": "public", "cache": "public-content-only", "index": true},
+    {"path": "/updates", "surface": "public", "cache": "public-content-only", "index": true},
+    {"path": "/help", "surface": "public", "cache": "public-content-only", "index": true},
+    {"path": "/contact", "surface": "public", "cache": "public-content-only", "index": true},
+    {"path": "/privacy", "surface": "public", "cache": "public-content-only", "index": true},
+    {"path": "/terms", "surface": "public", "cache": "public-content-only", "index": true},
+    {"path": "/data-deletion", "surface": "public", "cache": "public-content-only", "index": true},
+    {"path": "/accessibility", "surface": "public", "cache": "public-content-only", "index": true},
+    {"path": "/sign-in", "surface": "auth", "cache": "private-no-store", "index": false},
+    {"path": "/sign-up", "surface": "auth", "cache": "private-no-store", "index": false},
+    {"path": "/forgot-password", "surface": "auth", "cache": "private-no-store", "index": false},
+    {"path": "/reset-password", "surface": "auth", "cache": "private-no-store", "index": false},
+    {"path": "/verify-email", "surface": "auth", "cache": "private-no-store", "index": false},
+    {"path": "/account", "surface": "account", "cache": "private-no-store", "index": false},
+    {"path": "/account/profile", "surface": "account", "cache": "private-no-store", "index": false},
+    {"path": "/account/preferences", "surface": "account", "cache": "private-no-store", "index": false},
+    {"path": "/account/security", "surface": "account", "cache": "private-no-store", "index": false},
+    {"path": "/account/billing", "surface": "account", "cache": "private-no-store", "index": false},
+    {"path": "/account/connections", "surface": "account", "cache": "private-no-store", "index": false},
+    {"path": "/account/privacy", "surface": "account", "cache": "private-no-store", "index": false}
+  ],
+  "handlers": [
+    {"path": "/auth/callback", "method": "GET", "purpose": "single-use-auth-exchange", "cache": "private-no-store"},
+    {"path": "/auth/logout", "method": "POST", "purpose": "confirmed-current-session-signout", "cache": "private-no-store"}
+  ],
+  "returnToAllowlist": ["/account", "/account/profile", "/account/preferences", "/account/security", "/account/billing", "/account/connections", "/account/privacy"],
+  "accountPreferenceFields": ["theme", "uiLocale", "defaultFocusDurationMinutes", "defaultBreakDurationMinutes", "aiFeaturesEnabled"],
+  "localOnlyFields": ["assessmentAnswers", "personalPhrases", "resourceUris", "resourceAssociations", "notificationPermission", "notificationInstallIds"],
+  "launchOperations": {"checkoutEnabled": false, "resourceUploadEnabled": false, "publicDeploymentAuthorized": false}
+}

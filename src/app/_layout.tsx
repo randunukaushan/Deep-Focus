@@ -16,7 +16,7 @@ export default function RootLayout() {
     loadActiveSession().then((session) => {
       if (!session) return;
       router.replace({ pathname: '/focus/session', params: { durationMinutes: String(session.plannedDurationSeconds / 60), taskName: session.taskName ?? '' } });
-    });
+    }).catch(() => router.replace('/focus/recovery'));
   }, [router]);
 
   return (

@@ -6,7 +6,18 @@ Deep Focus is being developed as a cross-platform mobile application for people 
 
 ## Project Status
 
-Deep Focus is currently in **Phase 1 — Application Foundation**.
+Start with the [Final Build Guide](docs/revision/49-BUILD-ENTRY-HANDOFF-SI.md):
+the first coding task, phase order, feature contracts and remaining decisions.
+Use the [documentation map](docs/DOCUMENTATION_MAP.md) for authority and
+the [readiness sheet](docs/revision/18-IMPLEMENTATION-READINESS-AND-OWNER-DECISIONS.md)
+for detailed prerequisite history. The broad documentation consolidation pass is
+closed; complete remaining specifications within each selected feature task.
+The foundation checkpoint below is historical; it is not a fresh audit of every
+current feature or proof that the expanded enterprise contracts are implemented.
+
+Recorded foundation checkpoint: **Phase 1 — Application Foundation**. Confirm
+the actual current implementation against source and the readiness sheet before
+selecting a new task; this checkpoint is not a current feature-completion claim.
 
 - Phase 0 project-readiness work is complete.
 - The initial React Native and Expo project foundation exists.
@@ -75,7 +86,13 @@ The current mobile foundation uses:
 
 The exact installed versions are defined in [`package.json`](package.json) and [`package-lock.json`](package-lock.json).
 
-Backend, database, authentication-provider, state-management, and AI-provider choices must not be treated as approved commitments until an implementation requirement and the project documentation explicitly approve them.
+Approved direction: **Supabase PostgreSQL/Auth/Edge Functions**, **Expo SQLite**
+domain data, **Expo SecureStore** credentials and **Next.js** Public Website/Account
+Portal. See the [decision register](docs/revision/01-REQUIREMENTS-AND-DECISIONS.md)
+for the September 14–15 approval boundaries. These selections do not establish
+implemented/provisioned services. Next.js hosting, exact adapters/configuration,
+test tooling, state management and AI-provider choices remain subject to their
+documented gates; do not re-ask already approved platform choices.
 
 ## Architecture Direction
 
@@ -152,6 +169,10 @@ The reliable core focus-session system remains the highest implementation priori
 ## Project Documentation
 
 The documents in `docs/` are the primary implementation reference.
+
+The [enterprise documentation revision](docs/revision/README.md) is a research-backed **draft for owner review** covering the expanded product, January Website/Account Portal, security, monetization and Luna task preparation. It records confirmed requests separately from proposed decisions and does not silently replace the canonical documents below. Resolve its approval gates and reconcile affected canonical contracts before implementing new scope or providers.
+
+The revision also includes [Sri Lanka student/teacher research](docs/revision/10-SRI-LANKA-EDUCATION-RESEARCH-SI.md) and [bounded education implementation contracts](docs/revision/11-SRI-LANKA-EDUCATION-CONTRACTS.md). These preserve the January Website/Account Portal requirement while keeping the full teacher LMS and real-user pilot behind their own scope/privacy gates.
 
 ### Product and scope
 

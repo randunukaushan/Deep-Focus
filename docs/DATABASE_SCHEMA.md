@@ -10,6 +10,24 @@ API behavior is defined in `API_SPEC.md`.
 
 Security-sensitive database requirements should follow `SECURITY.md`.
 
+The [backend build contract](revision/14-BACKEND-API-DATABASE-BUILD-CONTRACT.md)
+now links a nine-table private-schema SQL prototype under `docs/revision/contracts`.
+It has an isolated-fixture execution guard and is not an applied migration. Its
+business RPCs, terminal-processing enforcement and full sync/reward/settings
+extensions remain incomplete. Structural/DTO checks are not SQL execution or
+proof that grants/RLS/transactions are secure. Do not expose its private tables
+to make a client SDK request work; implement the reviewed gateway/RPC boundary.
+
+Platform selection update (2026-09-14): the owner selected Supabase managed PostgreSQL and Supabase Auth. The logical structures below must be translated into reviewed PostgreSQL migrations, constraints, grants and RLS before use; they are not proof of an existing deployed schema. Expanded workspace/education/entitlement designs remain subject to their decision gates. See the [decision register](revision/01-REQUIREMENTS-AND-DECISIONS.md) and [draft data/security contracts](revision/04-BACKEND-SECURITY-AND-SYNC.md).
+
+Resource schema boundary: local resources/associations remain outside the generic cloud mirror. Optional paid cloud requires separate ownership, object-version and quota-reservation contracts before SQL/buckets are created. Local default and paid-cloud direction do not constitute an approved migration. See [12](revision/12-LOCAL-RESOURCES-AND-WORK-PLANNING.md).
+
+The [extension migration sequence](revision/16-BACKEND-EXTENSIONS-AND-OPERATIONS.md)
+adds proposed settings/session registry, break/reminder intent, snapshot/change
+retention, immutable progress ledgers, durable jobs/deletion journal and later
+AI/billing families. These are detailed migration requirements, not additional
+executed DDL. Do not infer that the nine-table prototype already provides them.
+
 ---
 
 ## 1. Database Goals
@@ -1261,17 +1279,17 @@ If persisted for performance or convenience, it must remain synchronized with it
 
 #### `starts_at`
 
-Optional timestamp representing when the goal period begins.
+Required UTC timestamp representing the inclusive start of the goal period.
 
 ```text
 starts_at
 ```
 
-May be automatically determined for standard periods.
+May be automatically determined for standard periods using `period_timezone`.
 
 #### `ends_at`
 
-Optional timestamp representing when the goal period ends.
+Required UTC timestamp representing the exclusive end of the goal period.
 
 ```text
 ends_at
@@ -1283,7 +1301,10 @@ For time-limited goals:
 ends_at >= starts_at
 ```
 
-when both values exist.
+and `starts_at < ends_at` is required for every goal. `period_timezone` is a
+required validated IANA timezone. Periods use `[starts_at, ends_at)`; weekly
+periods start on Monday. Boundaries are immutable after creation, including when
+the device timezone changes.
 
 #### `completed_at`
 
@@ -1351,7 +1372,7 @@ Progress should depend on goal type.
 
 ```text
 focus_time
-→ qualifying completed focus-session duration
+→ confirmed focused seconds from completed or cancelled terminal sessions
 
 session_count
 → qualifying completed focus-session count
@@ -1361,6 +1382,15 @@ task_completion
 ```
 
 The database should not accept arbitrary trusted progress values from the client when progress can be calculated from verified backend-managed records.
+
+For mobile-local goals, source events are attributed by their terminal
+`completed_at` or `cancelled_at` instant to an explicit half-open goal interval
+`[starts_at, ends_at)` derived in the stored `period_timezone` (validated IANA
+identifier). A saved cancelled session contributes its confirmed
+`focused_duration_seconds` only to `focus_time`; it is never a completed session
+for `session_count` or completion-only rewards. Active/paused sessions and pause
+duration do not contribute. Persisted goal progress is derived, not trusted
+client input. Existing session duration columns remain integer seconds.
 
 ### Goal Completion
 
@@ -1503,6 +1533,216 @@ The `goals` table should:
 - Integrate with tasks, sessions, analytics, and rewards
 - Remain simple enough for reliable V1 implementation
 
+## Mobile Local SQLite Domain Store and JSON Migration
+
+The owner-approved mobile domain store is Expo SQLite; this section defines its
+local schema and migration boundary. It is separate from Supabase/PostgreSQL and
+does not authorize a production/cloud migration. The local database is not an
+authentication credential store.
+
+### Ownership and IDs
+
+Every local row has `owner_id TEXT NOT NULL` and a stable text `id` (UUID for
+newly created domain entities). `owner_id` references `local_owners.id` through a
+composite ownership relationship. The bootstrap namespace `local:device` is a
+device-local guest namespace, not an authenticated identity. Account namespaces,
+when implemented, use the verified provider subject and remain separate. No
+legacy row is claimed, uploaded, or merged into an account automatically.
+
+### V1 local entities
+
+`local_owners(id TEXT PRIMARY KEY, kind TEXT CHECK kind IN ('device_local',
+'account'), created_at TEXT NOT NULL)` records namespace kind only; it is not an
+authorization substitute. `tasks` stores `id`, `owner_id`, `title`, nullable
+`description`, `status`, nullable `goal_id`, nullable `priority`, nullable
+`due_at`, nullable `completed_at`, `created_at`, and `updated_at`. `goals` stores
+`id`, `owner_id`, `title`, nullable `description`, `type`, `period`, `status`,
+positive `target_value`, `starts_at`, nullable `ends_at` and `period_timezone`,
+`legacy_open_period`, nullable `completed_at`, `created_at`, and `updated_at`.
+New goals require an explicit bounded interval/timezone. A migrated legacy goal
+retains its created-at lower bound and unbounded legacy semantics with
+`legacy_open_period=1`, `ends_at=NULL`, and `period_timezone=NULL`; do not invent
+a historical timezone/end or silently expire a user's existing goal.
+`focus_sessions` stores `id`, `owner_id`, nullable `task_id`, nullable historical
+`task_name`, `status`, positive `planned_duration_seconds`, non-negative integer
+`focused_duration_seconds` and `paused_duration_seconds`, required `started_at`,
+nullable `completed_at`, `cancelled_at`, `last_paused_at`, `last_resumed_at`,
+`created_at`, `updated_at`, and nullable `legacy_extra_json`. `user_settings`
+stores one `default_break_duration_minutes` (5, 10 or 15) per owner. Derived
+goal progress is queried from source rows, not stored as authority.
+
+Use `PRIMARY KEY(owner_id,id)` for owner-scoped entities. Use composite foreign
+keys `(owner_id, task_id)` and `(owner_id, goal_id)` so an association cannot
+cross namespaces; task deletion sets a historical session's `task_id` to NULL,
+not delete its session. `active_focus_sessions(owner_id, session_id)` stores the
+current/recoverable active-file pointer, including a terminal row awaiting retry.
+A partial unique index permits at most one `active` or
+`paused` focus session per owner. Enable SQLite foreign keys on every connection.
+Use ISO-8601 UTC text instants; validate `period_timezone` as an IANA zone at the
+domain boundary. Check status/type/period enums, nonblank IDs/titles, positive
+targets/durations, nonnegative measured seconds, and lifecycle timestamp
+consistency before insert/update. Preserve seconds units as integers; goal
+`focus_time.target_value` and derived progress use seconds, while session-count
+and task-completion values use integer counts. The UI may format/converts units
+explicitly; storage never guesses from numeric magnitude.
+
+`local_migrations(version INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL,
+completed_at TEXT NOT NULL)` records committed schema/data migrations. Record
+unknown legacy JSON fields in `legacy_extra_json` without interpreting them.
+Current supported fields are stored in typed columns and validated before
+import. No authentication tokens/passwords or resource files enter these tables.
+
+Core v1 columns and constraints are represented by this SQLite DDL:
+
+```sql
+CREATE TABLE local_owners (
+  id TEXT PRIMARY KEY NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('device_local', 'account')),
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE goals (
+  owner_id TEXT NOT NULL REFERENCES local_owners(id),
+  id TEXT NOT NULL,
+  title TEXT NOT NULL CHECK (length(trim(title)) > 0),
+  description TEXT,
+  type TEXT NOT NULL CHECK (type IN ('focus_time', 'session_count')),
+  period TEXT NOT NULL CHECK (period IN ('weekly', 'monthly')),
+  status TEXT NOT NULL CHECK (status IN ('active', 'completed', 'cancelled', 'expired')),
+  target_value INTEGER NOT NULL CHECK (target_value > 0),
+  starts_at TEXT NOT NULL,
+  ends_at TEXT,
+  period_timezone TEXT,
+  legacy_open_period INTEGER NOT NULL DEFAULT 0 CHECK (legacy_open_period IN (0, 1)),
+  completed_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  legacy_extra_json TEXT,
+  PRIMARY KEY (owner_id, id),
+  CHECK ((legacy_open_period = 1 AND ends_at IS NULL AND period_timezone IS NULL)
+      OR (legacy_open_period = 0 AND ends_at IS NOT NULL AND period_timezone IS NOT NULL
+          AND starts_at < ends_at)),
+  CHECK ((status = 'completed' AND completed_at IS NOT NULL)
+      OR (status <> 'completed' AND completed_at IS NULL))
+);
+
+CREATE TABLE tasks (
+  owner_id TEXT NOT NULL REFERENCES local_owners(id),
+  id TEXT NOT NULL,
+  title TEXT NOT NULL CHECK (length(trim(title)) > 0),
+  description TEXT,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled')),
+  goal_id TEXT,
+  priority TEXT CHECK (priority IS NULL OR priority IN ('low', 'medium', 'high')),
+  due_at TEXT,
+  completed_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  legacy_extra_json TEXT,
+  PRIMARY KEY (owner_id, id),
+  FOREIGN KEY (owner_id, goal_id) REFERENCES goals(owner_id, id),
+  CHECK ((status = 'completed' AND completed_at IS NOT NULL)
+      OR (status <> 'completed' AND completed_at IS NULL))
+);
+
+CREATE TABLE focus_sessions (
+  owner_id TEXT NOT NULL REFERENCES local_owners(id),
+  id TEXT NOT NULL,
+  task_id TEXT,
+  task_name TEXT,
+  status TEXT NOT NULL CHECK (status IN ('active', 'paused', 'completed', 'cancelled')),
+  planned_duration_seconds INTEGER NOT NULL CHECK (planned_duration_seconds > 0),
+  focused_duration_seconds INTEGER NOT NULL CHECK (focused_duration_seconds >= 0),
+  paused_duration_seconds INTEGER NOT NULL CHECK (paused_duration_seconds >= 0),
+  started_at TEXT NOT NULL,
+  completed_at TEXT,
+  cancelled_at TEXT,
+  last_paused_at TEXT,
+  last_resumed_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  legacy_extra_json TEXT,
+  PRIMARY KEY (owner_id, id),
+  FOREIGN KEY (owner_id, task_id) REFERENCES tasks(owner_id, id),
+  CHECK (focused_duration_seconds <= planned_duration_seconds),
+  CHECK ((status = 'completed' AND completed_at IS NOT NULL AND cancelled_at IS NULL)
+      OR (status = 'cancelled' AND cancelled_at IS NOT NULL AND completed_at IS NULL)
+      OR (status IN ('active', 'paused') AND completed_at IS NULL AND cancelled_at IS NULL))
+);
+
+CREATE UNIQUE INDEX one_open_focus_session_per_owner
+  ON focus_sessions(owner_id) WHERE status IN ('active', 'paused');
+
+CREATE TABLE active_focus_sessions (
+  owner_id TEXT PRIMARY KEY NOT NULL REFERENCES local_owners(id),
+  session_id TEXT NOT NULL,
+  FOREIGN KEY (owner_id, session_id) REFERENCES focus_sessions(owner_id, id)
+);
+
+CREATE TABLE user_settings (
+  owner_id TEXT PRIMARY KEY NOT NULL REFERENCES local_owners(id),
+  default_break_duration_minutes INTEGER NOT NULL
+    CHECK (default_break_duration_minutes IN (5, 10, 15)),
+  legacy_extra_json TEXT
+);
+
+CREATE TABLE local_migrations (
+  version INTEGER PRIMARY KEY NOT NULL,
+  name TEXT UNIQUE NOT NULL,
+  completed_at TEXT NOT NULL
+);
+```
+
+This first local-store implementation covers the currently implemented app goal
+types (`focus_time`, `session_count`) and periods (`weekly`, `monthly`);
+task-completion/daily/custom goals remain future schema extensions, not silently
+accepted rows. `target_value` is integer seconds for `focus_time`, integer counts
+for `session_count`. Existing app JSON targets for `focus_time` are input/display minutes;
+the migration converts that known legacy unit to seconds once (`minutes * 60`)
+after safe-integer validation. UI/domain adapters convert explicitly. Session
+columns remain integer seconds; this local schema change does not migrate the
+timer to milliseconds or adopt a V2 session representation. Preserve an existing
+goal's lower bound at its `created_at`; because old rows have no timezone/end,
+mark them legacy-open rather than fabricate bounded historical dates. Newly
+created goals always use the bounded interval contract.
+
+### All-or-nothing import and cutover
+
+At startup, one shared initialization barrier blocks every repository read/write
+until schema creation and legacy inventory/import finish. Read every existing
+source (`deep-focus-active-session.json`,
+`deep-focus-session-history.json`, `deep-focus-tasks.json`,
+`deep-focus-goals.json`, and `deep-focus-settings.json`) strictly before
+starting writes. Distinguish absent files from unreadable, malformed, wrong-shape,
+invalid-record and duplicate/conflicting-ID failures. Validate all records and
+relationships first; any malformed/ambiguous/conflicting source aborts the
+complete import. Never convert corrupt input to empty success or silently filter
+invalid records.
+
+Import the complete validated snapshot, device-local owner row and migration
+marker in one exclusive SQLite transaction. Identical duplicate session IDs in
+active/history are one record only if all modeled and unknown fields match;
+conflicts abort. More than one active/paused session aborts. On exception/process
+death, SQLite rolls back all imported rows and marker; source JSON stays intact,
+and next startup can retry. Only after commit may the app read/write SQLite.
+After cutover, keep every original JSON source file unchanged; cleanup is not part
+of this migration. Concurrent writers wait behind the same initialization gate
+and transactional queue. Mutations must propagate failures—never report Saved or
+fall back to an empty collection on persistence failure.
+
+### Required migration evidence
+
+Run actual SQLite-backed synthetic tests for empty/missing sources, full valid
+import, unknown-field preservation, injected failure at each insert/marker,
+rollback and restart retry, identical duplicate retry, conflicting duplicate,
+malformed/truncated JSON, invalid units/status/timestamps/relations, concurrent
+startup/writes, active-session uniqueness, and unchanged JSON sources. Repeat
+the migration and assert no duplicate rows. Android/iOS installed-build process
+death/restart and disk-full tests plus independent data-integrity/security review
+remain required before acceptance or integration. This schema does not authorize
+production Supabase migration, user-data deletion, backup/key-policy claims or
+deployment.
+
 ---
 
 ## 9. Streaks Table
@@ -1512,6 +1752,12 @@ The `goals` table should:
 The `streaks` table stores the user's current consistency streak and longest achieved streak.
 
 The table should support efficient streak presentation while keeping completed focus-session history as the authoritative source of qualifying productivity activity.
+
+Day attribution, accepted late arrivals, today/yesterday display and rebuild rules
+must be frozen with the versioned policy in
+[20](revision/20-SETTINGS-PROGRESS-AND-UNITS.md). Stored counters alone are not
+enough for idempotent out-of-order processing. This legacy inventory is not the
+complete contribution/ledger/projection schema or an executed migration.
 
 ### Table: `streaks`
 
@@ -2367,31 +2613,17 @@ Reasonable maximum duration limits should also be enforced by application valida
 
 ### Default Values
 
-The database or application initialization layer should provide consistent defaults.
+Use the same versioned approved default policy as the application. The previous
+all-in-one example with notification/AI booleans true was illustrative, not an
+approved production initializer or grant of permission/consent. The current
+account allowlist excludes device-only notification/motion/feedback state.
 
-Conceptually:
-
-```text
-theme = system
-
-default_focus_duration_minutes = 25
-default_break_duration_minutes = 5
-
-notifications_enabled = true
-focus_reminders_enabled = true
-break_reminders_enabled = true
-achievement_notifications_enabled = true
-
-sound_enabled = true
-haptics_enabled = true
-
-reduced_motion = false
-
-ai_features_enabled = true
-ai_coaching_notifications_enabled = false
-```
-
-Final defaults should remain aligned with approved product behavior.
+[20](revision/20-SETTINGS-PROGRESS-AND-UNITS.md) records current local defaults,
+the proposed retention baseline and unresolved values. Do not add database
+defaults for values still awaiting approval or turn a storage error into a
+successful default-settings row. A settings preference never schedules an OS
+notification, enables an external AI transfer or changes an active session by
+itself. The legacy column inventory above is not the new account-table migration.
 
 ### Local and Cloud Settings
 
@@ -3431,6 +3663,26 @@ The database should keep authoritative productivity history separate from derive
 
 ---
 
+## Bounded classroom database reconciliation — September 30
+
+[Classroom wire/data](revision/40-CLASSROOM-WIRE-DATA-AND-TRANSACTION-TESTS.md)
+proposes eleven logical tables and atomic groups.
+[Access/integrity and isolated-test preparation](revision/41-CLASSROOM-RECONCILIATION-AND-SQL-TEST-PREPARATION.md)
+maps each table and CW operation to review obligations. This is DRAFT / HIGH /
+REVIEW_PENDING, not executable DDL, applied migration or tested RLS.
+
+Do not expand the existing nine-table prototype by assuming classroom ownership
+is the same as personal ownership. Class/assignment/member composite integrity,
+private Task ownership, unique learner+assignment acceptance, immutable revisions,
+sharing episodes and scoped command receipts need explicit reviewed constraints.
+Class erasure cannot cascade into learners' independent private Tasks.
+
+Direct client table grants are not implied by a read DTO. Exact runtime/owner
+roles, identity bridge, grants/functions/search_path, private Task tombstones and
+privacy storage inventory require review before SQL implementation. All TX-01–24
+remain NOT_RUN. A separate disposable target and explicit execution authority
+are required; no production migration or service installation is authorized here.
+
 # Conclusion
 
 ---
@@ -3465,8 +3717,11 @@ Additional tables, indexes, and infrastructure should be introduced only when th
 
 ## 25. V1 AI Usage Tables
 
-The approved five-action introduction and rewarded-unlock behavior require
-server-authoritative usage records.
+Approved limited free AI allowance and optional paid AI access require trusted
+usage records. The old five-action/ad-only model is superseded. Unobtrusive launch
+ads are required, but rewarded format/provider and exact grants remain undecided.
+The legacy grant table below still needs versioned free-allowance/paid-source and
+period-deduplication refinement before migration; it is not a finished paid ledger.
 
 ### Task and Reminder Schema Extensions
 
@@ -3539,6 +3794,14 @@ Recommended indexes include:
 
 ### Table: `ai_action_requests`
 
+Historical minimum columns follow, not an executable durable-request migration.
+[23](revision/23-AI-GENERATION-RECOVERY-AND-REVISION.md) requires a stable generation
+identity, reservation/job atomicity, server deadline, claim fencing, one successful
+consumption/result publication and a reviewed deduplication barrier. Required
+generation keys supersede the optional-key example for that new draft protocol.
+Separate short-lived input/result content from usage metadata; freeze approved
+retention and ownership constraints before real storage. No migration ran here.
+
 | Column | Type | Null | Responsibility |
 | --- | --- | --- | --- |
 | `id` | UUID | No | Stable request identifier |
@@ -3566,6 +3829,49 @@ Recommended indexes include:
 - `(status, created_at)` for safe recovery of interrupted requests where required.
 
 ### Proposal Storage
+
+The draft in [24](revision/24-DAILY-PLAN-AND-GENERATION-WIRE-CONTRACT.md) introduces
+owned DailyPlan/ordered blocks separately from actual sessions, and exact v2
+plan/reminder apply. Before migration, define composite ownership constraints,
+task/reminder deletion/detachment, immutable proposal attribution, receipt/change
+atomicity, versioned sync/snapshot/export and account deletion. UTC timestamps do
+not retain an IANA zone: store that separately. No new SQL table or migration is
+executed by the JSON DTOs; plan support must not be enabled on the old feed schema.
+
+[25](revision/25-SAVED-PLAN-LIFECYCLE-AND-PRIVACY.md) refines that design into
+owned header/block/context-dependency storage, one exclusive reminder binding,
+transactional lifecycle/cascades, privacy-epoch invalidation and legacy/v2 feed
+separation. These are proposed constraints, not executed DDL. Follow PL-01/02 wire
+reconciliation before PL-03 isolated SQL/RPC tests; privileged-role enforcement,
+fan-out bounds, retention and independent review remain prerequisites.
+
+[26](revision/26-SAVED-PLAN-MANAGEMENT-WIRE.md) now types PL-01 reads/mutations:
+initial plan state active/version 1, current update timestamps, exact owned task/
+reminder version checks and one minimal receipt for the atomic domain intent.
+It adds no SQL and does not make the v1 sync command union accept plan writes.
+
+[27](revision/27-PLAN-REPLICATION-SNAPSHOT-EXPORT-WIRE.md) requires owner-head
+privacy epochs and durable transaction ID/boundary/public-count/digest metadata
+from all writers for complete v2 groups. Snapshot H and all records share one
+consistent transaction snapshot. Oversized groups trigger snapshot recovery,
+never truncation. These are migration requirements, not executed DDL or reviewed
+RPCs; full export packaging, bounded worker policy and isolated tests remain open.
+
+[28](revision/28-ACCOUNT-EXPORT-ARTIFACT-CONTRACT.md) supplies the outer export
+draft; real source mapping/policy tests remain open.
+[29](revision/29-PLAN-DATABASE-RPC-TEST-PACKET.md) now details PL-03's relational
+responsibilities, trusted RPC boundaries, writer/cursor cutover, migration recovery
+and 24 NOT_RUN DB cases. It adds no DDL. Inventory the nine-table prototype's
+missing foundations before extending it; do not invent historical group identity,
+blindly append plan entities or treat privileged prototype grants as production safety.
+
+[22](revision/22-REWARD-GOAL-AND-AI-WIRE-CONTRACT.md) specifies proposed read/apply
+DTOs, stable operation identity and one consumed marker per owned proposal.
+Short-lived structured content and durable duplicate-prevention metadata have
+different retention purposes. Neither these response shapes nor existing legacy
+grant tables are executable migrations for the free/paid/reservation lifecycle.
+Freeze approved retention, ownership constraints, transaction/RPC boundaries and
+failure tests before storing real data.
 
 Persisting full AI proposals is not required by default. If secure confirmation or
 retry requires server-side proposal state, use a short-lived store containing only

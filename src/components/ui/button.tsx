@@ -36,6 +36,7 @@ export type ButtonProps = Omit<
   fullWidth?: boolean;
   icon?: ReactNode;
   accentColor?: string;
+  loadingAccessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -47,6 +48,7 @@ export function Button({
   fullWidth = false,
   icon,
   accentColor,
+  loadingAccessibilityLabel,
   style,
   accessibilityLabel,
   accessibilityState,
@@ -60,16 +62,17 @@ export function Button({
   const labelColor = getLabelColor(variant, theme.text, accentColor);
   const disabledBackground = theme.backgroundElement;
   const disabledText = theme.textSecondary;
+  const accessibleName = accessibilityLabel ?? label;
 
   return (
     <Pressable
       {...pressableProps}
-      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityLabel={loading ? loadingAccessibilityLabel ?? `${accessibleName}, loading` : accessibleName}
       accessibilityRole="button"
       accessibilityState={{
         ...accessibilityState,
-        busy: loading || accessibilityState?.busy,
-        disabled: isDisabled || accessibilityState?.disabled,
+        busy: loading || accessibilityState?.busy === true,
+        disabled: isDisabled || accessibilityState?.disabled === true,
       }}
       disabled={isDisabled}
       onPress={onPress}

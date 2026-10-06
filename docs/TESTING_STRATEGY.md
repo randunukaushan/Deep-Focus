@@ -1,5 +1,71 @@
 # Deep Focus Testing Strategy
 
+[Definition of Done](ai/DEFINITION_OF_DONE.md) owns the cross-project evidence
+matrix and implemented/verified/reviewed/production-ready distinctions;
+[execution policy](ai/AI_EXECUTION_POLICY.md) owns risk and STOP conditions.
+This strategy supplies domain testing requirements, not a parallel completion
+policy. Schema fixtures and documentation checks do not verify a deployed backend.
+
+`node docs/revision/check-rewards-ai-contracts.mjs` checks the six reward/AI
+wire contracts, DTO rejection cases and small graph/receipt/usage reference
+invariants under [22](revision/22-REWARD-GOAL-AND-AI-WIRE-CONTRACT.md). It does not
+test actual ownership/RLS, allowance accounting, cryptographic digests, atomic
+apply/rollback, provider costs or mobile/browser behavior.
+
+`node docs/revision/check-ai-generation-lifecycle.mjs` checks the proposed
+[23](revision/23-AI-GENERATION-RECOVERY-AND-REVISION.md) transition model and
+synthetic serial/replay/revision examples. It does not run concurrent DB/provider
+work. AG-T01–24 remain NOT RUN integration scenarios, including completion/cancel
+races, stale worker fences, durable response-loss recovery and revision/apply races.
+
+`node docs/revision/check-planning-contracts.mjs` checks the strict
+[24](revision/24-DAILY-PLAN-AND-GENERATION-WIRE-CONTRACT.md) daily-plan and generation
+wire, v1/v2 separation and synthetic time/binding examples across five API slices.
+DP-T01–16 remain NOT RUN integration checks. Shape/serial examples do not verify
+actual DST input UX, RLS, notifications, race-free transactions or plan sync/deletion.
+
+`node docs/revision/check-plan-lifecycle.mjs` exercises synthetic saved-plan
+state/replay/cascade/privacy-epoch and legacy-projection examples under
+[25](revision/25-SAVED-PLAN-LIFECYCLE-AND-PRIVACY.md). It does not validate a new
+wire schema, authorize a real actor, revoke a download URL or execute a migration.
+PL-T01–12 remain NOT RUN real database/device/privacy acceptance scenarios.
+
+`node docs/revision/check-plan-management.mjs` validates
+[26](revision/26-SAVED-PLAN-MANAGEMENT-WIRE.md)'s typed manual commands/read/receipt,
+six-file API identity/ref checks and synthetic reminder/version examples.
+PM-T01–10 are NOT RUN real-system cases. Temporal examples remain in the planning
+checker; neither checker proves authorization, hashing, atomic DB writes or UI.
+
+`node docs/revision/check-replication-v2.mjs` checks
+[27](revision/27-PLAN-REPLICATION-SNAPSHOT-EXPORT-WIRE.md)'s DTOs, seven-file API
+references and synthetic group/epoch/page/export examples. RP-T01–12 remain NOT
+RUN real-system cases. It does not compute JCS digests, enforce real byte limits,
+parse/authenticate actual cursors, execute SQL/SQLite or revoke any download.
+
+`node docs/revision/check-account-export.mjs` validates
+[28](revision/28-ACCOUNT-EXPORT-ARTIFACT-CONTRACT.md)'s outer artifact, required
+sections, unknown-field rejection and synthetic count/binding/coverage examples.
+AE-T01–10 are NOT RUN runtime cases. No source-inventory audit, JCS hash, real
+ownership query, worker/download/browser behavior or legal coverage is certified.
+
+`node docs/revision/check-plan-database-packet.mjs` validates the
+[PL-03 specification](revision/29-PLAN-DATABASE-RPC-TEST-PACKET.md)'s seven-card
+dependency graph, seven open gates and 24 Given/When/Then scenarios. Its negative
+fixtures reject invented execution/review/evidence and unscheduled cases. All
+DB-T01–24 remain NOT_RUN; this command is not a database harness or migration test.
+
+`node docs/revision/check-mobile-plan-recovery.mjs` checks
+[PL-04](revision/30-MOBILE-PLAN-STORAGE-OUTBOX-RECOVERY.md)'s command-state reference
+and document inventories. MP-T01–20 remain NOT_RUN: synthetic flags are not real
+authentication, transaction durability, privacy purging, cryptographic validation,
+native alerts, accessibility, migration/backup or multi-device proof.
+
+`node docs/revision/check-plan-activation.mjs` checks
+[PL-05](revision/31-PLAN-ACTIVATION-AND-RECOVERY-GATES.md)'s unfilled evidence
+inventory and synthetic candidate/environment/review gate rules. PASS means the
+actual draft remains ineligible and reference cases behaved as expected, not
+that any evidence is authenticated or deployment authorized. PA-T01–12 are NOT_RUN.
+
 This document defines the testing strategy used to verify the quality, reliability, compatibility, accessibility, security, privacy, and performance of the Deep Focus application.
 
 Testing should be integrated throughout development rather than treated as an activity performed only before release.
@@ -73,6 +139,12 @@ Testing should provide useful confidence without creating unnecessary developmen
 ---
 
 ## 3. Testing Scope
+
+The [core reliability contract](revision/13-CORE-RELIABILITY-CONTRACTS.md)
+provides CR-T01–20 and a read-only eight-case diagnostic against current pure
+engine source. This diagnostic is not the approved future test harness and does
+not test React, storage, native lifecycle, backend or security. Actual runs and
+known failures belong in the revision audit, not an assumed passing release report.
 
 ---
 
@@ -149,9 +221,41 @@ Examples may include:
 - Reward eligibility
 - Goal progress
 - Productivity score calculations
-- Burnout risk calculations where implemented
+- No unsupported health prediction or diagnostic labels in activity/AI summaries
 - Data validation
 - Formatting utilities
+
+The [safety/commitment contract](revision/19-SAFETY-AND-COMMITMENT-CONTRACT.md)
+adds SC-T01–20 for the approved constraints and proposed exit behavior. Test
+ordinary exit restrictions separately from Emergency exit availability; include
+offline use, save failure/restart, no XP penalty and completion/cancel races.
+Those cases are NOT RUN; a documentation checker is not runtime verification.
+
+[Settings/progress cases SP-T01–24](revision/20-SETTINGS-PROGRESS-AND-UNITS.md)
+add minute/second/ms migration, device/account precedence, OS/AI consent,
+late-arrival streaks, reward idempotency and current/stale/unavailable projection
+boundaries. These are also NOT RUN; sample DTO and unit-arithmetic checks only
+validate the corresponding documentation examples.
+
+The selected [extension wire slice](revision/contracts/personal-extensions.openapi.json)
+adds schema fixtures for breaks, reminder intents/pages and typed deletion
+receipts. Its checker compares twelve operations with the extension inventory
+and shared sync commands, and verifies local references across both OpenAPI
+slices. Version-header parsing fixtures are a documentation reference only.
+Actual tests must still verify Edge/Next/mobile header forwarding, receipt replay
+after deletion, wrong-owner rejection, cursor recovery, response cross-field
+equality and reminder cancellation on device reconnection. No such runtime pass
+is implied by a schema/metadata check.
+
+The [operations checker](revision/check-operations-contracts.mjs) covers additional
+sync/privacy/billing DTO shapes and all three draft OpenAPI slices. Its synthetic
+prices and receipt strings are not real offers/credentials or approved policies.
+Extend BX/WP runtime tests with interrupted push/poll/snapshot installation,
+filtered internal profile changes, wrong entity/owner/cursor, lost deletion
+confirmation response, pre-confirmation receipt denial, capsule expiry,
+current-session revocation and unavailable/revised billing catalog. Those runtime
+cases are NOT RUN here. JSON shape checks cannot prove hashes, auth, crypto,
+retention, provider purchase eligibility, worker recovery or deletion correctness.
 
 Unit tests should:
 
@@ -1733,10 +1837,14 @@ When the conditional feature is enabled, verify:
 
 Verify:
 
-- an eligible user receives exactly five introductory actions once;
+- an eligible user receives the configured free allowance without duplicate
+  grants; amount/renewal fixtures come from the approved policy, not a fixed five;
+- paid AI grants require verified purchase ownership and cannot be forged by a
+  client flag; buying AI does not imply an unapproved ad-removal benefit;
 - a successful validated AI result consumes one action;
-- provider failure, malformed response, cancellation, and internal failure do not
-  consume an action;
+- terminal provider failure, malformed response, accepted cancellation and
+  internal failure consume no action; lost response alone leaves status unknown
+  until recovery, while cancellation after committed completion is not a refund;
 - concurrent requests cannot overspend the same remaining action;
 - idempotent retry does not consume an additional action;
 - proposal apply does not consume a second AI action;
@@ -1784,6 +1892,23 @@ evidence cannot be completed without weakening the 2027-01-01 release target or
 core release quality.
 
 ---
+
+## Bounded classroom verification boundary — September 30
+
+The [classroom wire packet](revision/40-CLASSROOM-WIRE-DATA-AND-TRANSACTION-TESTS.md)
+and [isolated SQL preparation](revision/41-CLASSROOM-RECONCILIATION-AND-SQL-TEST-PREPARATION.md)
+provide the scoped API/table matrix and test admission gates.
+`node docs/revision/check-classroom-contracts.mjs` validates strict DTO fixtures,
+references, document coverage and NOT_RUN packet integrity only; it executes
+no database, API, RLS, device or migration test.
+
+TX-01–24 need authorized disposable infrastructure, synthetic identities,
+representative caller roles, valid positive rows, separate connection barriers,
+failpoints and read-only post-commit oracles. Include direct SQL/RPC/view denial,
+pooled identity leakage, altered-command replay, both race orders and isolated
+restore/privacy suppression. Passing as an administrator is not user isolation.
+CT/mobile/locale/accessibility cases remain separate. No independent review or
+production readiness can be inferred from document coverage.
 
 # Conclusion
 

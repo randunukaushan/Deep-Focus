@@ -1,5 +1,13 @@
 # Deep Focus UI/UX Design Specification
 
+September 2026 reconciliation: the owner approved blue/navy/coral direction and
+Home / Plan / Focus / Progress / Profile, with Rewards inside Progress. Exact
+replacement tokens and rendered accessibility evidence are still pending. The
+[experience build contract](revision/15-EXPERIENCE-AND-NAVIGATION-BUILD-CONTRACT.md)
+contains proposed token pairs and bounded implementation cases. Older visual
+examples elsewhere in this large document are not permission to reinstate mint
+as the brand primary or the old bottom tabs. No app UI was migrated by this edit.
+
 ---
 
 ## Overview
@@ -519,13 +527,12 @@ The color system should:
 
 ### 2. Primary Brand Color
 
-**Deep Focus Mint**
+**Deep Focus Blue — approved direction, exact token pending**
 
-```text
-#7FE5B6
-```
-
-Deep Focus Mint is the primary Deep Focus action and brand accent.
+The supplied blue/navy/coral references replace the old mint-primary direction.
+Use semantic `primary` and `onPrimary` pairs, with light/dark variants verified
+together. The earlier `#7FE5B6` value is historical, not the replacement primary.
+Do not infer production token approval from an existing local source edit.
 
 **Represents**
 
@@ -543,8 +550,9 @@ Deep Focus Mint is the primary Deep Focus action and brand accent.
 - Selected controls
 - Important interactive highlights
 
-Mint is an action and highlight color, not a large background. Use Deep Focus Navy
-for app surfaces so the interface remains calm and readable during long sessions.
+The primary accent is for actions and highlights, not large saturated backgrounds.
+Use light surfaces in light mode and navy surfaces in dark mode. Coral marks the
+brand focal point; it is not interchangeable with error or success semantics.
 
 ---
 
@@ -849,7 +857,7 @@ Deep Focus may adapt supporting accent colors according to the user's current co
 
 #### Focus Session
 
-**Primary Accent:** Deep Focus Mint
+**Primary Accent:** the approved blue direction, using a verified primary token pair
 
 Focus session interfaces should minimize competing colors and emphasize only information required for the active session.
 
@@ -862,7 +870,7 @@ Typical emphasized elements may include:
 
 #### Recovery Mode
 
-**Primary Accent:** Deep Focus Navy surfaces with restrained Mint only for the
+**Primary Accent:** Deep Focus Navy surfaces with restrained blue only for the
 current action or progress state.
 
 Recovery experiences create distinction through calmer content and less visual
@@ -7040,10 +7048,13 @@ Possible controls include:
 - Pause Session
 - Resume Session
 - End Session
-- Emergency Exit where required
+- Separate Emergency Exit, including when ordinary End early is disabled
 - Sound controls where enabled
 
-Control availability may depend on the selected Focus Mode.
+Ordinary control availability may depend on the selected Focus Mode. The owner
+confirmed that a pre-session setting disabling ordinary End early must not hide
+or disable the separate Emergency exit. This is a design requirement, not a claim
+that the current app has implemented strict-mode controls.
 
 Controls should:
 
@@ -7092,7 +7103,11 @@ when the underlying outcomes differ.
 
 ##### Emergency Exit
 
-High-commitment Focus Modes should still provide a safe way to exit when necessary.
+High-commitment Focus Modes must retain a separate Emergency exit even when
+ordinary End early is disabled in pre-session Settings. Exact interaction and
+in-session preference rules remain proposed in the
+[safety contract](revision/19-SAFETY-AND-COMMITMENT-CONTRACT.md);
+do not invent a countdown, PIN or third-party approval requirement.
 
 Emergency exit behavior should:
 
@@ -8047,7 +8062,9 @@ or:
 You have reported lower energy across several recent sessions. Consider additional recovery time if helpful.
 ```
 
-Any stronger burnout-related feature should require appropriate validation before stronger claims are introduced.
+No stronger burnout-related feature is approved. A future proposal needs separate
+owner scope approval and evidence/privacy/safety/claims review before any such
+claim is considered; this example does not authorize a health feature.
 
 ---
 
@@ -10457,7 +10474,10 @@ Emergency confirmation should:
 
 ##### Emergency Exit Design
 
-Emergency exit controls should remain discoverable without being easy to activate accidentally.
+Emergency exit controls must remain discoverable, including when ordinary End
+early is disabled, without being easy to activate accidentally. Account deletion
+and focus emergency exit are different actions; do not reuse deletion's recent-
+authentication, network or irreversible-data warnings for a focus exit.
 
 The interface should not create a situation where necessary device access becomes practically impossible.
 
@@ -10843,10 +10863,14 @@ If users repeatedly need to move through many intermediate screens to reach comm
 The primary mobile application uses a Bottom Navigation Bar for access to the five main destinations:
 
 - Home
+- Plan
 - Focus
-- Analytics
-- Rewards
+- Progress
 - Profile
+
+Rewards and history are nested under Progress. Plan exposes existing tasks/goals
+and only separately approved planning tools; it does not approve every future
+calendar/education capability by becoming a tab.
 
 Each destination represents a major product area.
 
@@ -10919,6 +10943,8 @@ Once a session begins, navigation should prioritize maintaining the session cont
 
 ### 8.6 Analytics Navigation
 
+Analytics is a capability within the Progress destination, not a separate tab.
+
 Analytics navigation may organize productivity information through related views such as:
 
 - Daily
@@ -10935,6 +10961,8 @@ Users should be able to move from summary information to additional detail witho
 ---
 
 ### 8.7 Rewards Navigation
+
+Enter Rewards from Progress at `/progress/rewards`. It is not a primary tab.
 
 Rewards navigation may provide access to:
 
@@ -11614,7 +11642,7 @@ Implementation should remain aligned with `ARCHITECTURE.md`, `COMPONENT_LIBRARY.
 ### 9.1 Screen List
 
 The canonical V1 full-screen route inventory is defined in
-`V1_SCREEN_MAP.md`. It includes 26 routes: 23 required routes and three
+`V1_SCREEN_MAP.md`. It includes 27 routes: 24 required routes and three
 conditional routes. This specification remains the source for screen-level
 interaction and visual requirements, while `V1_FEATURE_SCOPE.md` remains the
 canonical feature boundary.
@@ -11625,7 +11653,10 @@ proposal states are not counted as independent full-screen routes.
 
 Authentication and account functionality is part of V1. Password recovery and
 email verification behavior remains conditional on the approved authentication
-provider and policy. No provider is selected by this screen map.
+policy. Supabase Auth is selected; its exact verification/recovery policies
+remain gated. Expo SecureStore is selected for mobile credentials. Assessment
+routes are available, but optional answers can be skipped without granting
+consent or enabling paid/social/AI features.
 
 ---
 
@@ -15869,7 +15900,11 @@ Future versions may introduce:
 - Optional Wearable-Assisted Insights
 - Long-Term Productivity Pattern Analysis
 
-Predictive features such as burnout-risk estimation or real-time productivity prediction should only be introduced after their inputs, limitations, safety requirements, privacy implications, and validation methods are clearly defined.
+Burnout-risk estimation is not approved. A future health-related proposal needs
+separate owner scope approval plus evidence, safety, privacy and claims review;
+this future list cannot admit it automatically. Non-clinical planning estimates
+also require defined inputs, limitations and validation, and must not be presented
+as health measurements or guaranteed productivity predictions.
 
 Future intelligence should improve personalization without reducing transparency or user control.
 
@@ -16001,7 +16036,7 @@ View Goals
 
 Bottom Navigation
 
-Home | Focus | Analytics | Rewards | Profile
+Home | Plan | Focus | Progress | Profile
 
 ────────────────────────────
 ```
@@ -16634,7 +16669,7 @@ The Home Dashboard should use the primary Bottom Navigation Bar defined by the N
 Primary destinations are:
 
 ```text
-Home | Focus | Analytics | Rewards | Profile
+Home | Plan | Focus | Progress | Profile
 ```
 
 `Home` should appear as the active destination.
@@ -18214,7 +18249,7 @@ The application should preserve valid break progress whenever possible.
 The True Zen Break should:
 
 - Use calm approved colors
-- Use Deep Focus Navy surfaces and reserve Mint for an explicit action or progress state
+- Use Deep Focus Navy dark-mode surfaces and reserve the primary blue token for an explicit action or progress state
 - Reduce visual intensity
 - Maintain generous spacing
 - Use readable typography
@@ -19748,15 +19783,15 @@ Interactions should remain responsive and predictable.
 
 #### Navigation
 
-The Analytics screen is a primary application destination.
+The analytics overview belongs to the Progress primary destination at `/progress`.
 
 ```text
 Bottom Navigation
       ↓
-Analytics
+Progress (analytics overview)
 ```
 
-When Analytics is active, the Analytics tab should display the selected state.
+When the analytics overview is active, the Progress tab displays the selected state.
 
 Users may navigate into detail screens such as:
 
@@ -19787,10 +19822,10 @@ The Analytics screen should use the primary Bottom Navigation Bar during normal 
 Primary destinations remain:
 
 ```text
-Home | Focus | Analytics | Rewards | Profile
+Home | Plan | Focus | Progress | Profile
 ```
 
-`Analytics` should appear as the active destination.
+`Progress` should appear as the active destination.
 
 ---
 
@@ -19904,13 +19939,22 @@ Future versions may include:
 - Cross-Device Analytics
 - Advanced Recovery Pattern Analysis
 
-Burnout-related predictive features should only be introduced after their inputs, validation methods, safety boundaries, privacy implications, and limitations are clearly defined.
+Burnout-related prediction is not approved; it requires a separate owner scope
+decision plus appropriate evidence, safety, privacy and claims review. Current
+analytics may describe verified work/break activity or clearly attributed self-
+reports, not infer a mental-health state or block work based on a health score.
 
 Future analytics should improve understanding without introducing surveillance, unsupported health claims, or unnecessary productivity pressure.
 
 ---
 
 ### 9.16 Rewards
+
+All numeric XP/level values and recovery-XP examples in this section are layout
+illustrations, not a frozen reward formula. Use the versioned approved rule
+catalog and truthful current/pending/stale/unavailable states in
+[20](revision/20-SETTINGS-PROGRESS-AND-UNITS.md). A failed projection is not zero
+earned XP; a rest mockup does not authorize a new reward source.
 
 #### Version Availability
 
@@ -20508,10 +20552,12 @@ Reward browsing should never prevent users from returning quickly to core produc
 
 #### Navigation
 
-The Rewards screen is a primary application destination.
+The Rewards screen is a nested Progress destination, not a primary tab.
 
 ```text
 Bottom Navigation
+      ↓
+Progress
       ↓
 Rewards
 ```
@@ -20519,10 +20565,10 @@ Rewards
 When Rewards is active:
 
 ```text
-Home | Focus | Analytics | Rewards | Profile
+Home | Plan | Focus | Progress | Profile
 ```
 
-`Rewards` should appear as the selected destination.
+`Progress` remains the selected bottom destination; the nested screen title is Rewards.
 
 Users may navigate to detail views such as:
 
@@ -20546,7 +20592,9 @@ Back navigation should restore the previous Rewards context where practical.
 
 #### Bottom Navigation
 
-The Rewards screen should use the primary Bottom Navigation Bar during normal application use.
+When the primary Bottom Navigation Bar is visible on Rewards, Progress remains
+selected. Back returns to the previous Progress context; it must not loop through
+the legacy `/rewards` compatibility redirect.
 
 The navigation bar should follow the rules defined in Section 8 and `7.4 Navigation Components`.
 
@@ -21469,7 +21517,7 @@ The Profile screen should use the primary Bottom Navigation Bar during normal ap
 Primary destinations remain:
 
 ```text
-Home | Focus | Analytics | Rewards | Profile
+Home | Plan | Focus | Progress | Profile
 ```
 
 `Profile` should appear as the selected destination.
@@ -22932,8 +22980,9 @@ must not display medical, psychological, fatigue, attention, or burnout claims.
 Before an AI request begins, the interface should make unavailable access states
 understandable.
 
-The first five eligible AI actions are introductory free actions. When none
-remain, the user may be offered a rewarded unlock with:
+Limited free allowance and optional paid AI access are approved; exact amounts
+and prices are pending. Initial release includes unobtrusive ads, not an ads-free
+promise. If rewarded AI access is selected as one format, its offer must include:
 
 - a clear explanation of what is being unlocked;
 - an optional `Watch Ad to Unlock` action;

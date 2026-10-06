@@ -3,6 +3,12 @@ import type { FocusSession, SessionProjection } from './session-types';
 const SECOND_MS = 1000;
 
 export function createFocusSession(durationMinutes: number, taskName?: string, now = Date.now()): FocusSession {
+  if (!Number.isFinite(durationMinutes) || durationMinutes <= 0 || !Number.isSafeInteger(durationMinutes * 60)) {
+    throw new RangeError('INVALID_INPUT: duration must represent positive whole seconds');
+  }
+  if (!Number.isFinite(now) || !Number.isFinite(new Date(now).getTime())) {
+    throw new RangeError('INVALID_INPUT: invalid current time');
+  }
   const timestamp = new Date(now).toISOString();
   return {
     id: `focus-${now}-${Math.random().toString(36).slice(2, 8)}`,
@@ -17,9 +23,26 @@ export function createFocusSession(durationMinutes: number, taskName?: string, n
 }
 
 export function projectFocusSession(session: FocusSession, now = Date.now()): SessionProjection {
+  validateFocusSession(session);
+  if (session.status === 'completed' || session.status === 'cancelled') {
+    const focusedSeconds = session.focusedDurationSeconds;
+    const pausedSeconds = session.pausedDurationSeconds;
+    return {
+      focusedSeconds,
+      pausedSeconds,
+      remainingSeconds: Math.max(0, session.plannedDurationSeconds - focusedSeconds),
+      progress: session.plannedDurationSeconds === 0 ? 0 : focusedSeconds / session.plannedDurationSeconds,
+    };
+  }
+
   const startedAt = Date.parse(session.startedAt);
+  if (!Number.isFinite(now) || !Number.isFinite(new Date(now).getTime())) {
+    throw new RangeError('INVALID_INPUT: invalid current time');
+  }
   const pausedAt = session.lastPausedAt ? Date.parse(session.lastPausedAt) : undefined;
-  const currentPauseSeconds = session.status === 'paused' && pausedAt ? elapsedSeconds(pausedAt, now) : 0;
+  const latestEvent = Math.max(startedAt, pausedAt ?? startedAt, session.lastResumedAt ? Date.parse(session.lastResumedAt) : startedAt);
+  if (now < latestEvent) throw new RangeError('CLOCK_UNCERTAIN: time precedes the latest session event');
+  const currentPauseSeconds = session.status === 'paused' && pausedAt !== undefined ? elapsedSeconds(pausedAt, now) : 0;
   const pausedSeconds = Math.max(0, session.pausedDurationSeconds + currentPauseSeconds);
   const focusedSeconds = Math.max(0, Math.min(session.plannedDurationSeconds, elapsedSeconds(startedAt, now) - pausedSeconds));
   return {
@@ -37,11 +60,12 @@ export function pauseFocusSession(session: FocusSession, now = Date.now()): Focu
 }
 
 export function resumeFocusSession(session: FocusSession, now = Date.now()): FocusSession {
-  if (session.status !== 'paused' || !session.lastPausedAt) return session;
+  if (session.status !== 'paused') return session;
+  const projection = projectFocusSession(session, now);
   return {
     ...session,
     status: 'active',
-    pausedDurationSeconds: session.pausedDurationSeconds + elapsedSeconds(Date.parse(session.lastPausedAt), now),
+    pausedDurationSeconds: projection.pausedSeconds,
     lastPausedAt: undefined,
     lastResumedAt: new Date(now).toISOString(),
   };
@@ -50,6 +74,7 @@ export function resumeFocusSession(session: FocusSession, now = Date.now()): Foc
 export function completeFocusSession(session: FocusSession, now = Date.now()): FocusSession {
   if (session.status === 'completed' || session.status === 'cancelled') return session;
   const projection = projectFocusSession(session, now);
+  if (projection.remainingSeconds > 0) return session;
   return { ...session, status: 'completed', focusedDurationSeconds: projection.focusedSeconds, pausedDurationSeconds: projection.pausedSeconds, lastPausedAt: undefined, completedAt: new Date(now).toISOString() };
 }
 
@@ -61,4 +86,24 @@ export function cancelFocusSession(session: FocusSession, now = Date.now()): Foc
 
 function elapsedSeconds(from: number, to: number) {
   return Math.max(0, Math.floor((to - from) / SECOND_MS));
+}
+
+/** Validate legacy seconds records without mutating or migrating them. */
+export function validateFocusSession(value: unknown): asserts value is FocusSession {
+  if (!value || typeof value !== 'object') throw new RangeError('INVALID_RECORD: missing session');
+  const session = value as FocusSession;
+  const timestampValid = (timestamp: unknown) => typeof timestamp === 'string' && Number.isFinite(Date.parse(timestamp));
+  if (typeof session.id !== 'string' || !session.id
+    || !['active', 'paused', 'completed', 'cancelled'].includes(session.status)
+    || !Number.isSafeInteger(session.plannedDurationSeconds) || session.plannedDurationSeconds <= 0
+    || !Number.isSafeInteger(session.focusedDurationSeconds) || session.focusedDurationSeconds < 0
+    || session.focusedDurationSeconds > session.plannedDurationSeconds
+    || !Number.isSafeInteger(session.pausedDurationSeconds) || session.pausedDurationSeconds < 0
+    || !timestampValid(session.createdAt) || !timestampValid(session.startedAt)
+    || (session.taskName !== undefined && typeof session.taskName !== 'string')
+    || (session.status === 'paused' && !timestampValid(session.lastPausedAt))
+    || [session.lastPausedAt, session.lastResumedAt, session.completedAt, session.cancelledAt]
+      .some((timestamp) => timestamp !== undefined && (!timestampValid(timestamp) || Date.parse(timestamp) < Date.parse(session.startedAt)))) {
+    throw new RangeError('INVALID_RECORD: invalid session fields');
+  }
 }

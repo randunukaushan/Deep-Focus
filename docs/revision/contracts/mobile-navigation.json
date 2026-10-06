@@ -1,0 +1,47 @@
+{
+  "contractVersion": 1,
+  "status": "owner-approved-direction-document-contract-not-implemented",
+  "tabs": [
+    {"label": "Home", "route": "/home"},
+    {"label": "Plan", "route": "/plan"},
+    {"label": "Focus", "route": "/focus"},
+    {"label": "Progress", "route": "/progress"},
+    {"label": "Profile", "route": "/profile"}
+  ],
+  "routes": [
+    {"id": "01", "route": "/welcome", "required": true},
+    {"id": "02", "route": "/auth/sign-in", "required": true},
+    {"id": "03", "route": "/auth/sign-up", "required": true},
+    {"id": "04", "route": "/auth/forgot-password", "required": false},
+    {"id": "05", "route": "/auth/verify-email", "required": false},
+    {"id": "06", "route": "/onboarding", "required": true},
+    {"id": "07", "route": "/onboarding/assessment", "required": true},
+    {"id": "08", "route": "/onboarding/productivity-profile", "required": true},
+    {"id": "09", "route": "/home", "required": true},
+    {"id": "10", "route": "/focus", "required": true},
+    {"id": "11", "route": "/progress", "required": true},
+    {"id": "12", "route": "/progress/rewards", "required": true},
+    {"id": "13", "route": "/profile", "required": true},
+    {"id": "14", "route": "/tasks", "required": true},
+    {"id": "15", "route": "/tasks/[taskId]", "required": true},
+    {"id": "16", "route": "/goals", "required": true},
+    {"id": "17", "route": "/goals/[goalId]", "required": true},
+    {"id": "18", "route": "/focus/setup", "required": true},
+    {"id": "19", "route": "/focus/session", "required": true},
+    {"id": "20", "route": "/focus/recovery", "required": true},
+    {"id": "21", "route": "/focus/break", "required": true},
+    {"id": "22", "route": "/focus/summary", "required": true},
+    {"id": "23", "route": "/progress/history", "required": true},
+    {"id": "24", "route": "/progress/history/[sessionId]", "required": false},
+    {"id": "25", "route": "/profile/settings", "required": true},
+    {"id": "26", "route": "/plan-my-day", "required": true},
+    {"id": "27", "route": "/plan", "required": true}
+  ],
+  "aliases": [
+    {"from": "/", "to": "/home"},
+    {"from": "/analytics", "to": "/progress"},
+    {"from": "/rewards", "to": "/progress/rewards"},
+    {"from": "/analytics/history", "to": "/progress/history"},
+    {"from": "/analytics/history/[sessionId]", "to": "/progress/history/[sessionId]"}
+  ]
+}

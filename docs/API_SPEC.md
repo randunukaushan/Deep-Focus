@@ -12,6 +12,55 @@ Database-specific storage structures are defined separately in `DATABASE_SCHEMA.
 
 Security requirements are defined in `SECURITY.md`.
 
+Platform selection update (2026-09-14): Supabase PostgreSQL/Auth and Next.js Website/Portal are owner-approved. Exact API compute/runtime and expanded route/schema contracts are still being reconciled. Provider REST endpoints or a client Supabase SDK must not bypass domain invariants, ownership, proposal confirmation, billing verification or idempotency. The [decision register](revision/01-REQUIREMENTS-AND-DECISIONS.md) controls the approval boundary; no endpoint is deployed by this documentation update.
+
+September 15 refinement: Supabase Edge Functions is now the selected API hosting
+platform. Exact package/runtime configuration and request/database contracts are
+still subject to validation; a publishable project key alone is not user identity.
+
+The [personal-core build contract](revision/14-BACKEND-API-DATABASE-BUILD-CONTRACT.md)
+adds proposed concrete DTOs and fourteen OpenAPI operations. This is a partial,
+undeployed refinement. In particular, the proposed session-event endpoint and
+the older separate command examples below are alternatives requiring wire-contract
+reconciliation, not two endpoints a client should call for the same action.
+Remaining settings/AI/billing/sync/export modules are listed explicitly in that
+contract; this API specification is not yet a complete executable backend.
+
+[Account-export artifact](revision/28-ACCOUNT-EXPORT-ARTIFACT-CONTRACT.md) specifies
+the download's versioned fourteen-section JSON body, source/coverage gates and
+private delivery behavior. Existing EX-21–23 request/status/download-token schemas
+are unchanged, as is the 60-operation seven-file draft inventory. No all-stored-
+data completeness, storage implementation or legal compliance is implied.
+
+User-resource boundary: generic task/sync/AI endpoints must not automatically receive local resource files, metadata or local associations. Optional paid cloud requires a separate selected-resource contract with server entitlement/quota/ownership checks; subscribing alone is not upload consent. See [12](revision/12-LOCAL-RESOURCES-AND-WORK-PLANNING.md). No resource-upload route is deployed or approved for production by this note.
+
+The [remaining backend contract](revision/16-BACKEND-EXTENSIONS-AND-OPERATIONS.md)
+specifies proposed settings/reminder/break/sync/progress/AI-confirmation/privacy/
+billing extensions. Its explicit refinement notes identify wire-format differences
+from older examples below; do not support both silently or claim the fourteen-
+operation OpenAPI file covers all extensions.
+
+September 18 wire refinement: the [selected extension OpenAPI](revision/contracts/personal-extensions.openapi.json)
+adds twelve operations, EX-01–11 and EX-17, with strict settings/break/reminder/
+analytics/soft-delete responses. It supplements the core fourteen, not all V1.
+For direct task/goal/reminder DELETE, the proposed `Expected-Version` header
+normalizes to the same domain `VersionOnly` body used by sync; no DELETE JSON
+body. See `16` for parsing, receipts, live pagination and missing output boundaries.
+Older reminder/settings/analytics examples below are not extra accepted fields
+in these strict allowlists. No deployed wire contract or app code changed.
+
+The subsequent [operations wire slice](revision/contracts/operations-api.openapi.json)
+adds EX-12–16/21–30: sync push/pull/snapshot; privacy export/deletion; own app-session
+registry/revocation; billing visibility/catalog/management. Forty-one unique
+operations now span three partial drafts. `16 §11` defines non-null polling
+cursors, typed payloads, pre-confirmation deletion-status credentials, sensitive
+response replay and unknown billing states. The subsequent
+[reward/AI wire slice](revision/22-REWARD-GOAL-AND-AI-WIRE-CONTRACT.md) adds
+EX-18–20/31–33, bringing coverage to 47 operations across four draft files.
+Actual migrations, generation/revision and provider-specific checkout/webhook/
+restore remain incomplete. The old conceptual
+routes are not alternate transports to call concurrently.
+
 ---
 
 ## 1. API Goals
@@ -578,6 +627,12 @@ Authentication credentials should be managed through dedicated security or authe
 
 ## 10. Focus Session Endpoints
 
+Version boundary: the seconds-based examples below are legacy DTOs. Proposed
+core artifacts use explicitly named milliseconds and different validated shapes.
+See [20](revision/20-SETTINGS-PROGRESS-AND-UNITS.md) before implementing adapters;
+never serve both forms interchangeably, guess units by magnitude or multiply a
+record already migrated to milliseconds. No deployed API version is claimed.
+
 ---
 
 Focus-session endpoints are critical to Deep Focus and should preserve reliable session state.
@@ -1140,6 +1195,17 @@ Recalculation should use authoritative focus-session history.
 
 ## 14. Reward Endpoints
 
+The versioned proposed EX-18/19 output is defined in
+[22](revision/22-REWARD-GOAL-AND-AI-WIRE-CONTRACT.md): projection metadata plus
+summary, and paged immutable ledger entries. The simpler payload illustration
+below is historical, not a second current serializer shape. Achievement catalog/
+detail endpoints and exact rules are not completed by this six-operation slice.
+
+Numeric XP/level/achievement values below are example payloads, not an approved
+reward formula/catalog. Trusted source rules, day attribution and grant identity
+must be frozen under [20](revision/20-SETTINGS-PROGRESS-AND-UNITS.md) and the
+extension ledger contract; missing policy must not be filled from a screenshot.
+
 ---
 
 Reward endpoints should expose verified user progression without allowing the client to grant itself rewards.
@@ -1236,6 +1302,14 @@ Static achievement definitions may instead remain bundled with the application w
 
 ## 15. Settings Endpoints
 
+September revision: account settings use the smaller explicit allowlist in
+[16 §4](revision/16-BACKEND-EXTENSIONS-AND-OPERATIONS.md). OS grants, local
+assessment drafts, phrases and resources are not generic cloud settings. The
+examples below now use the proposed account-only response/PATCH shapes in
+[20](revision/20-SETTINGS-PROGRESS-AND-UNITS.md). Their concrete values are
+synthetic examples, not a released default policy or supported-locale promise.
+An expected version is required and current-session configuration is preserved.
+
 ---
 
 Settings endpoints should allow users to retrieve and modify supported preferences.
@@ -1251,23 +1325,21 @@ Example response:
 ```json
 {
   "data": {
+    "id": "10000000-0000-4000-8000-000000000001",
+    "version": 1,
     "theme": "system",
+    "uiLocale": "en",
     "defaultFocusDurationMinutes": 25,
     "defaultBreakDurationMinutes": 5,
-    "notificationsEnabled": true,
-    "focusRemindersEnabled": true,
-    "breakRemindersEnabled": true,
-    "achievementNotificationsEnabled": true,
-    "soundEnabled": true,
-    "hapticsEnabled": true,
-    "reducedMotion": false,
-    "aiFeaturesEnabled": true,
-    "aiCoachingNotificationsEnabled": false
+    "aiFeaturesEnabled": false,
+    "updatedAt": "2026-09-18T00:00:00.000Z"
   }
 }
 ```
 
-If no stored settings exist, the backend or client should apply the approved V1 defaults consistently.
+Only genuinely missing settings use the approved default policy; a database/auth
+error is not a successful default response. Device overrides resolve locally and
+are not substituted into the AccountSettings response.
 
 ### 2. Update Settings
 
@@ -1279,9 +1351,9 @@ Example request:
 
 ```json
 {
+  "expectedVersion": 1,
   "theme": "dark",
-  "defaultFocusDurationMinutes": 50,
-  "hapticsEnabled": false
+  "defaultFocusDurationMinutes": 50
 }
 ```
 
@@ -1292,6 +1364,11 @@ The API should:
 - Preserve settings not included in the partial update
 - Reject invalid duration or enum values
 - Update `updatedAt` where applicable
+
+The proposed PATCH returns AccountSettingsResponse after durable success.
+Unknown/device-only fields are rejected, not silently ignored or synchronized;
+version conflicts require refreshed values before retry. The sample duration is
+not permission to bypass the single approved product range.
 
 Changing settings should not modify historical focus sessions or other historical productivity records.
 
@@ -1314,6 +1391,12 @@ Device-specific permission state should normally remain device-managed rather th
 ---
 
 ## 16. Assessment Endpoints
+
+The optional questionnaire is local-default under the revised experience
+contract. The remote assessment endpoints below are conditional legacy designs,
+not required onboarding calls. Before enabling them, approve exactly which data
+is synced and why. Skipping optional questions cannot be blocked by a server
+`required` field or interpreted as legal/AI consent. See [15](revision/15-EXPERIENCE-AND-NAVIGATION-BUILD-CONTRACT.md).
 
 ---
 
@@ -2065,52 +2148,66 @@ trusted reminder service rather than bypassing ordinary validation.
 
 ### 2. Get AI Action Availability
 
-```http
-GET /v1/ai/usage
-```
+`GET /v1/ai/usage` returns trusted availability, not permission to spend from a
+client cache. The versioned proposed wire format is `AiUsageResponse` in
+[22](revision/22-REWARD-GOAL-AND-AI-WIRE-CONTRACT.md), backed by the
+[strict schema](revision/contracts/rewards-ai.schema.json). It replaces the
+historical introductory-five/rewarded-availability example, not the owner's
+unresolved amount, renewal or ad-format decisions.
 
-Example response data:
-
-```json
-{
-  "remainingActions": 3,
-  "introductoryActionsTotal": 5,
-  "rewardedUnlockAvailable": true,
-  "enabledFeatures": {
-    "planMyDay": true,
-    "breakDownTask": false,
-    "reviewMyDayLite": false
-  }
-}
-```
-
-Availability is server-authoritative. The client may cache it for presentation
-but must not grant itself actions.
+Current state identifies policy, checked time, action-unit availability,
+reservations and eligible-source buckets; unavailable/unconfigured state uses
+nulls rather than fabricated zero balance. Generation rechecks current admission,
+consent and grants atomically. Reading this endpoint never grants, reserves or
+consumes an action. No paid/rewarded provider is activated by these DTOs.
 
 ### 3. Generate Plan My Day Proposal
 
 ```http
 POST /v1/ai/plan-my-day
+Idempotency-Key: 00000000-0000-4000-8000-000000000050
 ```
 
 Example request:
 
 ```json
 {
-  "taskIds": ["task_123", "task_456"],
-  "availableStart": "2026-09-01T18:00:00+05:30",
-  "availableEnd": "2026-09-01T23:00:00+05:30",
+  "requestId": "00000000-0000-4000-8000-000000000050",
+  "taskIds": ["00000000-0000-4000-8000-000000000001"],
+  "availableStart": "2026-09-19T12:30:00.000Z",
+  "availableEnd": "2026-09-19T17:30:00.000Z",
   "timeZone": "Asia/Colombo",
   "preferences": {
     "defaultFocusMinutes": 45,
-    "defaultBreakMinutes": 10
+    "defaultBreakMinutes": 10,
+    "reminderLeadMinutes": null
   }
 }
 ```
 
-The response should contain a validated structured proposal, an opaque proposal
-identifier or secure equivalent, the exact proposed actions, and updated trusted
-usage information.
+The synthetic example now matches `PlanGenerationInput` in the proposed
+[24 wire contract](revision/24-DAILY-PLAN-AND-GENERATION-WIRE-CONTRACT.md).
+It is not a default duration, real task or provider selection. The lifecycle in
+[23](revision/23-AI-GENERATION-RECOVERY-AND-REVISION.md) uses the same requestId/key,
+atomic reservation/job creation and status recovery. Initial success is 202 with
+PendingResponse; terminal same-intent replay is 200 TerminalResponse. Exact status,
+cancel, manual-revision and saved-plan-read routes now have strict draft schemas.
+Completed Plan My Day points to a contractVersion 2 proposal; its ordered blocks
+are included in the review digest input through plan.create. Do not deploy
+before plan persistence/sync/privacy/provider gates in 24 are satisfied. The two
+conditional generation routes below remain conceptual/unadmitted, not typed by 24.
+
+Saved-plan read is refined by [26](revision/26-SAVED-PLAN-MANAGEMENT-WIRE.md):
+`GET /plans/{id}` requires `Plan-Contract-Version: 2` and returns the current plan
+plus exact bound reminders, not the original immutable result. `PATCH /plans/{id}`
+and `POST /plans/{id}/actions` have strict manual edit/archive/restore/delete
+intents and minimal receipts. This adds no generation charge or actual session.
+That six-file checkpoint totals 54 operations. The subsequent
+[27](revision/27-PLAN-REPLICATION-SNAPSHOT-EXPORT-WIRE.md) adds six operations
+(60 across seven files): explicit v2 push/grouped pull/snapshots and `GET /plans`.
+V1 sync shapes remain unchanged. Plan export is a typed component, not the full
+account artifact; 28 supplies that outer draft. Source coverage, SQL/client,
+delivery policy and independent review still gate activation.
 
 No task, reminder, goal, or setting is written by this endpoint.
 
@@ -2155,48 +2252,39 @@ The endpoint remains unavailable when the conditional feature is disabled.
 
 ### 6. Apply Confirmed Proposal
 
+The proposed versioned wire contract is
+[22](revision/22-REWARD-GOAL-AND-AI-WIRE-CONTRACT.md), refining 16 §7.
+Do not implement the former editable `items/values` body alongside this contract.
+Detailed action/retention/provider/security decisions still pass the READY gate.
+
 ```http
-POST /v1/ai/proposals/{proposalId}/apply
-Idempotency-Key: <client-generated-key>
+POST /v1/ai/proposals/{id}/apply
+Idempotency-Key: <stable UUID>
 ```
 
-Example request:
+Body: `{expectedProposalVersion, reviewDigest, selectedOperationIds}`, using the
+strict `ProposalConfirmation` schema. No edited values or owner/allowance fields
+are accepted. Editing requires a newly server-validated version and fresh user
+review. [23](revision/23-AI-GENERATION-RECOVERY-AND-REVISION.md) proposes the
+manual-revision/recovery lifecycle with zero new generation consumption.
+[24](revision/24-DAILY-PLAN-AND-GENERATION-WIRE-CONTRACT.md) now types revision and
+the v2 plan.create/reminder subset; full persistence/sync/privacy integration and
+conditional child-task/review contracts remain incomplete. v1 retains its original
+task/reminder allowlist; unsupported contract versions fail closed.
 
-```json
-{
-  "items": [
-    {
-      "proposalItemId": "item_1",
-      "action": "create_task",
-      "values": {
-        "title": "Review chemistry notes",
-        "parentTaskId": null
-      }
-    },
-    {
-      "proposalItemId": "item_2",
-      "action": "schedule_task_reminder",
-      "values": {
-        "taskReference": "item_1",
-        "scheduledFor": "2026-09-01T18:00:00+05:30"
-      }
-    }
-  ]
-}
-```
+Authenticate/authorize the owner, check the stored version/digest, expiry,
+selected dependency closure and current entity versions, then apply only those
+task/reminder commands (or v2 plan/reminder commands) in one transaction with its receipt and consumed-proposal
+marker. Return all selected acknowledgements or a safe error with no committed
+partial changes. No automatic dependency addition, mixed skipped/failed success,
+raw AI execution or second generation charge.
 
-The API must:
-
-- verify the authenticated owner and proposal validity;
-- accept only supported action types and fields;
-- compare submitted items with the proposal while permitting approved user edits;
-- validate current ownership and resource state again;
-- apply only the exact submitted items;
-- use ordinary task and reminder services;
-- protect retries through idempotency;
-- return the exact created, updated, skipped, or failed items.
-
-Applying a proposal does not consume a second AI action.
+Matching lost-response retry replays the authorized original receipt; changed
+intent on the same key conflicts. Another key cannot consume the proposal again.
+Content expiry does not remove durable duplicate-execution protection. Empty
+remaining generation allowance alone cannot prevent a still-valid previously
+generated proposal from being applied. Current access/consent/security controls
+still apply. This document does not claim those controls are built.
 
 ### 7. Verify Rewarded Unlock
 
@@ -2218,11 +2306,15 @@ sufficient proof.
 
 ### 8. Consumption Rules
 
-- Five introductory actions are created once per eligible user.
+- Free allowance is created idempotently under the approved policy; its amount
+  and renewal are undecided, not fixed at five. Optional paid AI is approved;
+  provider/catalog/verification contracts must precede paid grants.
 - A valid generated proposal or valid `Review My Day Lite` result consumes at
   most one action.
-- Provider timeout, malformed output, internal failure, or cancelled request does
-  not consume an action.
+- Terminal provider timeout, malformed output, internal failure or accepted
+  cancellation consumes no action. A lost HTTP response is not a terminal failure:
+  recover the same request. Cancellation and completion serialize; completion
+  first remains completed, not an automatically refunded cancellation. See 23.
 - Grant consumption and completed-request state transition should be atomic.
 - Feature unavailability should fail before provider work or action consumption.
 
@@ -2238,6 +2330,7 @@ AI_PROVIDER_UNAVAILABLE
 AI_RESPONSE_INVALID
 AI_PROPOSAL_EXPIRED
 AI_PROPOSAL_MISMATCH
+AI_PROPOSAL_ALREADY_APPLIED
 REWARDED_VERIFICATION_FAILED
 REWARDED_VERIFICATION_REPLAYED
 ```
@@ -2246,6 +2339,27 @@ Errors should remain safe and user-understandable without exposing provider
 credentials, raw verification evidence, private prompts, or internal stack data.
 
 ---
+
+## Bounded classroom API reconciliation — September 30
+
+The owner admitted only the classroom subset in the September 29 decision
+register. [Classroom lifecycle](revision/39-BOUNDED-CLASSROOM-SHARING-CONTRACT.md),
+[wire schemas](revision/40-CLASSROOM-WIRE-DATA-AND-TRANSACTION-TESTS.md) and
+[access/test reconciliation](revision/41-CLASSROOM-RECONCILIATION-AND-SQL-TEST-PREPARATION.md)
+are DRAFT / HIGH / REVIEW_PENDING, not deployed or independently accepted.
+
+For this scoped draft, CW-01–22 use the classroom OpenAPI and strict JSON schemas:
+top-level nextCursor, code/messageKey/requestId/retryable error envelope, explicit
+null/positive expectedVersion and persisted body commandId. Do not mix the generic
+meta.nextCursor/error.details/Idempotency-Key examples above into CW handlers.
+CW success is 200 after authorized read or durable server commit; it does not
+prove local persistence. Other personal endpoint contracts remain unchanged.
+
+Identity is server-derived; class membership never grants private Task access.
+First acceptance is online and atomically creates the own Task/link/receipt;
+recovery reads a private pointer, not a stale Task snapshot. Classroom commands
+are not inserted into existing personal sync unions. Required configuration,
+canonical design acceptance, SQL/HTTP tests and independent review remain gates.
 
 # Conclusion
 

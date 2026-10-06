@@ -10,6 +10,8 @@ This document defines logical application data.
 
 Implementation-specific database tables, indexes, constraints, and storage details are defined separately in `DATABASE_SCHEMA.md`.
 
+Expanded resource direction (2026-09-14): a user's resource, task-resource association and focus session are distinct concepts. Local resources and associations are not automatically syncable task fields. Optional paid cloud needs a separate explicitly selected replica/ownership lifecycle. The proposed entities and deletion rules in [12](revision/12-LOCAL-RESOURCES-AND-WORK-PLANNING.md) are not yet implemented schemas; do not infer completion or content ownership from a resource link.
+
 ---
 
 ## 1. Data Model Goals
@@ -581,6 +583,12 @@ This field may support accurate duration calculations after pause and resume tra
 
 ### Timer Reliability
 
+The [revision core contract](revision/13-CORE-RELIABILITY-CONTRACTS.md) contains
+concrete failure fixtures and a proposed version-2 millisecond representation.
+This canonical model still names second-based fields. Adopting the proposal
+requires explicit schema/DTO conversion and migration; do not reinterpret seconds
+as milliseconds or add `running` as another persisted status.
+
 The visible countdown timer should not be treated as the authoritative source of session duration.
 
 Session timing should rely on timestamps and persisted session state where practical.
@@ -1054,11 +1062,11 @@ interface Goal {
   period: GoalPeriod;
   status: GoalStatus;
 
-  targetValue: number;
-  currentValue: number;
+  targetValue: number; // focus_time: integer seconds; count types: integer count
 
-  startsAt?: string;
-  endsAt?: string;
+  startsAt: string; // UTC instant, inclusive
+  endsAt: string; // UTC instant, exclusive
+  periodTimeZone: string; // validated IANA timezone
   completedAt?: string;
 
   createdAt: string;
@@ -1183,9 +1191,14 @@ monthly
 custom
 ```
 
-Daily, weekly, and monthly goals may use automatically calculated time boundaries.
-
-Custom goals may use explicitly defined start and end timestamps.
+Every newly created goal has explicit `startsAt` and `endsAt` UTC instants and the
+IANA timezone used to derive them. Its interval is half-open:
+`startsAt <= eventAt < endsAt`. Calculate calendar boundaries in the saved
+timezone and then persist UTC instants. A device timezone change never rewrites
+an existing goal's interval. Legacy JSON goals without a saved end/timezone keep
+their original created-at lower bound and an explicit `legacyOpenPeriod` marker;
+they remain open-ended rather than receiving invented dates. Custom goals use
+selected instants and a validated timezone.
 
 #### `status`
 
@@ -1254,20 +1267,20 @@ currentValue: number
 
 Where practical, progress should be derived from authoritative application records such as:
 
-- Completed `FocusSession` records
-- Confirmed focus duration
+- Durable terminal `FocusSession` records
+- Confirmed focus duration (including cancelled-session focused seconds)
 - Completed `Task` records
 
 The system should avoid allowing manually duplicated progress values to become inconsistent with authoritative data.
 
-For V1, `currentValue` may be stored when doing so simplifies UI updates or persistence, but it should remain synchronized with its authoritative source.
+`currentValue` is a derived projection, not authoritative persisted input.
 
 #### `startsAt`
 
 The timestamp representing when goal tracking begins.
 
 ```ts
-startsAt?: string
+startsAt: string
 ```
 
 This field may be calculated automatically for predefined periods.
@@ -1277,10 +1290,12 @@ This field may be calculated automatically for predefined periods.
 The timestamp representing the end of the goal period.
 
 ```ts
-endsAt?: string
+endsAt: string
 ```
 
-For custom goals, the end time may be selected by the user.
+For custom goals, the end time may be selected by the user. New goals also store
+`periodTimeZone: string` as a validated IANA timezone. Migrated legacy goals may
+have a null timezone only while marked `legacyOpenPeriod`.
 
 #### `completedAt`
 
@@ -1316,9 +1331,12 @@ FocusSession 3 → 45 minutes
 Goal Progress → 2h 35m
 ```
 
-Only confirmed focus time should contribute to focus-time goals.
-
-Paused time should not count unless explicitly required by future product behavior.
+Only durably confirmed `focusedDurationSeconds` contributes to `focus_time`
+goals. This includes the saved actual focus time from a cancelled/interrupted
+session; paused time is excluded. An `active` or `paused` session contributes
+nothing until a terminal outcome is durably recorded. Cancellation never makes
+the session eligible for `session_count`, completion-only rewards, or task
+completion. Do not convert cancellation into completion to award time progress.
 
 ### Task Relationship
 
@@ -1362,7 +1380,13 @@ task_completion
 → Count qualifying completed Tasks
 ```
 
-Progress calculation should use only records that fall within the goal's defined tracking period where applicable.
+Progress calculation uses durable eligible source events in the goal's half-open
+period. For `focus_time`, use `completedAt` for completed sessions or
+`cancelledAt` for cancelled sessions and sum confirmed `focusedDurationSeconds`.
+For `session_count`, count completed sessions only, once per stable session ID.
+Active/paused sessions, paused seconds, duplicate IDs and events at `endsAt` do
+not contribute. Attribute the whole session to its terminal event's period; do
+not split one session across periods.
 
 ### Goal Completion
 
@@ -1396,7 +1420,11 @@ A time-limited goal may become `expired` when:
 - The target has not been completed
 - The product behavior does not automatically create a new goal
 
-Recurring daily, weekly, or monthly goal behavior should be implemented separately from the historical goal record where practical.
+Recurring daily, weekly, or monthly goal behavior creates a new historical
+record per period rather than overwriting the previous one. Calendar boundaries
+are derived in the saved IANA timezone (weekly periods start Monday) and stored
+as UTC instants. Timezone changes affect newly created goals only. Intervals are
+half-open `[startsAt, endsAt)`.
 
 Completed historical goals should not be overwritten when a new tracking period begins.
 
@@ -1653,6 +1681,12 @@ The system should prevent repeated session completion on the same day from incor
 
 ### Streak Breaks
 
+The preceding increment example assumes chronologically ordered qualifying dates.
+It is not a complete late-sync/rebuild algorithm. Before implementation freeze
+timezone/day attribution, accepted late arrivals and current-streak as-of semantics
+under [20](revision/20-SETTINGS-PROGRESS-AND-UNITS.md). A delayed earlier event
+must not blindly reset the current streak or replay milestone rewards.
+
 A streak is considered broken when the user fails to record qualifying activity for the required consecutive-day period.
 
 Breaking a streak should not:
@@ -1853,7 +1887,9 @@ Level Calculation
 Current Level
 ```
 
-The exact XP thresholds should be defined by the reward-system implementation rather than duplicated across multiple parts of the application.
+Exact XP thresholds must come from one owner-approved, versioned reward policy,
+not be chosen by the implementing agent or duplicated across UI/backend code.
+Existing numeric examples are illustrative, not a complete approved level curve.
 
 If level can be reliably derived from `totalXp`, the stored value should remain synchronized with the authoritative XP value.
 
@@ -2066,6 +2102,11 @@ Settings should remain separate from the `User` profile and productivity-history
 
 The V1 settings model should provide sensible defaults and allow users to customize supported behavior without creating unnecessary configuration complexity.
 
+The combined legacy model below describes conceptual preferences, not the
+account API allowlist. Device-only settings and account defaults are separated
+under [20](revision/20-SETTINGS-PROGRESS-AND-UNITS.md); do not serialize the entire
+UserSettings object into cloud storage or treat OS state as an account preference.
+
 ### Purpose
 
 The `UserSettings` entity should:
@@ -2276,34 +2317,27 @@ This setting should only have an effect when relevant AI functionality and notif
 
 ### Default Settings
 
-Deep Focus should provide sensible defaults when no saved settings exist.
+Use one versioned default bundle when a supported record is genuinely missing.
+The old `defaultUserSettings` object enabled notification categories and AI by
+example; it was not a release-approved default bundle or consent to transmit data.
+It is superseded by the explicit evidence/proposal distinction in
+[20](revision/20-SETTINGS-PROGRESS-AND-UNITS.md).
 
-Conceptually:
+Current app evidence: local break default 5 with choices 5/10/15; focus setup
+initial 25 with presets 25/45/60 and custom range 5–180. These do not establish
+complete account defaults. Retaining them is the proposal until the shared product
+policy is frozen; schema engineering bounds do not expand user-facing ranges.
 
-```ts
-const defaultUserSettings = {
-  theme: 'system',
-  defaultFocusDurationMinutes: 25,
-  defaultBreakDurationMinutes: 5,
+No automatic notification schedule, OS permission prompt, AI transmission or
+allowance spend follows from accepting defaults. AI visibility is separate from
+an authorized generation action. Respect OS reduced motion even if a legacy app
+field is false. Exact category/feedback/visibility defaults remain in the freeze
+sheet, not invented booleans copied into production.
 
-  notificationsEnabled: true,
-  focusRemindersEnabled: true,
-  breakRemindersEnabled: true,
-  achievementNotificationsEnabled: true,
-
-  soundEnabled: true,
-  hapticsEnabled: true,
-
-  reducedMotion: false,
-
-  aiFeaturesEnabled: true,
-  aiCoachingNotificationsEnabled: false,
-};
-```
-
-Exact defaults may be adjusted before release according to approved product behavior.
-
-Privacy-sensitive or potentially intrusive functionality should use conservative defaults where appropriate.
+Preserve explicit user values and active-session snapshots. A corrupt/read-failed
+record is not a new account; temporary fallback must be visibly unsaved and must
+not overwrite recoverable data. Account values and device-only settings are
+separate under the narrower extension contract, not one automatic cloud row.
 
 ### Operating-System Preferences
 
@@ -2856,6 +2890,13 @@ V1 should avoid introducing complex synchronization infrastructure before it is 
 
 The exact persistence and synchronization mechanisms should be defined in the architecture, API specification, and database schema.
 
+For proposed saved plans, [PL-04](revision/30-MOBILE-PLAN-STORAGE-OUTBOX-RECOVERY.md)
+separates committed server mirror, local editor draft, immutable confirmed outbox,
+minimal receipt, snapshot staging and device reminder projection. Optimistic UI
+does not increment a server version. Account/reset fences and atomic replacement
+must preserve safe unrelated local work. This is a HIGH review-pending contract,
+not implemented persistence; 25–29 own its lifecycle/wire/server prerequisites.
+
 ---
 
 ## 16. Data Integrity Rules
@@ -2957,6 +2998,26 @@ Analytics should primarily derive information from authoritative application rec
 Supporting entities may be introduced during database or implementation design only when they solve a concrete V1 requirement.
 
 ---
+
+## Bounded classroom data reconciliation — September 30
+
+Only the owner-admitted classroom subset is in the V1 target; its detailed design
+is DRAFT / HIGH / REVIEW_PENDING. See
+[classroom lifecycle](revision/39-BOUNDED-CLASSROOM-SHARING-CONTRACT.md),
+[wire/data](revision/40-CLASSROOM-WIRE-DATA-AND-TRANSACTION-TESTS.md) and
+[access/privacy reconciliation](revision/41-CLASSROOM-RECONCILIATION-AND-SQL-TEST-PREPARATION.md).
+
+Class, membership, published assignment, learner-private acceptance, selected
+progress copy and feedback are distinct entities. Acceptance reuses the existing
+owner-private Task; there is no second task/timer/reward model. Teacher edits do
+not overwrite accepted private work. A report is an explicitly chosen categorical
+snapshot, not a live Task link, focus-time measurement or reward source.
+
+Membership does not share personal timetable, notes, sessions or resource files.
+Deletion/retry must preserve a reviewed private tombstone so acceptance cannot
+recreate deleted work. Concrete Task migration/tombstone representation and
+classroom export/retention remain gated; the current Task source has not gained
+these fields. Existing fourteen-section export schemas are unchanged.
 
 # Conclusion
 
@@ -3067,7 +3128,9 @@ interface AIActionGrant {
 
 Rules:
 
-- the introductory source grants five actions once per eligible user;
+- the free-allowance source grants the approved configured amount under a
+  versioned policy; amount and renewal are not yet approved. The old introductory
+  source is a legacy example, not an instruction to grant exactly five;
 - `0 <= consumedActions <= grantedActions`;
 - a rewarded-ad grant requires trusted verification;
 - provider verification evidence must not be exposed as ordinary client-editable
@@ -3077,8 +3140,21 @@ Rules:
 
 ### AIActionRequest
 
+September 16 adds approved optional paid AI access alongside free allowance.
+Before implementation, expand grant source/period/purchase provenance and replay
+fixtures for the selected catalog. The legacy type above does not itself implement
+paid AI. Launch advertising is required, but rewarded grant format remains gated.
+
 `AIActionRequest` records trusted lifecycle and consumption metadata without
 requiring full prompt or response retention.
+
+The interface below is historical/minimal, not a complete durable-job schema.
+[23](revision/23-AI-GENERATION-RECOVERY-AND-REVISION.md) refines pending with a
+separate queued/running/reconciling worker phase, required stable generation
+identity, reservation/policy/deadline and fencing metadata. Public terminal states
+remain completed/failed/cancelled. Its accepted-cancellation/completion race and
+content-storage gates must be reconciled into concrete wire/storage types before
+implementation; none of those fields are implemented by this TypeScript example.
 
 ```ts
 type AIActionType =
@@ -3116,6 +3192,17 @@ Rules:
 
 ### AIPlanProposal
 
+The minimal historical application type below is not the complete wire shape.
+[22](revision/22-REWARD-GOAL-AND-AI-WIRE-CONTRACT.md) adds the proposed versioned
+reviewable/applied union, captured input versions, dependency graph and typed
+commands. Apply accepts only reviewed version/digest/selection, not arbitrary
+edited values. [23](revision/23-AI-GENERATION-RECOVERY-AND-REVISION.md) now defines
+the proposed manual-revision lifecycle and immutable identities/expiry.
+[24](revision/24-DAILY-PLAN-AND-GENERATION-WIRE-CONTRACT.md) now types selected
+revision/generation/status/cancel/plan-read wire and the v2 ordered plan. Conditional
+parent-task/review results and plan persistence/sync/privacy integration still
+need further contracts; no production entity migration is implied.
+
 `AIPlanProposal` is a validated application-layer type, not a trusted productivity
 record.
 
@@ -3135,5 +3222,33 @@ ownership, persistence, synchronization, and duplicate-protection rules.
 
 `Review My Day Lite` should derive verified metrics from existing records and
 does not require a new persisted daily-review entity for V1.
+
+### Proposed DailyPlan and typed generation lifecycle
+
+[24](revision/24-DAILY-PLAN-AND-GENERATION-WIRE-CONTRACT.md) supplies the draft
+DailyPlan payload/read shape and versioned Plan My Day generation/revision wire.
+Ordered focus/break intervals describe intent only. They are never FocusSession,
+BreakRecord, completion, XP or goal-contribution events. UTC instants plus a named
+zone, start-local-date, owned task IDs and optional reminder bindings are explicit.
+v2 adds exactly one plan.create after optional reminders; v1 remains task/reminder
+only. Plan save is exact-confirmed; actual Start uses ordinary session rules.
+No current source entity implements this yet. Plan migrations, offline sync/feed/
+snapshot/export/deletion, post-save lifecycle and client compatibility remain gated;
+the legacy types above are not a substitute for those contracts.
+
+[25](revision/25-SAVED-PLAN-LIFECYCLE-AND-PRIVACY.md) proposes a versioned current
+plan with active/archived state and separate content-free deletion tombstones.
+Known generated context dependencies include captured tasks not chosen as blocks;
+task erasure must sanitize dependent explanations as well as direct block links.
+Post-save edits do not modify actual sessions. Strict lifecycle DTOs and the
+initial SavedPlan checkpoint are now reconciled by
+[26](revision/26-SAVED-PLAN-MANAGEMENT-WIRE.md): state/updatedAt plus current plan
+and exact bound-reminder read envelope, strict manual intents and minimal receipts.
+This is an intentional undeployed wire refinement, not an implemented entity or
+backwards-compatible response. [27](revision/27-PLAN-REPLICATION-SNAPSHOT-EXPORT-WIRE.md)
+now types seven-entity v2 replication, transaction groups, epoch-bound snapshots
+and active/archived plans in an export component. Deleted content is excluded;
+reminders remain separate records. Full account-export packaging and SQL/client
+implementation/review gates remain; no current source entity is introduced here.
 
 ---

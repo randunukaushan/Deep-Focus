@@ -1,0 +1,80 @@
+{
+  "contractVersion": 1,
+  "status": "draft-reference-only",
+  "scope": "Accepted generation request lifecycle; not HTTP schema, queue, auth or DB implementation.",
+  "initialState": "pending",
+  "terminalStates": [
+    "completed",
+    "failed",
+    "cancelled"
+  ],
+  "states": {
+    "pending": {
+      "reservationUnits": 1,
+      "consumedUnits": 0,
+      "resultCount": 0
+    },
+    "completed": {
+      "reservationUnits": 0,
+      "consumedUnits": 1,
+      "resultCount": 1
+    },
+    "failed": {
+      "reservationUnits": 0,
+      "consumedUnits": 0,
+      "resultCount": 0
+    },
+    "cancelled": {
+      "reservationUnits": 0,
+      "consumedUnits": 0,
+      "resultCount": 0
+    }
+  },
+  "transitions": [
+    {
+      "from": "pending",
+      "event": "complete",
+      "to": "completed",
+      "guard": "live_fence_and_deadline_and_current_authority_and_valid_result"
+    },
+    {
+      "from": "pending",
+      "event": "cancel",
+      "to": "cancelled",
+      "guard": "authorized_cancel"
+    },
+    {
+      "from": "pending",
+      "event": "fail",
+      "to": "failed",
+      "guard": "trusted_terminal_failure"
+    },
+    {
+      "from": "pending",
+      "event": "deadline",
+      "to": "failed",
+      "guard": "server_deadline_reached"
+    },
+    {
+      "from": "pending",
+      "event": "disconnect",
+      "to": "pending",
+      "guard": "no_server_transition"
+    },
+    {
+      "from": "pending",
+      "event": "provider_unknown",
+      "to": "pending",
+      "guard": "no_blind_redispatch"
+    },
+    {
+      "from": "pending",
+      "event": "renew_lease",
+      "to": "pending",
+      "guard": "prior_lease_expired_new_fence"
+    }
+  ],
+  "terminalEventRule": "preserve_state_accounting_and_result",
+  "policyValues": "UNRESOLVED: no durations, prices, allowance amounts or provider selected",
+  "wireOperationsAdded": 0
+}

@@ -1,0 +1,1768 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:deep-focus:operations-api:2026-09-18",
+  "title": "Proposed sync, privacy and billing-visibility DTOs; NOT deployed or production-approved",
+  "definitions": {
+    "Id": {
+      "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+    },
+    "Instant": {
+      "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Instant"
+    },
+    "Version": {
+      "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Version"
+    },
+    "Sequence": {
+      "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Sequence"
+    },
+    "Cursor": {
+      "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Cursor"
+    },
+    "Empty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {}
+    },
+    "NullableInstant": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Instant"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "SafeErrorCode": {
+      "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Error/properties/error/properties/code"
+    },
+    "Command": {
+      "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/SyncMutation/properties/command"
+    },
+    "Digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "Secret": {
+      "type": "string",
+      "minLength": 43,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "description": "Synthetic shape only; production requires server CSPRNG, protected storage, redaction, approved expiry and secret lifecycle."
+    },
+    "HttpsUrl": {
+      "type": "string",
+      "format": "uri",
+      "maxLength": 4096,
+      "pattern": "^https://",
+      "description": "Shape is not an origin/redirect allowlist; server validates exact authorized destination."
+    },
+    "SyncOutcome": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mutationId",
+            "command",
+            "targetId",
+            "status",
+            "receiptId",
+            "entityVersion",
+            "committedThrough"
+          ],
+          "properties": {
+            "mutationId": {
+              "$ref": "#/definitions/Id"
+            },
+            "command": {
+              "$ref": "#/definitions/Command"
+            },
+            "targetId": {
+              "$ref": "#/definitions/Id"
+            },
+            "status": {
+              "enum": [
+                "applied",
+                "replayed"
+              ]
+            },
+            "receiptId": {
+              "$ref": "#/definitions/Id"
+            },
+            "entityVersion": {
+              "$ref": "#/definitions/Version"
+            },
+            "committedThrough": {
+              "$ref": "#/definitions/Sequence"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mutationId",
+            "command",
+            "targetId",
+            "status",
+            "code"
+          ],
+          "properties": {
+            "mutationId": {
+              "$ref": "#/definitions/Id"
+            },
+            "command": {
+              "$ref": "#/definitions/Command"
+            },
+            "targetId": {
+              "$ref": "#/definitions/Id"
+            },
+            "status": {
+              "const": "rejected"
+            },
+            "code": {
+              "$ref": "#/definitions/SafeErrorCode"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mutationId",
+            "command",
+            "targetId",
+            "status",
+            "code"
+          ],
+          "properties": {
+            "mutationId": {
+              "$ref": "#/definitions/Id"
+            },
+            "command": {
+              "$ref": "#/definitions/Command"
+            },
+            "targetId": {
+              "$ref": "#/definitions/Id"
+            },
+            "status": {
+              "const": "retryable"
+            },
+            "code": {
+              "$ref": "#/definitions/SafeErrorCode"
+            },
+            "retryAfterSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483647
+            }
+          }
+        }
+      ]
+    },
+    "SyncPushResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "outcomes"
+          ],
+          "properties": {
+            "outcomes": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 25,
+              "items": {
+                "$ref": "#/definitions/SyncOutcome"
+              }
+            }
+          }
+        }
+      }
+    },
+    "SnapshotRecord": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "entity",
+            "entityId",
+            "version",
+            "payload"
+          ],
+          "properties": {
+            "entity": {
+              "const": "task"
+            },
+            "entityId": {
+              "$ref": "#/definitions/Id"
+            },
+            "version": {
+              "$ref": "#/definitions/Version"
+            },
+            "payload": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Task"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "entity",
+            "entityId",
+            "version",
+            "payload"
+          ],
+          "properties": {
+            "entity": {
+              "const": "goal"
+            },
+            "entityId": {
+              "$ref": "#/definitions/Id"
+            },
+            "version": {
+              "$ref": "#/definitions/Version"
+            },
+            "payload": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Goal"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "entity",
+            "entityId",
+            "version",
+            "payload"
+          ],
+          "properties": {
+            "entity": {
+              "const": "session"
+            },
+            "entityId": {
+              "$ref": "#/definitions/Id"
+            },
+            "version": {
+              "$ref": "#/definitions/Version"
+            },
+            "payload": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Session"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "entity",
+            "entityId",
+            "version",
+            "payload"
+          ],
+          "properties": {
+            "entity": {
+              "const": "break"
+            },
+            "entityId": {
+              "$ref": "#/definitions/Id"
+            },
+            "version": {
+              "$ref": "#/definitions/Version"
+            },
+            "payload": {
+              "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Break"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "entity",
+            "entityId",
+            "version",
+            "payload"
+          ],
+          "properties": {
+            "entity": {
+              "const": "settings"
+            },
+            "entityId": {
+              "$ref": "#/definitions/Id"
+            },
+            "version": {
+              "$ref": "#/definitions/Version"
+            },
+            "payload": {
+              "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/AccountSettings"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "entity",
+            "entityId",
+            "version",
+            "payload"
+          ],
+          "properties": {
+            "entity": {
+              "const": "reminder"
+            },
+            "entityId": {
+              "$ref": "#/definitions/Id"
+            },
+            "version": {
+              "$ref": "#/definitions/Version"
+            },
+            "payload": {
+              "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Reminder"
+            }
+          }
+        }
+      ]
+    },
+    "SyncChange": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sequence",
+            "entity",
+            "entityId",
+            "version",
+            "operation",
+            "payload"
+          ],
+          "properties": {
+            "sequence": {
+              "$ref": "#/definitions/Sequence"
+            },
+            "entity": {
+              "const": "task"
+            },
+            "entityId": {
+              "$ref": "#/definitions/Id"
+            },
+            "version": {
+              "$ref": "#/definitions/Version"
+            },
+            "operation": {
+              "const": "upsert"
+            },
+            "payload": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Task"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sequence",
+            "entity",
+            "entityId",
+            "version",
+            "operation",
+            "payload"
+          ],
+          "properties": {
+            "sequence": {
+              "$ref": "#/definitions/Sequence"
+            },
+            "entity": {
+              "const": "goal"
+            },
+            "entityId": {
+              "$ref": "#/definitions/Id"
+            },
+            "version": {
+              "$ref": "#/definitions/Version"
+            },
+            "operation": {
+              "const": "upsert"
+            },
+            "payload": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Goal"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sequence",
+            "entity",
+            "entityId",
+            "version",
+            "operation",
+            "payload"
+          ],
+          "properties": {
+            "sequence": {
+              "$ref": "#/definitions/Sequence"
+            },
+            "entity": {
+              "const": "session"
+            },
+            "entityId": {
+              "$ref": "#/definitions/Id"
+            },
+            "version": {
+              "$ref": "#/definitions/Version"
+            },
+            "operation": {
+              "const": "upsert"
+            },
+            "payload": {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Session"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sequence",
+            "entity",
+            "entityId",
+            "version",
+            "operation",
+            "payload"
+          ],
+          "properties": {
+            "sequence": {
+              "$ref": "#/definitions/Sequence"
+            },
+            "entity": {
+              "const": "break"
+            },
+            "entityId": {
+              "$ref": "#/definitions/Id"
+            },
+            "version": {
+              "$ref": "#/definitions/Version"
+            },
+            "operation": {
+              "const": "upsert"
+            },
+            "payload": {
+              "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Break"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sequence",
+            "entity",
+            "entityId",
+            "version",
+            "operation",
+            "payload"
+          ],
+          "properties": {
+            "sequence": {
+              "$ref": "#/definitions/Sequence"
+            },
+            "entity": {
+              "const": "settings"
+            },
+            "entityId": {
+              "$ref": "#/definitions/Id"
+            },
+            "version": {
+              "$ref": "#/definitions/Version"
+            },
+            "operation": {
+              "const": "upsert"
+            },
+            "payload": {
+              "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/AccountSettings"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sequence",
+            "entity",
+            "entityId",
+            "version",
+            "operation",
+            "payload"
+          ],
+          "properties": {
+            "sequence": {
+              "$ref": "#/definitions/Sequence"
+            },
+            "entity": {
+              "const": "reminder"
+            },
+            "entityId": {
+              "$ref": "#/definitions/Id"
+            },
+            "version": {
+              "$ref": "#/definitions/Version"
+            },
+            "operation": {
+              "const": "upsert"
+            },
+            "payload": {
+              "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Reminder"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sequence",
+            "entity",
+            "entityId",
+            "version",
+            "operation",
+            "payload"
+          ],
+          "properties": {
+            "sequence": {
+              "$ref": "#/definitions/Sequence"
+            },
+            "entity": {
+              "const": "task"
+            },
+            "entityId": {
+              "$ref": "#/definitions/Id"
+            },
+            "version": {
+              "$ref": "#/definitions/Version"
+            },
+            "operation": {
+              "const": "delete"
+            },
+            "payload": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sequence",
+            "entity",
+            "entityId",
+            "version",
+            "operation",
+            "payload"
+          ],
+          "properties": {
+            "sequence": {
+              "$ref": "#/definitions/Sequence"
+            },
+            "entity": {
+              "const": "goal"
+            },
+            "entityId": {
+              "$ref": "#/definitions/Id"
+            },
+            "version": {
+              "$ref": "#/definitions/Version"
+            },
+            "operation": {
+              "const": "delete"
+            },
+            "payload": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sequence",
+            "entity",
+            "entityId",
+            "version",
+            "operation",
+            "payload"
+          ],
+          "properties": {
+            "sequence": {
+              "$ref": "#/definitions/Sequence"
+            },
+            "entity": {
+              "const": "reminder"
+            },
+            "entityId": {
+              "$ref": "#/definitions/Id"
+            },
+            "version": {
+              "$ref": "#/definitions/Version"
+            },
+            "operation": {
+              "const": "delete"
+            },
+            "payload": {
+              "type": "null"
+            }
+          }
+        }
+      ]
+    },
+    "SyncPullResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data",
+        "meta"
+      ],
+      "properties": {
+        "data": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/definitions/SyncChange"
+          }
+        },
+        "meta": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "nextCursor",
+            "caughtUp",
+            "highWater"
+          ],
+          "properties": {
+            "nextCursor": {
+              "$ref": "#/definitions/Cursor"
+            },
+            "caughtUp": {
+              "type": "boolean"
+            },
+            "highWater": {
+              "$ref": "#/definitions/Sequence"
+            }
+          }
+        }
+      }
+    },
+    "Job": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "state",
+        "updatedAt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "kind": {
+          "enum": [
+            "sync_snapshot",
+            "export",
+            "deletion"
+          ]
+        },
+        "state": {
+          "enum": [
+            "queued",
+            "running",
+            "succeeded",
+            "failed",
+            "expired"
+          ]
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "safeErrorCode": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/SafeErrorCode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "SnapshotJob": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Job"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "sync_snapshot"
+            }
+          }
+        }
+      ]
+    },
+    "SnapshotJobResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/SnapshotJob"
+        }
+      }
+    },
+    "ExportJob": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Job"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "export"
+            }
+          }
+        }
+      ]
+    },
+    "ExportJobResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/ExportJob"
+        }
+      }
+    },
+    "DeletionJob": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Job"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "deletion"
+            }
+          }
+        }
+      ]
+    },
+    "DeletionJobResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/DeletionJob"
+        }
+      }
+    },
+    "PrivacyJobResponse": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/ExportJobResponse"
+        },
+        {
+          "$ref": "#/definitions/DeletionJobResponse"
+        }
+      ]
+    },
+    "SnapshotMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "snapshotId",
+        "contractVersion",
+        "highWater",
+        "createdAt",
+        "expiresAt",
+        "pageCount",
+        "manifestDigest",
+        "firstPageCursor",
+        "resumeCursor"
+      ],
+      "properties": {
+        "snapshotId": {
+          "$ref": "#/definitions/Id"
+        },
+        "contractVersion": {
+          "const": 1
+        },
+        "highWater": {
+          "$ref": "#/definitions/Sequence"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "expiresAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "pageCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "manifestDigest": {
+          "$ref": "#/definitions/Digest"
+        },
+        "firstPageCursor": {
+          "$ref": "#/definitions/Cursor"
+        },
+        "resumeCursor": {
+          "$ref": "#/definitions/Cursor"
+        }
+      }
+    },
+    "SnapshotStatusResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "job",
+            "snapshot"
+          ],
+          "properties": {
+            "job": {
+              "$ref": "#/definitions/SnapshotJob"
+            },
+            "snapshot": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/SnapshotMeta"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "job": {
+                    "properties": {
+                      "state": {
+                        "const": "succeeded"
+                      }
+                    }
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "snapshot": {
+                    "$ref": "#/definitions/SnapshotMeta"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "snapshot": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "SnapshotPageQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cursor"
+      ],
+      "properties": {
+        "cursor": {
+          "$ref": "#/definitions/Cursor"
+        }
+      }
+    },
+    "SnapshotPageResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data",
+        "meta"
+      ],
+      "properties": {
+        "data": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/definitions/SnapshotRecord"
+          }
+        },
+        "meta": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "snapshotId",
+            "pageIndex",
+            "pageCount",
+            "highWater",
+            "pageDigest",
+            "nextCursor"
+          ],
+          "properties": {
+            "snapshotId": {
+              "$ref": "#/definitions/Id"
+            },
+            "pageIndex": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "pageCount": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483647
+            },
+            "highWater": {
+              "$ref": "#/definitions/Sequence"
+            },
+            "pageDigest": {
+              "$ref": "#/definitions/Digest"
+            },
+            "nextCursor": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Cursor"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "ExportDownloadResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "jobId",
+            "url",
+            "expiresAt"
+          ],
+          "properties": {
+            "jobId": {
+              "$ref": "#/definitions/Id"
+            },
+            "url": {
+              "$ref": "#/definitions/HttpsUrl"
+            },
+            "expiresAt": {
+              "$ref": "#/definitions/Instant"
+            }
+          }
+        }
+      }
+    },
+    "DeletionChallengeResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "challengeId",
+            "jobId",
+            "consequencesVersion",
+            "expiresAt",
+            "statusReceipt"
+          ],
+          "properties": {
+            "challengeId": {
+              "$ref": "#/definitions/Id"
+            },
+            "jobId": {
+              "$ref": "#/definitions/Id"
+            },
+            "consequencesVersion": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "expiresAt": {
+              "$ref": "#/definitions/Instant"
+            },
+            "statusReceipt": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "credential",
+                "expiresAt"
+              ],
+              "properties": {
+                "credential": {
+                  "$ref": "#/definitions/Secret"
+                },
+                "expiresAt": {
+                  "$ref": "#/definitions/Instant"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "AccountSession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "displayLabel",
+        "current",
+        "state",
+        "createdAt",
+        "lastSeenAt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "displayLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "current": {
+          "type": "boolean"
+        },
+        "state": {
+          "enum": [
+            "active",
+            "revoked"
+          ]
+        },
+        "createdAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "lastSeenAt": {
+          "$ref": "#/definitions/Instant"
+        }
+      }
+    },
+    "AccountSessionsResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data",
+        "meta"
+      ],
+      "properties": {
+        "data": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/definitions/AccountSession"
+          }
+        },
+        "meta": {
+          "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/PageMeta"
+        }
+      }
+    },
+    "RevokeSessionsRequest": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "scope",
+            "sessionId"
+          ],
+          "properties": {
+            "scope": {
+              "const": "one"
+            },
+            "sessionId": {
+              "$ref": "#/definitions/Id"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "scope"
+          ],
+          "properties": {
+            "scope": {
+              "enum": [
+                "others",
+                "all"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "RevokeSessionsResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "revokedCount",
+            "currentSessionRevoked",
+            "providerRevocationStatus"
+          ],
+          "properties": {
+            "revokedCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "currentSessionRevoked": {
+              "type": "boolean"
+            },
+            "providerRevocationStatus": {
+              "enum": [
+                "pending",
+                "confirmed",
+                "needs_retry"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "Entitlement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "grantId",
+        "licenseId",
+        "capability",
+        "scopeType",
+        "scopeId",
+        "state",
+        "validUntil",
+        "source",
+        "checkedAt",
+        "catalogVersion"
+      ],
+      "properties": {
+        "grantId": { "$ref": "#/definitions/Id" },
+        "licenseId": { "anyOf": [{ "$ref": "#/definitions/Id" }, { "type": "null" }] },
+        "capability": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "scopeType": {
+          "enum": [
+            "personal",
+            "workspace"
+          ]
+        },
+        "scopeId": {
+          "$ref": "#/definitions/Id"
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "active",
+            "grace",
+            "expired",
+            "revoked"
+          ]
+        },
+        "validUntil": {
+          "$ref": "#/definitions/NullableInstant"
+        },
+        "source": {
+          "enum": [
+            "apple_app_store",
+            "google_play",
+            "web_provider",
+            "organization",
+            "promotion"
+          ]
+        },
+        "checkedAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "catalogVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      }
+    },
+    "EntitlementsResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data",
+        "meta"
+      ],
+      "properties": {
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "checkedAt",
+            "catalogVersion",
+            "entitlements"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "current",
+                "unavailable"
+              ]
+            },
+            "checkedAt": {
+              "$ref": "#/definitions/NullableInstant"
+            },
+            "catalogVersion": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "entitlements": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "minItems": 0,
+                  "maxItems": 100,
+                  "items": {
+                    "$ref": "#/definitions/Entitlement"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "status": {
+                    "const": "unavailable"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "checkedAt": {
+                    "type": "null"
+                  },
+                  "catalogVersion": {
+                    "type": "null"
+                  },
+                  "entitlements": {
+                    "type": "null"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "checkedAt": {
+                    "$ref": "#/definitions/Instant"
+                  },
+                  "catalogVersion": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "entitlements": {
+                    "type": "array",
+                    "minItems": 0,
+                    "maxItems": 100,
+                    "items": {
+                      "$ref": "#/definitions/Entitlement"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "meta": {
+          "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/PageMeta"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "data": {
+                "properties": {
+                  "status": {
+                    "const": "unavailable"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "meta": {
+                "properties": {
+                  "nextCursor": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Surface": {
+      "enum": [
+        "ios",
+        "android",
+        "web"
+      ]
+    },
+    "CatalogQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "surface"
+      ],
+      "properties": {
+        "surface": {
+          "$ref": "#/definitions/Surface"
+        },
+        "cursor": {
+          "$ref": "#/definitions/Cursor"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50
+        }
+      }
+    },
+    "Price": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "currency",
+        "amountMinor",
+        "fractionDigits",
+        "displayText",
+        "source",
+        "checkedAt",
+        "expiresAt"
+      ],
+      "properties": {
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "amountMinor": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,17})$"
+        },
+        "fractionDigits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 6
+        },
+        "displayText": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "source": {
+          "enum": [
+            "apple_app_store",
+            "google_play",
+            "web_provider"
+          ]
+        },
+        "checkedAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "expiresAt": {
+          "$ref": "#/definitions/Instant"
+        }
+      }
+    },
+    "Offer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "catalogVersion",
+        "title",
+        "scopeType",
+        "capabilities",
+        "purchaseType",
+        "intervalUnit",
+        "intervalCount",
+        "price",
+        "disclosureVersion"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "catalogVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "scopeType": {
+          "enum": [
+            "personal",
+            "workspace"
+          ]
+        },
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "uniqueItems": true
+        },
+        "purchaseType": {
+          "enum": [
+            "subscription",
+            "one_time"
+          ]
+        },
+        "intervalUnit": {
+          "anyOf": [
+            {
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "year"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "intervalCount": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483647
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "price": {
+          "$ref": "#/definitions/Price"
+        },
+        "disclosureVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "purchaseType": {
+                "const": "one_time"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "intervalUnit": {
+                "type": "null"
+              },
+              "intervalCount": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "intervalUnit": {
+                "enum": [
+                  "day",
+                  "week",
+                  "month",
+                  "year"
+                ]
+              },
+              "intervalCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2147483647
+              }
+            }
+          }
+        }
+      ]
+    },
+    "CatalogResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data",
+        "meta"
+      ],
+      "properties": {
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "surface",
+            "catalogVersion",
+            "checkedAt",
+            "offers"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "ready",
+                "unconfigured",
+                "unavailable"
+              ]
+            },
+            "surface": {
+              "$ref": "#/definitions/Surface"
+            },
+            "catalogVersion": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "checkedAt": {
+              "$ref": "#/definitions/NullableInstant"
+            },
+            "offers": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "minItems": 0,
+                  "maxItems": 100,
+                  "items": {
+                    "$ref": "#/definitions/Offer"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "status": {
+                    "const": "ready"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "catalogVersion": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "checkedAt": {
+                    "$ref": "#/definitions/Instant"
+                  },
+                  "offers": {
+                    "type": "array",
+                    "minItems": 0,
+                    "maxItems": 100,
+                    "items": {
+                      "$ref": "#/definitions/Offer"
+                    }
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "catalogVersion": {
+                    "type": "null"
+                  },
+                  "checkedAt": {
+                    "type": "null"
+                  },
+                  "offers": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "meta": {
+          "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/PageMeta"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "data": {
+                "properties": {
+                  "status": {
+                    "enum": [
+                      "unconfigured",
+                      "unavailable"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "meta": {
+                "properties": {
+                  "nextCursor": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ManagementLinkRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "licenseId"
+      ],
+      "properties": {
+        "licenseId": {
+          "$ref": "#/definitions/Id"
+        }
+      }
+    },
+    "ManagementLinkResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "licenseId",
+            "url",
+            "expiresAt"
+          ],
+          "properties": {
+            "licenseId": {
+              "$ref": "#/definitions/Id"
+            },
+            "url": {
+              "$ref": "#/definitions/HttpsUrl"
+            },
+            "expiresAt": {
+              "$ref": "#/definitions/Instant"
+            }
+          }
+        }
+      }
+    }
+  }
+}

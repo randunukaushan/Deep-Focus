@@ -1,0 +1,123 @@
+{
+  "contractVersion": 1,
+  "task": "PL-05",
+  "executionAuthorized": false,
+  "candidateFingerprint": null,
+  "environment": null,
+  "gates": [
+    {
+      "id": "PA-G01",
+      "title": "Exact candidate, target, scope, policies and trusted control boundary",
+      "sources": [
+        "08-VERIFICATION-AND-RELEASE.md",
+        "18-IMPLEMENTATION-READINESS-AND-OWNER-DECISIONS.md"
+      ],
+      "status": "NOT_RUN",
+      "candidateFingerprint": null,
+      "environment": null,
+      "evidence": []
+    },
+    {
+      "id": "PA-G02",
+      "title": "Accepted plan wire and real isolated database/RPC migration evidence",
+      "sources": [
+        "26-SAVED-PLAN-MANAGEMENT-WIRE.md",
+        "29-PLAN-DATABASE-RPC-TEST-PACKET.md"
+      ],
+      "status": "NOT_RUN",
+      "candidateFingerprint": null,
+      "environment": null,
+      "evidence": []
+    },
+    {
+      "id": "PA-G03",
+      "title": "Real mobile storage, offline recovery and accessibility evidence",
+      "sources": [
+        "30-MOBILE-PLAN-STORAGE-OUTBOX-RECOVERY.md"
+      ],
+      "status": "NOT_RUN",
+      "candidateFingerprint": null,
+      "environment": null,
+      "evidence": []
+    },
+    {
+      "id": "PA-G04",
+      "title": "Compatibility, erasure, replication and complete export evidence",
+      "sources": [
+        "25-SAVED-PLAN-LIFECYCLE-AND-PRIVACY.md",
+        "27-PLAN-REPLICATION-SNAPSHOT-EXPORT-WIRE.md",
+        "28-ACCOUNT-EXPORT-ARTIFACT-CONTRACT.md"
+      ],
+      "status": "NOT_RUN",
+      "candidateFingerprint": null,
+      "environment": null,
+      "evidence": []
+    },
+    {
+      "id": "PA-G05",
+      "title": "AI consent, usage, pending-job and provider failure evidence",
+      "sources": [
+        "23-AI-GENERATION-RECOVERY-AND-REVISION.md",
+        "24-DAILY-PLAN-AND-GENERATION-WIRE-CONTRACT.md"
+      ],
+      "status": "NOT_RUN",
+      "candidateFingerprint": null,
+      "environment": null,
+      "evidence": []
+    },
+    {
+      "id": "PA-G06",
+      "title": "Rehearsed safe-forward recovery and suppression-aware restore",
+      "sources": [
+        "29-PLAN-DATABASE-RPC-TEST-PACKET.md",
+        "30-MOBILE-PLAN-STORAGE-OUTBOX-RECOVERY.md"
+      ],
+      "status": "NOT_RUN",
+      "candidateFingerprint": null,
+      "environment": null,
+      "evidence": []
+    },
+    {
+      "id": "PA-G07",
+      "title": "Observability, incident owner, portal and global release evidence",
+      "sources": [
+        "08-VERIFICATION-AND-RELEASE.md",
+        "17-WEBSITE-PORTAL-AND-RELEASE-RUNBOOK.md"
+      ],
+      "status": "NOT_RUN",
+      "candidateFingerprint": null,
+      "environment": null,
+      "evidence": []
+    },
+    {
+      "id": "PA-G08",
+      "title": "Independent candidate review and exact owner action authority",
+      "sources": [
+        "../ai/DEFINITION_OF_DONE.md",
+        "../ai/AI_EXECUTION_POLICY.md"
+      ],
+      "status": "NOT_RUN",
+      "candidateFingerprint": null,
+      "environment": null,
+      "evidence": []
+    }
+  ],
+  "independentReview": {
+    "status": "PENDING",
+    "candidateFingerprint": null,
+    "environment": null,
+    "evidence": []
+  },
+  "ownerAuthorization": {
+    "status": "PENDING",
+    "candidateFingerprint": null,
+    "environment": null,
+    "evidence": []
+  },
+  "runtimeScenarios": {
+    "prefix": "PA-T",
+    "count": 12,
+    "status": "NOT_RUN"
+  },
+  "limits": "Unfilled specification evidence inventory. Reference checker PASS is not release eligibility, authenticated approval, provider evidence or deployment authority."
+}

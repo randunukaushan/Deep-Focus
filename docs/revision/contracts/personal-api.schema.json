@@ -1,0 +1,814 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:deep-focus:personal-api:2026-09-15",
+  "title": "Deep Focus proposed personal-core DTO contract",
+  "description": "Documentation contract, not deployed API. Numeric bounds are proposed engineering limits, not approval of product duration/retention/pricing policy.",
+  "definitions": {
+    "Id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "Instant": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "NullableId": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "NullableInstant": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Instant"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "Version": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647
+    },
+    "PositiveMs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "Title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "\\S"
+    },
+    "Description": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 4000
+    },
+    "Priority": {
+      "enum": [
+        null,
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "Due": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "none"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "date"
+          ],
+          "properties": {
+            "kind": {
+              "const": "date"
+            },
+            "date": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "at"
+          ],
+          "properties": {
+            "kind": {
+              "const": "instant"
+            },
+            "at": {
+              "$ref": "#/definitions/Instant"
+            }
+          }
+        }
+      ]
+    },
+    "TaskCreate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "workspaceId",
+        "title"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "workspaceId": {
+          "$ref": "#/definitions/Id"
+        },
+        "title": {
+          "$ref": "#/definitions/Title"
+        },
+        "description": {
+          "$ref": "#/definitions/Description"
+        },
+        "priority": {
+          "$ref": "#/definitions/Priority"
+        },
+        "goalId": {
+          "$ref": "#/definitions/NullableId"
+        },
+        "due": {
+          "$ref": "#/definitions/Due"
+        }
+      }
+    },
+    "TaskPatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 2,
+      "required": [
+        "expectedVersion"
+      ],
+      "properties": {
+        "expectedVersion": {
+          "$ref": "#/definitions/Version"
+        },
+        "title": {
+          "$ref": "#/definitions/Title"
+        },
+        "description": {
+          "$ref": "#/definitions/Description"
+        },
+        "priority": {
+          "$ref": "#/definitions/Priority"
+        },
+        "goalId": {
+          "$ref": "#/definitions/NullableId"
+        },
+        "due": {
+          "$ref": "#/definitions/Due"
+        }
+      }
+    },
+    "TaskAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "expectedVersion",
+        "action",
+        "occurredAt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "expectedVersion": {
+          "$ref": "#/definitions/Version"
+        },
+        "action": {
+          "enum": [
+            "begin",
+            "complete",
+            "cancel",
+            "archive"
+          ]
+        },
+        "occurredAt": {
+          "$ref": "#/definitions/Instant"
+        }
+      }
+    },
+    "GoalCreate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "workspaceId",
+        "title",
+        "type",
+        "period",
+        "startsAt",
+        "endsAt",
+        "timeZone",
+        "targetValue",
+        "targetUnit"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "workspaceId": {
+          "$ref": "#/definitions/Id"
+        },
+        "title": {
+          "$ref": "#/definitions/Title"
+        },
+        "description": {
+          "$ref": "#/definitions/Description"
+        },
+        "type": {
+          "enum": [
+            "focus_time",
+            "session_count",
+            "task_completion"
+          ]
+        },
+        "period": {
+          "enum": [
+            "daily",
+            "weekly",
+            "monthly",
+            "custom"
+          ]
+        },
+        "startsAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "endsAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "timeZone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "targetValue": {
+          "$ref": "#/definitions/PositiveMs"
+        },
+        "targetUnit": {
+          "enum": [
+            "ms",
+            "count"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "focus_time"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "targetUnit": {
+                "const": "ms"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "targetUnit": {
+                "const": "count"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "SessionStart": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "workspaceId",
+        "plannedMs",
+        "startedAt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "workspaceId": {
+          "$ref": "#/definitions/Id"
+        },
+        "taskId": {
+          "$ref": "#/definitions/NullableId"
+        },
+        "plannedMs": {
+          "$ref": "#/definitions/PositiveMs"
+        },
+        "startedAt": {
+          "$ref": "#/definitions/Instant"
+        }
+      }
+    },
+    "SessionEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "expectedVersion",
+        "type",
+        "occurredAt",
+        "clientSequence"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "expectedVersion": {
+          "$ref": "#/definitions/Version"
+        },
+        "type": {
+          "enum": [
+            "pause",
+            "resume",
+            "complete",
+            "cancel"
+          ]
+        },
+        "occurredAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "clientSequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        }
+      }
+    },
+    "ProfilePatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedVersion",
+        "displayName"
+      ],
+      "properties": {
+        "expectedVersion": {
+          "$ref": "#/definitions/Version"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "\\S"
+        }
+      }
+    },
+    "MutationBatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mutations"
+      ],
+      "properties": {
+        "mutations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 25,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "operation",
+              "payload"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/definitions/Id"
+              },
+              "operation": {
+                "enum": [
+                  "task.create",
+                  "goal.create",
+                  "session.start"
+                ]
+              },
+              "payload": {
+                "type": "object"
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "operation": {
+                      "const": "task.create"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "payload": {
+                      "$ref": "#/definitions/TaskCreate"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "operation": {
+                      "const": "goal.create"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "payload": {
+                      "$ref": "#/definitions/GoalCreate"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "operation": {
+                      "const": "session.start"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "payload": {
+                      "$ref": "#/definitions/SessionStart"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "Task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "workspaceId",
+        "title",
+        "description",
+        "priority",
+        "goalId",
+        "due",
+        "status",
+        "version",
+        "createdAt",
+        "updatedAt",
+        "completedAt",
+        "archivedAt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "workspaceId": {
+          "$ref": "#/definitions/Id"
+        },
+        "title": {
+          "$ref": "#/definitions/Title"
+        },
+        "description": {
+          "$ref": "#/definitions/Description"
+        },
+        "priority": {
+          "$ref": "#/definitions/Priority"
+        },
+        "goalId": {
+          "$ref": "#/definitions/NullableId"
+        },
+        "due": {
+          "$ref": "#/definitions/Due"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "in_progress",
+            "completed",
+            "cancelled"
+          ]
+        },
+        "version": {
+          "$ref": "#/definitions/Version"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "completedAt": {
+          "$ref": "#/definitions/NullableInstant"
+        },
+        "archivedAt": {
+          "$ref": "#/definitions/NullableInstant"
+        }
+      }
+    },
+    "Goal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "workspaceId",
+        "title",
+        "type",
+        "period",
+        "startsAt",
+        "endsAt",
+        "timeZone",
+        "targetValue",
+        "targetUnit",
+        "status",
+        "version",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "workspaceId": {
+          "$ref": "#/definitions/Id"
+        },
+        "title": {
+          "$ref": "#/definitions/Title"
+        },
+        "description": {
+          "$ref": "#/definitions/Description"
+        },
+        "type": {
+          "enum": [
+            "focus_time",
+            "session_count",
+            "task_completion"
+          ]
+        },
+        "period": {
+          "enum": [
+            "daily",
+            "weekly",
+            "monthly",
+            "custom"
+          ]
+        },
+        "startsAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "endsAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "timeZone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "targetValue": {
+          "$ref": "#/definitions/PositiveMs"
+        },
+        "targetUnit": {
+          "enum": [
+            "ms",
+            "count"
+          ]
+        },
+        "status": {
+          "enum": [
+            "active",
+            "completed",
+            "cancelled",
+            "expired"
+          ]
+        },
+        "version": {
+          "$ref": "#/definitions/Version"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/Instant"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "focus_time"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "targetUnit": {
+                "const": "ms"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "targetUnit": {
+                "const": "count"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "workspaceId",
+        "taskId",
+        "taskTitleSnapshot",
+        "status",
+        "plannedMs",
+        "focusedMs",
+        "pausedMs",
+        "startedAt",
+        "endedAt",
+        "recordedAt",
+        "verificationState",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "workspaceId": {
+          "$ref": "#/definitions/Id"
+        },
+        "taskId": {
+          "$ref": "#/definitions/NullableId"
+        },
+        "taskTitleSnapshot": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Title"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "enum": [
+            "active",
+            "paused",
+            "completed",
+            "cancelled"
+          ]
+        },
+        "plannedMs": {
+          "$ref": "#/definitions/PositiveMs"
+        },
+        "focusedMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "pausedMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "startedAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "endedAt": {
+          "$ref": "#/definitions/NullableInstant"
+        },
+        "recordedAt": {
+          "$ref": "#/definitions/NullableInstant"
+        },
+        "verificationState": {
+          "enum": [
+            "pending",
+            "verified",
+            "needs_review"
+          ]
+        },
+        "version": {
+          "$ref": "#/definitions/Version"
+        }
+      }
+    },
+    "Profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "displayName",
+        "personalWorkspaceId",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "personalWorkspaceId": {
+          "$ref": "#/definitions/Id"
+        },
+        "version": {
+          "$ref": "#/definitions/Version"
+        }
+      }
+    },
+    "Error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "code",
+            "messageKey",
+            "requestId",
+            "retryable"
+          ],
+          "properties": {
+            "code": {
+              "enum": [
+                "VALIDATION_FAILED",
+                "AUTH_REQUIRED",
+                "ACCESS_DENIED",
+                "NOT_FOUND",
+                "VERSION_CONFLICT",
+                "INVALID_TRANSITION",
+                "DURATION_NOT_REACHED",
+                "CLOCK_UNCERTAIN",
+                "RATE_LIMITED",
+                "DEPENDENCY_UNAVAILABLE",
+                "CURSOR_EXPIRED",
+                "IDEMPOTENCY_CONFLICT",
+                "ENTITY_DELETED",
+                "SYNC_RESET_REQUIRED",
+                "RECENT_AUTH_REQUIRED",
+                "JOB_NOT_READY",
+                "SNAPSHOT_EXPIRED",
+                "CAPABILITY_EXPIRED",
+                "POLICY_UNCONFIGURED",
+                "AI_PROPOSAL_EXPIRED",
+                "AI_PROPOSAL_MISMATCH",
+                "AI_PROPOSAL_ALREADY_APPLIED",
+                "AI_REQUEST_EXPIRED",
+                "AI_FEATURE_DISABLED",
+                "AI_ACTION_REQUIRED"
+              ]
+            },
+            "messageKey": {
+              "type": "string",
+              "minLength": 1
+            },
+            "requestId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "fieldErrors": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

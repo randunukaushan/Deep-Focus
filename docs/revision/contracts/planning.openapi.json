@@ -1,0 +1,349 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Deep Focus daily-plan generation/recovery slice",
+    "version": "0.1.0-draft",
+    "description": "Five operations. External schemas use JSON Schema draft-07. Conditional breakdown/review not admitted; persistence/sync/privacy integration remains gated."
+  },
+  "servers": [
+    {
+      "url": "/v1"
+    }
+  ],
+  "security": [
+    {
+      "UserBearer": []
+    }
+  ],
+  "paths": {
+    "/ai/plan-my-day": {
+      "post": {
+        "operationId": "generatePlanMyDay",
+        "x-planning-id": "PG-01",
+        "x-active-account-required": true,
+        "x-unknown-query-keys": "reject",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized terminal replay, not new generation.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "planning.schema.json#/definitions/TerminalResponse"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted, not completed.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              },
+              "Location": {
+                "description": "Exactly /v1/ai/requests/{returned requestId}; no credential in URL.",
+                "schema": {
+                  "type": "string",
+                  "pattern": "^/v1/ai/requests/[0-9a-fA-F-]{36}$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "planning.schema.json#/definitions/PendingResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "planning.schema.json#/definitions/PlanGenerationInput"
+              }
+            }
+          }
+        },
+        "x-idempotency-key-equals": "requestId"
+      }
+    },
+    "/ai/requests/{requestId}": {
+      "get": {
+        "operationId": "getPlanGenerationRequest",
+        "x-planning-id": "PG-02",
+        "x-active-account-required": true,
+        "x-unknown-query-keys": "reject",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned Plan My Day request; not conditional-feature admission.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "planning.schema.json#/definitions/RequestResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/ai/requests/{requestId}/cancel": {
+      "post": {
+        "operationId": "cancelPlanGenerationRequest",
+        "x-planning-id": "PG-03",
+        "x-active-account-required": true,
+        "x-unknown-query-keys": "reject",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Terminal cancellation acknowledgement or already-terminal snapshot.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "planning.schema.json#/definitions/CancelResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "planning.schema.json#/definitions/Empty"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/proposals/{id}/revisions": {
+      "post": {
+        "operationId": "reviseAiProposal",
+        "x-planning-id": "PG-04",
+        "x-active-account-required": true,
+        "x-unknown-query-keys": "reject",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Minimal revision receipt; re-fetch current proposal before confirming.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "planning.schema.json#/definitions/RevisionResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "planning.schema.json#/definitions/ProposalRevisionInput"
+              }
+            }
+          }
+        },
+        "x-generation-unit-debit": 0
+      }
+    },
+    "/plans/{id}": {
+      "get": {
+        "operationId": "getDailyPlan",
+        "x-planning-id": "PG-05",
+        "x-active-account-required": true,
+        "x-unknown-query-keys": "reject",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Plan-Contract-Version",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "const": 2
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current owned plan and exact bound reminder snapshot (contract 2); not original immutable itinerary or actual activity.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              },
+              "Plan-Contract-Version": {
+                "schema": {
+                  "type": "integer",
+                  "const": 2
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "planning.schema.json#/definitions/PlanResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "UserBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Supabase user access JWT"
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Safe shared error, private and ownership checked.",
+        "headers": {
+          "Cache-Control": {
+            "schema": {
+              "type": "string",
+              "const": "private, no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "personal-api.schema.json#/definitions/Error"
+            }
+          }
+        }
+      }
+    }
+  }
+}

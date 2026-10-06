@@ -1,0 +1,810 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:deep-focus:planning:2026-09-19",
+  "title": "Draft daily-plan and generation lifecycle DTOs",
+  "description": "Document-only. Requires semantic time/ownership/graph/transaction checks and reviewed policies; not product implementation.",
+  "definitions": {
+    "Id": {
+      "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+    },
+    "Version": {
+      "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Version"
+    },
+    "Digest": {
+      "$ref": "urn:deep-focus:rewards-ai:2026-09-19#/definitions/Digest"
+    },
+    "UtcInstant": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+    },
+    "TimeZone": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "LocalDate": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "FocusBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "taskId",
+        "startsAt",
+        "endsAt",
+        "reminderId"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "kind": {
+          "const": "focus"
+        },
+        "taskId": {
+          "$ref": "#/definitions/Id"
+        },
+        "startsAt": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "endsAt": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "reminderId": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "BreakBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "afterBlockId",
+        "startsAt",
+        "endsAt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "kind": {
+          "const": "break"
+        },
+        "afterBlockId": {
+          "$ref": "#/definitions/Id"
+        },
+        "startsAt": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "endsAt": {
+          "$ref": "#/definitions/UtcInstant"
+        }
+      }
+    },
+    "Block": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/FocusBlock"
+        },
+        {
+          "$ref": "#/definitions/BreakBlock"
+        }
+      ]
+    },
+    "PlanCreate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "workspaceId",
+        "localDate",
+        "timeZone",
+        "availableStart",
+        "availableEnd",
+        "explanation",
+        "blocks"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "workspaceId": {
+          "$ref": "#/definitions/Id"
+        },
+        "localDate": {
+          "$ref": "#/definitions/LocalDate"
+        },
+        "timeZone": {
+          "$ref": "#/definitions/TimeZone"
+        },
+        "availableStart": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "availableEnd": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "explanation": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "blocks": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/definitions/Block"
+          },
+          "contains": {
+            "$ref": "#/definitions/FocusBlock"
+          }
+        }
+      }
+    },
+    "Preferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "defaultFocusMinutes",
+        "defaultBreakMinutes",
+        "reminderLeadMinutes"
+      ],
+      "properties": {
+        "defaultFocusMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "defaultBreakMinutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "reminderLeadMinutes": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "PlanGenerationInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requestId",
+        "taskIds",
+        "availableStart",
+        "availableEnd",
+        "timeZone",
+        "preferences"
+      ],
+      "properties": {
+        "requestId": {
+          "$ref": "#/definitions/Id"
+        },
+        "taskIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/definitions/Id"
+          },
+          "uniqueItems": true
+        },
+        "availableStart": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "availableEnd": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "timeZone": {
+          "$ref": "#/definitions/TimeZone"
+        },
+        "preferences": {
+          "$ref": "#/definitions/Preferences"
+        }
+      }
+    },
+    "Empty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {}
+    },
+    "PendingRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requestId",
+        "actionType",
+        "version",
+        "createdAt",
+        "updatedAt",
+        "deadlineAt",
+        "status",
+        "completedAt",
+        "result",
+        "failureCode",
+        "reservedActions",
+        "consumedActions"
+      ],
+      "properties": {
+        "requestId": {
+          "$ref": "#/definitions/Id"
+        },
+        "actionType": {
+          "const": "plan_my_day"
+        },
+        "version": {
+          "$ref": "#/definitions/Version"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "deadlineAt": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "status": {
+          "const": "pending"
+        },
+        "completedAt": {
+          "type": "null"
+        },
+        "result": {
+          "type": "null"
+        },
+        "failureCode": {
+          "type": "null"
+        },
+        "reservedActions": {
+          "const": 1
+        },
+        "consumedActions": {
+          "const": 0
+        }
+      }
+    },
+    "CompletedRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requestId",
+        "actionType",
+        "version",
+        "createdAt",
+        "updatedAt",
+        "deadlineAt",
+        "status",
+        "completedAt",
+        "result",
+        "failureCode",
+        "reservedActions",
+        "consumedActions"
+      ],
+      "properties": {
+        "requestId": {
+          "$ref": "#/definitions/Id"
+        },
+        "actionType": {
+          "const": "plan_my_day"
+        },
+        "version": {
+          "$ref": "#/definitions/Version"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "deadlineAt": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "status": {
+          "const": "completed"
+        },
+        "completedAt": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "result": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "proposalId",
+            "contractVersion"
+          ],
+          "properties": {
+            "proposalId": {
+              "$ref": "#/definitions/Id"
+            },
+            "contractVersion": {
+              "const": 2
+            }
+          }
+        },
+        "failureCode": {
+          "type": "null"
+        },
+        "reservedActions": {
+          "const": 0
+        },
+        "consumedActions": {
+          "const": 1
+        }
+      }
+    },
+    "FailedRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requestId",
+        "actionType",
+        "version",
+        "createdAt",
+        "updatedAt",
+        "deadlineAt",
+        "status",
+        "completedAt",
+        "result",
+        "failureCode",
+        "reservedActions",
+        "consumedActions"
+      ],
+      "properties": {
+        "requestId": {
+          "$ref": "#/definitions/Id"
+        },
+        "actionType": {
+          "const": "plan_my_day"
+        },
+        "version": {
+          "$ref": "#/definitions/Version"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "deadlineAt": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "status": {
+          "const": "failed"
+        },
+        "completedAt": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "result": {
+          "type": "null"
+        },
+        "failureCode": {
+          "enum": [
+            "PROVIDER_UNAVAILABLE",
+            "INVALID_OUTPUT",
+            "DEADLINE_EXCEEDED",
+            "ACCESS_REVOKED",
+            "INTERNAL_FAILURE",
+            "INPUT_STALE"
+          ]
+        },
+        "reservedActions": {
+          "const": 0
+        },
+        "consumedActions": {
+          "const": 0
+        }
+      }
+    },
+    "CancelledRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requestId",
+        "actionType",
+        "version",
+        "createdAt",
+        "updatedAt",
+        "deadlineAt",
+        "status",
+        "completedAt",
+        "result",
+        "failureCode",
+        "reservedActions",
+        "consumedActions"
+      ],
+      "properties": {
+        "requestId": {
+          "$ref": "#/definitions/Id"
+        },
+        "actionType": {
+          "const": "plan_my_day"
+        },
+        "version": {
+          "$ref": "#/definitions/Version"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "deadlineAt": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "status": {
+          "const": "cancelled"
+        },
+        "completedAt": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "result": {
+          "type": "null"
+        },
+        "failureCode": {
+          "type": "null"
+        },
+        "reservedActions": {
+          "const": 0
+        },
+        "consumedActions": {
+          "const": 0
+        }
+      }
+    },
+    "TerminalRequest": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/CompletedRequest"
+        },
+        {
+          "$ref": "#/definitions/FailedRequest"
+        },
+        {
+          "$ref": "#/definitions/CancelledRequest"
+        }
+      ]
+    },
+    "Request": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/PendingRequest"
+        },
+        {
+          "$ref": "#/definitions/TerminalRequest"
+        }
+      ]
+    },
+    "PendingResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/PendingRequest"
+        }
+      }
+    },
+    "TerminalResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/TerminalRequest"
+        }
+      }
+    },
+    "RequestResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/Request"
+        }
+      }
+    },
+    "CancelResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "mutationId",
+                "outcome",
+                "request"
+              ],
+              "properties": {
+                "mutationId": {
+                  "$ref": "#/definitions/Id"
+                },
+                "outcome": {
+                  "const": "cancelled"
+                },
+                "request": {
+                  "$ref": "#/definitions/CancelledRequest"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "mutationId",
+                "outcome",
+                "request"
+              ],
+              "properties": {
+                "mutationId": {
+                  "$ref": "#/definitions/Id"
+                },
+                "outcome": {
+                  "const": "already_terminal"
+                },
+                "request": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/definitions/CompletedRequest"
+                    },
+                    {
+                      "$ref": "#/definitions/FailedRequest"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "Replacement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operationId",
+        "payload"
+      ],
+      "properties": {
+        "operationId": {
+          "$ref": "#/definitions/Id"
+        },
+        "payload": {
+          "oneOf": [
+            {
+              "$ref": "urn:deep-focus:rewards-ai:2026-09-19#/definitions/ProposalTaskCreate"
+            },
+            {
+              "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/TaskPatch"
+            },
+            {
+              "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/ReminderCreate"
+            },
+            {
+              "$ref": "#/definitions/PlanCreate"
+            }
+          ]
+        }
+      }
+    },
+    "ProposalRevisionInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedProposalVersion",
+        "reviewDigest",
+        "replacements"
+      ],
+      "properties": {
+        "expectedProposalVersion": {
+          "$ref": "#/definitions/Version"
+        },
+        "reviewDigest": {
+          "$ref": "#/definitions/Digest"
+        },
+        "replacements": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 25,
+          "items": {
+            "$ref": "#/definitions/Replacement"
+          }
+        }
+      }
+    },
+    "RevisionResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "proposalId",
+            "previousVersion",
+            "proposalVersion",
+            "reviewDigest",
+            "mutationId",
+            "revisedAt"
+          ],
+          "properties": {
+            "proposalId": {
+              "$ref": "#/definitions/Id"
+            },
+            "previousVersion": {
+              "$ref": "#/definitions/Version"
+            },
+            "proposalVersion": {
+              "$ref": "#/definitions/Version"
+            },
+            "reviewDigest": {
+              "$ref": "#/definitions/Digest"
+            },
+            "mutationId": {
+              "$ref": "#/definitions/Id"
+            },
+            "revisedAt": {
+              "$ref": "#/definitions/UtcInstant"
+            }
+          }
+        }
+      }
+    },
+    "SavedPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "workspaceId",
+        "localDate",
+        "timeZone",
+        "availableStart",
+        "availableEnd",
+        "explanation",
+        "blocks",
+        "version",
+        "createdAt",
+        "sourceProposalId",
+        "state",
+        "updatedAt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "workspaceId": {
+          "$ref": "#/definitions/Id"
+        },
+        "localDate": {
+          "$ref": "#/definitions/LocalDate"
+        },
+        "timeZone": {
+          "$ref": "#/definitions/TimeZone"
+        },
+        "availableStart": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "availableEnd": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "explanation": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "blocks": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/definitions/Block"
+          },
+          "contains": {
+            "$ref": "#/definitions/FocusBlock"
+          }
+        },
+        "version": {
+          "$ref": "#/definitions/Version"
+        },
+        "createdAt": {
+          "$ref": "#/definitions/UtcInstant"
+        },
+        "sourceProposalId": {
+          "$ref": "#/definitions/Id"
+        },
+        "state": {
+          "enum": [
+            "active",
+            "archived"
+          ]
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/UtcInstant"
+        }
+      }
+    },
+    "PlanResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "plan",
+            "boundReminders"
+          ],
+          "properties": {
+            "plan": {
+              "$ref": "#/definitions/SavedPlan"
+            },
+            "boundReminders": {
+              "type": "array",
+              "maxItems": 100,
+              "items": {
+                "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Reminder"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

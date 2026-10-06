@@ -1,17 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { formatSessionDuration, getHistoricalSessions } from '@/features/focus/session-history';
 import { loadSessionHistory } from '@/features/focus/session-storage';
+import { readProgressHistory } from '@/features/progress/progress-state';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { Palette, Radius, Spacing } from '@/theme/tokens';
 
-export default function AnalyticsRoute() {
+export default function ProgressRoute() {
   const router = useRouter();
   const theme = useTheme();
   const isDark = useColorScheme() === 'dark';
@@ -22,16 +23,27 @@ export default function AnalyticsRoute() {
   const softAction = isDark ? theme.background : Palette.homeLightActionSoft;
   const [sessions, setSessions] = useState<ReturnType<typeof getHistoricalSessions>>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const retryRef = useRef<() => void>(() => {});
 
   useFocusEffect(useCallback(() => {
     let mounted = true;
-    setLoading(true);
-    void loadSessionHistory().then((history) => {
+    const load = async () => {
+      setLoading(true);
+      setLoadError(false);
+      const result = await readProgressHistory(loadSessionHistory);
       if (!mounted) return;
-      setSessions(getHistoricalSessions(history));
+      if (result.status === 'error') {
+        setLoadError(true);
+        setLoading(false);
+        return;
+      }
+      setSessions(getHistoricalSessions(result.sessions));
       setLoading(false);
-    });
-    return () => { mounted = false; };
+    };
+    retryRef.current = () => { void load(); };
+    void load();
+    return () => { mounted = false; retryRef.current = () => {}; };
   }, []));
 
   const completed = sessions.filter((session) => session.status === 'completed');
@@ -44,17 +56,24 @@ export default function AnalyticsRoute() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           <View style={styles.header}>
-            <ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">ANALYTICS</ThemedText>
+            <ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">PROGRESS</ThemedText>
             <ThemedText accessibilityRole="header" type="title" style={styles.title}>Notice your rhythm.</ThemedText>
             <ThemedText themeColor="textSecondary">A clear view of the focus time you have protected.</ThemedText>
           </View>
 
-          {loading ? <View accessibilityLabel="Loading analytics" style={styles.loading}><ActivityIndicator color={action} /></View> : sessions.length === 0 ? (
-            <ThemedView accessibilityLabel="No analytics available yet" style={[styles.emptyCard, { backgroundColor: surface, borderColor: border }]}>
+          {loading ? <View accessibilityLabel="Loading progress" accessibilityLiveRegion="polite" style={styles.loading}><ActivityIndicator color={action} /></View> : loadError ? (
+            <ThemedView accessibilityLabel="Progress could not be loaded" accessibilityLiveRegion="polite" style={[styles.emptyCard, { backgroundColor: surface, borderColor: border }]}>
+              <View style={[styles.largeIcon, { backgroundColor: softAction }]}><Ionicons color={action} name="cloud-offline-outline" size={28} /></View>
+              <ThemedText accessibilityRole="header" type="subtitle" style={styles.cardTitle}>Your progress is still here.</ThemedText>
+              <ThemedText themeColor="textSecondary">We couldn’t read your saved sessions just now. Your data hasn’t been changed.</ThemedText>
+              <Pressable accessibilityLabel="Retry loading progress" accessibilityRole="button" onPress={() => retryRef.current()} style={({ pressed }) => [styles.outlineButton, { borderColor: action }, pressed && styles.pressed]}><ThemedText style={{ color: action }} type="smallBold">Try again</ThemedText></Pressable>
+            </ThemedView>
+          ) : sessions.length === 0 ? (
+            <ThemedView accessibilityLabel="No progress available yet" style={[styles.emptyCard, { backgroundColor: surface, borderColor: border }]}>
               <View style={[styles.largeIcon, { backgroundColor: softAction }]}><Ionicons color={action} name="bar-chart-outline" size={28} /></View>
               <ThemedText type="subtitle" style={styles.cardTitle}>Your pattern will appear here.</ThemedText>
               <ThemedText themeColor="textSecondary">Complete a focus session to start building a quiet, useful record of your work.</ThemedText>
-              <Pressable accessibilityLabel="Open session history" accessibilityRole="button" onPress={() => router.push('/analytics/history')} style={({ pressed }) => [styles.outlineButton, { borderColor: action }, pressed && styles.pressed]}><ThemedText style={{ color: action }} type="smallBold">View session history</ThemedText></Pressable>
+              <Pressable accessibilityLabel="Open session history" accessibilityRole="button" onPress={() => router.push('/progress/history')} style={({ pressed }) => [styles.outlineButton, { borderColor: action }, pressed && styles.pressed]}><ThemedText style={{ color: action }} type="smallBold">View session history</ThemedText></Pressable>
             </ThemedView>
           ) : (
             <>
@@ -67,9 +86,10 @@ export default function AnalyticsRoute() {
                 <View style={[styles.largeIcon, { backgroundColor: softAction }]}><Ionicons color={action} name="leaf-outline" size={25} /></View>
                 <View style={styles.insightCopy}><ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">YOUR PROGRESS</ThemedText><ThemedText type="subtitle" style={styles.cardTitle}>{completed.length === 1 ? 'One block protected.' : `${completed.length} blocks protected.`}</ThemedText><ThemedText themeColor="textSecondary">Progress is based on completed sessions saved on this device.</ThemedText></View>
               </ThemedView>
-              <Pressable accessibilityLabel="Open session history" accessibilityRole="button" onPress={() => router.push('/analytics/history')} style={({ pressed }) => [styles.historyButton, { backgroundColor: action, borderColor: action }, pressed && styles.pressed]}><ThemedText style={{ color: Palette.deepNavy }} type="smallBold">View session history</ThemedText><Ionicons color={Palette.deepNavy} name="arrow-forward" size={18} /></Pressable>
+              <Pressable accessibilityLabel="Open session history" accessibilityRole="button" onPress={() => router.push('/progress/history')} style={({ pressed }) => [styles.historyButton, { backgroundColor: action, borderColor: action }, pressed && styles.pressed]}><ThemedText style={{ color: Palette.deepNavy }} type="smallBold">View session history</ThemedText><Ionicons color={Palette.deepNavy} name="arrow-forward" size={18} /></Pressable>
             </>
           )}
+          <Pressable accessibilityLabel="Open rewards" accessibilityRole="button" onPress={() => router.push('/progress/rewards')} style={({ pressed }) => [styles.outlineButton, { borderColor: action }, pressed && styles.pressed]}><ThemedText style={{ color: action }} type="smallBold">View rewards</ThemedText><Ionicons color={action} name="ribbon-outline" size={18} /></Pressable>
         </View>
       </ScrollView>
     </ThemedView>
