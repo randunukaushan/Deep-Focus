@@ -1,38 +1,38 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
+import { homeCopy } from '@/content/home-copy';
+import { LOCALE_COOKIE, resolveLocale } from '@/content/locale';
 
-export default function HomePage() {
+export default async function HomePage() {
+  const cookieStore = await cookies();
+  const copy = homeCopy[resolveLocale(cookieStore.get(LOCALE_COOKIE)?.value)];
   return (
     <main id="main-content" tabIndex={-1}>
       <section className="hero" aria-labelledby="home-title">
         <div className="hero-copy">
-          <p className="eyebrow">A QUIETER WAY TO MAKE PROGRESS</p>
-          <h1 id="home-title">Focus on what matters.</h1>
-          <p className="lead">
-            Deep Focus is being built to help you choose a next step, protect a
-            little time for it, and return gently when your day changes.
-          </p>
+          <p className="eyebrow">{copy.eyebrow}</p>
+          <h1 id="home-title">{copy.title}</h1>
+          <p className="lead">{copy.description}</p>
           <div className="actions">
-            <Link className="button button-primary" href="/features">Explore the product</Link>
-            <Link className="button button-secondary" href="/roadmap">See what is in progress</Link>
+            <Link className="button button-primary" href="/features">{copy.explore}</Link>
+            <Link className="button button-secondary" href="/roadmap">{copy.roadmap}</Link>
           </div>
-          <p className="quiet-note">No streak debt. No pressure to share your work.</p>
+          <p className="quiet-note">{copy.reassurance}</p>
         </div>
         <div className="focus-art" aria-hidden="true">
           <div className="focus-orbit focus-orbit-one" />
           <div className="focus-orbit focus-orbit-two" />
-          <div className="focus-core"><span>one thing</span><i /></div>
+          <div className="focus-core"><span>{copy.oneThing}</span><i /></div>
         </div>
       </section>
 
-      <section className="three-up" aria-label="Product principles">
-        <article className="principle-card"><span className="number">01</span><h2>Choose a direction</h2><p>Keep tasks and meaningful goals close without turning your day into a scoreboard.</p></article>
-        <article className="principle-card"><span className="number">02</span><h2>Make room to focus</h2><p>Use a timer you control, with clear pause and exit choices.</p></article>
-        <article className="principle-card"><span className="number">03</span><h2>Come back calmly</h2><p>Interrupted time is part of real life. Your progress should reflect the work you did.</p></article>
+      <section className="three-up" aria-label={copy.principlesLabel}>
+        {copy.principles.map((principle, index) => <article className="principle-card" key={principle.title}><span className="number">0{index + 1}</span><h2>{principle.title}</h2><p>{principle.body}</p></article>)}
       </section>
 
       <section className="callout">
-        <div><p className="eyebrow">CURRENT STATUS</p><h2>This is a development preview.</h2><p>Accounts, purchases, downloads and online services are not available from this site.</p></div>
-        <Link className="text-link" href="/help">Read the preview notes <span aria-hidden="true">→</span></Link>
+        <div><p className="eyebrow">{copy.statusEyebrow}</p><h2>{copy.statusTitle}</h2><p>{copy.statusBody}</p></div>
+        <Link className="text-link" href="/help">{copy.help} <span aria-hidden="true">→</span></Link>
       </section>
     </main>
   );

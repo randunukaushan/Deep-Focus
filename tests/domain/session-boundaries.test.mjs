@@ -5,6 +5,9 @@ import { createRequire } from 'node:module';
 import { DatabaseSync } from 'node:sqlite';
 import { runInNewContext } from 'node:vm';
 import * as engine from '../../src/features/focus/session-engine.ts';
+import * as goalProgress from '../../src/features/goals/goal-progress.ts';
+import * as resourceTypes from '../../src/features/resources/resource-types.ts';
+import * as teacherAssignmentDraft from '../../src/features/education/teacher-assignment-draft.ts';
 
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
@@ -50,7 +53,17 @@ function sqliteFixture(initialFiles = {}, readError = false) {
       async readAsStringAsync(path) { if (legacyReadError) throw new Error('read failed'); return files.get(path); },
     },
     'react-native': { Platform: { OS: 'android' } },
+    'expo-crypto': { CryptoDigestAlgorithm: { SHA256: 'SHA-256' }, async digestStringAsync(_algorithm, value) { return `sha256:${value}`; } },
     '@/features/focus/session-engine': engine,
+    '@/features/goals/goal-progress': goalProgress,
+    '@/features/resources/resource-types': resourceTypes,
+    '@/features/education/teacher-assignment-draft': teacherAssignmentDraft,
+    './local-owner': {
+      accountOwnerId: (authenticatedId) => `account:${authenticatedId}`,
+      createLocalOwnerRegistry(deviceStore) {
+        return { current: () => deviceStore, useAccount() {}, useDeviceLocal() {} };
+      },
+    },
   };
   function loadStorage() {
     localModule = sourceModule('local-database', dependencies);
@@ -252,6 +265,7 @@ function hookFixture(load, duration = 25, saveFailures = 0) {
     './session-engine': engine,
     './session-storage': {
       loadActiveSession(strict) { strictLoad = strict; return load(); },
+      async loadFocusableTask(taskId) { return taskId === 'valid-task' ? { id: taskId, title: 'Canonical task title', status: 'pending' } : null; },
       async saveActiveSession() {
         writes++;
         if (saveFailures > 0) { saveFailures--; throw new Error('disk full'); }
@@ -265,7 +279,7 @@ function hookFixture(load, duration = 25, saveFailures = 0) {
     clearTimeout(id) { timers.delete(id); },
   });
   return {
-    render: function HookProbe() { cursor = 0; const result = useFocusSession(duration); const effects = pending; pending = []; effects.forEach(fn => fn()); return result; },
+    render: function HookProbe(taskId, taskName) { cursor = 0; const result = useFocusSession(duration, taskName, taskId); const effects = pending; pending = []; effects.forEach(fn => fn()); return result; },
     // Let cross-realm promises settle; no elapsed-time timer oracle is used.
     async settle() { await new Promise(setImmediate); return this.render(); },
     tick(timestamp) { clock = timestamp; [...timers.values()].forEach(fn => fn()); },
@@ -469,6 +483,24 @@ test('valid stored session is restored even when new route duration is invalid',
   assert.equal(state.error, null);
   assert.equal(state.projection.remainingSeconds, 1440);
   fixture.unmount();
+});
+
+test('task-linked focus uses the stored task title and stable ID, and rejects a missing task', async () => {
+  const valid = hookFixture(() => Promise.resolve(null));
+  valid.render('valid-task', 'Untrusted route title');
+  const ready = await valid.settle();
+  assert.equal(ready.session.taskId, 'valid-task');
+  assert.equal(ready.session.taskName, 'Canonical task title');
+  valid.unmount();
+
+  const missing = hookFixture(() => Promise.resolve(null));
+  missing.render('missing-task', 'Untrusted route title');
+  const unavailable = await missing.settle();
+  assert.equal(unavailable.session, null);
+  assert.match(unavailable.error, /task is no longer available/);
+  assert.equal(missing.writes(), 0);
+  assert.equal(missing.timers(), 0);
+  missing.unmount();
 });
 
 test('active save failure stops timing and exposes an explicit retry', async () => {

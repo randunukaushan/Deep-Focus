@@ -13,9 +13,11 @@ import { getDeviceTimeZone, getGoalPeriodRange } from '@/features/goals/goal-per
 import { readGoalData } from '@/features/goals/goal-read-state';
 import { loadGoals, saveGoals } from '@/features/goals/goal-storage';
 import type { Goal, GoalType } from '@/features/goals/goal-types';
+import { createStableId } from '@/features/identity/stable-ids';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { Palette, Radius, Spacing } from '@/theme/tokens';
+import { useAppLocale } from '@/features/localization/app-locale-context';
 
 export default function GoalsRoute() {
   const router = useRouter();
@@ -25,6 +27,8 @@ export default function GoalsRoute() {
   const surface = isDark ? theme.surface : Palette.homeLightSurface;
   const border = isDark ? theme.border : Palette.homeLightBorder;
   const action = isDark ? Palette.mintPrimary : Palette.homeLightAction;
+  const { copy } = useAppLocale();
+  const text = copy.goals;
   const [goals, setGoals] = useState<Goal[]>([]);
   const [sessions, setSessions] = useState<FocusSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +39,8 @@ export default function GoalsRoute() {
   const [target, setTarget] = useState('5');
   const [type, setType] = useState<GoalType>('session_count');
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   useFocusEffect(useCallback(() => {
     let mounted = true;
@@ -57,20 +63,24 @@ export default function GoalsRoute() {
   }, []));
 
   async function addGoal() {
+    if (savingRef.current) return;
     const trimmed = title.trim();
     const inputValue = Number(target);
     const targetValue = type === 'focus_time' ? inputValue * 60 : inputValue;
     if (!trimmed || !Number.isSafeInteger(targetValue) || targetValue <= 0) {
-      setSaveError(type === 'session_count' ? 'Enter a whole number of sessions.' : 'Enter a valid focus-time target in minutes.');
+      setSaveError(type === 'session_count' ? text.sessionError : text.focusError);
       return;
     }
+    savingRef.current = true;
+    setSaving(true);
+    setSaveError(null);
     try {
       const now = new Date();
       const createdAt = now.toISOString();
       const periodTimeZone = getDeviceTimeZone();
       const range = getGoalPeriodRange('weekly', now.getTime(), periodTimeZone);
       const goal: Goal = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        id: createStableId(),
         title: trimmed, type, period: 'weekly', status: 'active', targetValue,
         ...range, legacyOpenPeriod: false, createdAt, updatedAt: createdAt,
       };
@@ -78,18 +88,21 @@ export default function GoalsRoute() {
       await saveGoals(next);
       setGoals(next); setTitle(''); setTarget('5'); setSaveError(null); setShowComposer(false);
     } catch {
-      setSaveError('This goal could not be saved. Your existing goals were kept; try again.');
+    setSaveError(text.saveError);
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   }
 
   if (loading || loadError) return <ThemedView style={[styles.screen, { backgroundColor: background }]}><View style={styles.content}>
-    {loading ? <View accessibilityLabel="Loading goals" accessibilityLiveRegion="polite" style={styles.loading}><ActivityIndicator color={action} /></View> : <ThemedView accessibilityRole="alert" style={[styles.loadError, { backgroundColor: surface, borderColor: border }]}><ThemedText type="subtitle">Your goals could not be loaded.</ThemedText><ThemedText themeColor="textSecondary">Your saved goals have not been changed. Try again to reload goals and progress.</ThemedText><Button label="Retry loading goals" onPress={() => retryLoad.current()} /></ThemedView>}
+    {loading ? <View accessibilityLabel={text.loading} accessibilityLiveRegion="polite" style={styles.loading}><ActivityIndicator color={action} /></View> : <ThemedView accessibilityRole="alert" style={[styles.loadError, { backgroundColor: surface, borderColor: border }]}><ThemedText type="subtitle">{text.loadErrorTitle}</ThemedText><ThemedText themeColor="textSecondary">{text.loadErrorBody}</ThemedText><Button label={text.retry} onPress={() => retryLoad.current()} /></ThemedView>}
   </View></ThemedView>;
 
   return <ThemedView style={[styles.screen, { backgroundColor: background }]}><ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}><View style={styles.content}>
-    <View style={styles.header}><ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">GOALS</ThemedText><ThemedText accessibilityRole="header" type="title" style={styles.title}>Keep your direction clear.</ThemedText><ThemedText themeColor="textSecondary">Set one measurable intention. Focus time and completed sessions count toward the goal you chose.</ThemedText></View>
-    {!showComposer ? <Button accentColor={action} fullWidth label="Create a goal" onPress={() => { setSaveError(null); setShowComposer(true); }} style={{ backgroundColor: action, borderColor: action }} /> : <ThemedView style={[styles.composer, { backgroundColor: surface, borderColor: border }]}><ThemedText type="smallBold">NEW WEEKLY GOAL</ThemedText><TextInput accessibilityLabel="Goal title" autoFocus onChangeText={setTitle} placeholder="What do you want to achieve?" placeholderTextColor={theme.textMuted} style={[styles.input, { borderColor: border, color: theme.text }]} value={title} /><View style={styles.typeRow}>{(['session_count', 'focus_time'] as const).map((value) => <Pressable accessibilityRole="radio" accessibilityState={{ selected: type === value }} key={value} onPress={() => { setType(value); setTarget(value === 'session_count' ? '5' : '120'); setSaveError(null); }} style={[styles.typeChip, { backgroundColor: type === value ? action : 'transparent', borderColor: type === value ? action : border }]}><ThemedText style={type === value ? { color: Palette.deepNavy } : undefined} type="smallBold">{value === 'session_count' ? 'Sessions' : 'Focus minutes'}</ThemedText></Pressable>)}</View><TextInput accessibilityLabel={type === 'session_count' ? 'Target sessions' : 'Target focus minutes'} keyboardType="number-pad" onChangeText={(value) => { setTarget(value); setSaveError(null); }} placeholder="Target" placeholderTextColor={theme.textMuted} style={[styles.input, { borderColor: border, color: theme.text }]} value={target} />{saveError ? <ThemedText accessibilityRole="alert" themeColor="textSecondary">{saveError}</ThemedText> : null}<View style={styles.actions}><Button accentColor={action} label="Save goal" onPress={() => void addGoal()} style={{ backgroundColor: action, borderColor: action }} /><Button label="Cancel" onPress={() => { setShowComposer(false); setSaveError(null); }} variant="ghost" /></View></ThemedView>}
-    <View style={styles.section}><ThemedText style={[styles.sectionLabel, { color: action }]} type="smallBold">ACTIVE GOALS</ThemedText>{goals.length === 0 ? <ThemedView accessibilityLabel="No goals yet" style={[styles.empty, { backgroundColor: surface, borderColor: border }]}><Ionicons color={action} name="flag-outline" size={25} /><ThemedText themeColor="textSecondary">Create a simple goal when you are ready.</ThemedText></ThemedView> : goals.map((goal) => { const result = getGoalProgress(goal, sessions); return <Pressable accessibilityLabel={`${goal.title}. ${Math.round(result.progress * 100)} percent complete`} accessibilityRole="button" key={goal.id} onPress={() => router.push({ pathname: '/goals/[goalId]', params: { goalId: goal.id, goalTitle: goal.title } })} style={({ pressed }) => [styles.goalCard, { backgroundColor: surface, borderColor: border }, pressed && styles.pressed]}><View style={styles.goalTop}><View style={[styles.goalIcon, { backgroundColor: Palette.homeLightActionSoft }]}><Ionicons color={action} name="flag-outline" size={22} /></View><ThemedText style={{ color: action }} type="smallBold">WEEKLY</ThemedText></View><ThemedText type="subtitle" style={styles.goalTitle}>{goal.title}</ThemedText><ThemedText themeColor="textSecondary" type="small">{formatGoalValue(goal, result.currentValue)} of {formatGoalValue(goal, goal.targetValue)}</ThemedText><View style={[styles.track, { backgroundColor: Palette.homeLightActionSoft }]}><View style={[styles.fill, { backgroundColor: action, width: `${Math.round(result.progress * 100)}%` }]} /></View></Pressable>; })}</View>
+    <View style={styles.header}><ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">{text.eyebrow}</ThemedText><ThemedText accessibilityRole="header" type="title" style={styles.title}>{text.title}</ThemedText><ThemedText themeColor="textSecondary">{text.subtitle}</ThemedText></View>
+    {!showComposer ? <Button accentColor={action} fullWidth label={text.create} onPress={() => { setSaveError(null); setShowComposer(true); }} style={{ backgroundColor: action, borderColor: action }} /> : <ThemedView style={[styles.composer, { backgroundColor: surface, borderColor: border }]}><ThemedText type="smallBold">{text.newWeekly}</ThemedText><TextInput accessibilityLabel={text.titleLabel} autoFocus editable={!saving} onChangeText={(value) => { setTitle(value); setSaveError(null); }} placeholder={text.titlePlaceholder} placeholderTextColor={theme.textMuted} style={[styles.input, { borderColor: border, color: theme.text }]} value={title} /><View style={styles.typeRow}>{(['session_count', 'focus_time'] as const).map((value) => <Pressable accessibilityRole="radio" accessibilityState={{ selected: type === value, disabled: saving }} disabled={saving} key={value} onPress={() => { setType(value); setTarget(value === 'session_count' ? '5' : '120'); setSaveError(null); }} style={[styles.typeChip, { backgroundColor: type === value ? action : 'transparent', borderColor: type === value ? action : border }]}><ThemedText style={type === value ? { color: Palette.deepNavy } : undefined} type="smallBold">{value === 'session_count' ? text.sessions : text.focusMinutes}</ThemedText></Pressable>)}</View><TextInput accessibilityLabel={type === 'session_count' ? text.sessions : text.focusMinutes} editable={!saving} keyboardType="number-pad" onChangeText={(value) => { setTarget(value); setSaveError(null); }} placeholder={text.target} placeholderTextColor={theme.textMuted} style={[styles.input, { borderColor: border, color: theme.text }]} value={target} />{saveError ? <ThemedText accessibilityRole="alert" themeColor="textSecondary">{saveError}</ThemedText> : null}<View style={styles.actions}><Button accentColor={action} label={text.save} loading={saving} onPress={() => void addGoal()} style={{ backgroundColor: action, borderColor: action }} /><Button disabled={saving} label={text.cancel} onPress={() => { setShowComposer(false); setSaveError(null); }} variant="ghost" /></View></ThemedView>}
+    <View style={styles.section}><ThemedText style={[styles.sectionLabel, { color: action }]} type="smallBold">{text.yourGoals}</ThemedText>{goals.length === 0 ? <ThemedView accessibilityLabel={text.emptyLabel} style={[styles.empty, { backgroundColor: surface, borderColor: border }]}><Ionicons color={action} name="flag-outline" size={25} /><ThemedText themeColor="textSecondary">{text.empty}</ThemedText></ThemedView> : goals.map((goal) => { const result = getGoalProgress(goal, sessions); const statusLabel = goal.status === 'active' ? goal.period.toUpperCase() : goal.status.toUpperCase(); return <Pressable accessibilityLabel={`${goal.title}. ${statusLabel}. ${Math.round(result.progress * 100)} percent complete`} accessibilityRole="button" key={goal.id} onPress={() => router.push({ pathname: '/goals/[goalId]', params: { goalId: goal.id, goalTitle: goal.title } })} style={({ pressed }) => [styles.goalCard, { backgroundColor: surface, borderColor: border }, pressed && styles.pressed]}><View style={styles.goalTop}><View style={[styles.goalIcon, { backgroundColor: Palette.homeLightActionSoft }]}><Ionicons color={action} name="flag-outline" size={22} /></View><ThemedText style={{ color: action }} type="smallBold">{statusLabel}</ThemedText></View><ThemedText type="subtitle" style={styles.goalTitle}>{goal.title}</ThemedText><ThemedText themeColor="textSecondary" type="small">{formatGoalValue(goal, result.currentValue)} of {formatGoalValue(goal, goal.targetValue)}</ThemedText><View style={[styles.track, { backgroundColor: Palette.homeLightActionSoft }]}><View style={[styles.fill, { backgroundColor: action, width: `${Math.round(result.progress * 100)}%` }]} /></View></Pressable>; })}</View>
   </View></ScrollView></ThemedView>;
 }
 

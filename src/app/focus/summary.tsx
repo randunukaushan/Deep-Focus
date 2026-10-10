@@ -8,10 +8,11 @@ import { Button } from '@/components/ui/button';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { Palette, Radius, Spacing } from '@/theme/tokens';
+import { useAppLocale } from '@/features/localization/app-locale-context';
 
-function formatMinutes(seconds: number) {
+function formatMinutes(seconds: number, minuteLabel: string) {
   const minutes = Math.floor(seconds / 60);
-  return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
+  return `${minutes} ${minuteLabel}`;
 }
 
 export default function SessionSummaryRoute() {
@@ -22,6 +23,8 @@ export default function SessionSummaryRoute() {
   const homeSurface = isDark ? theme.surface : Palette.homeLightSurface;
   const homeBorder = isDark ? theme.border : Palette.homeLightBorder;
   const homeAction = isDark ? Palette.mintPrimary : Palette.homeLightAction;
+  const { copy } = useAppLocale();
+  const text = copy.focus;
   const completed = status === 'completed';
   const focused = Math.max(0, Number(focusedSeconds) || 0);
   const planned = Math.max(0, Number(plannedSeconds) || (Number(plannedMinutes) || 0) * 60);
@@ -37,32 +40,32 @@ export default function SessionSummaryRoute() {
           <View style={[styles.statusIcon, { backgroundColor: completed ? homeAction : Palette.error }]}>
             <Ionicons color={completed ? Palette.deepNavy : Palette.lightSurface} name={completed ? 'checkmark' : 'close'} size={26} />
           </View>
-          <ThemedText themeColor="textSecondary" type="smallBold">SESSION SUMMARY</ThemedText>
-          <ThemedText accessibilityRole="header" type="title">{completed ? 'Session complete.' : 'Session ended.'}</ThemedText>
-          <ThemedText themeColor="textSecondary">{completed ? 'You made space for focused work.' : 'Your session ended before the planned focus period.'}</ThemedText>
+          <ThemedText themeColor="textSecondary" type="smallBold">{text.summaryEyebrow}</ThemedText>
+          <ThemedText accessibilityRole="header" type="title">{completed ? text.sessionComplete : text.sessionEnded}</ThemedText>
+          <ThemedText themeColor="textSecondary">{completed ? text.focusedWork : text.endedBeforePlan}</ThemedText>
         </View>
-        <ThemedView accessibilityLabel={`${completed ? 'Completed' : 'Cancelled'} session. ${formatMinutes(focused)} focused of ${formatMinutes(planned)} planned${taskName ? ` for ${taskName}` : ''}.`} style={[styles.card, { backgroundColor: homeSurface, borderColor: homeBorder }]}>
-          <ThemedText style={[styles.cardEyebrow, { color: homeAction }]} type="smallBold">FOCUS SUMMARY</ThemedText>
+        <ThemedView accessibilityLabel={`${completed ? text.completed : text.cancelled} session. ${formatMinutes(focused, text.minutes)} focused of ${formatMinutes(planned, text.minutes)} planned${taskName ? ` ${text.task} ${taskName}` : ''}.`} style={[styles.card, { backgroundColor: homeSurface, borderColor: homeBorder }]}>
+          <ThemedText style={[styles.cardEyebrow, { color: homeAction }]} type="smallBold">{text.focusSummary}</ThemedText>
           <View style={styles.metricRow}>
             <View style={styles.metric}>
-              <ThemedText themeColor="textSecondary" type="smallBold">FOCUS TIME</ThemedText>
-              <ThemedText style={styles.metricValue}>{formatMinutes(focused)}</ThemedText>
+              <ThemedText themeColor="textSecondary" type="smallBold">{text.focusTime}</ThemedText>
+              <ThemedText style={styles.metricValue}>{formatMinutes(focused, text.minutes)}</ThemedText>
             </View>
             <View style={[styles.metricDivider, { backgroundColor: homeBorder }]} />
             <View style={styles.metric}>
-              <ThemedText themeColor="textSecondary" type="smallBold">PLANNED</ThemedText>
-              <ThemedText style={styles.metricValue}>{formatMinutes(planned)}</ThemedText>
+              <ThemedText themeColor="textSecondary" type="smallBold">{text.planned}</ThemedText>
+              <ThemedText style={styles.metricValue}>{formatMinutes(planned, text.minutes)}</ThemedText>
             </View>
           </View>
           <View style={[styles.statusRow, { borderTopColor: homeBorder }]}>
-            <ThemedText themeColor="textSecondary" type="smallBold">STATUS</ThemedText>
-            <ThemedText style={{ color: completed ? homeAction : Palette.error }} type="smallBold">{completed ? 'COMPLETED' : 'CANCELLED'}</ThemedText>
+            <ThemedText themeColor="textSecondary" type="smallBold">{text.status}</ThemedText>
+            <ThemedText style={{ color: completed ? homeAction : Palette.error }} type="smallBold">{completed ? text.completed : text.cancelled}</ThemedText>
           </View>
-          {taskName ? <ThemedText themeColor="textSecondary">Task: {taskName}</ThemedText> : null}
+          {taskName ? <ThemedText themeColor="textSecondary">{text.task} {taskName}</ThemedText> : null}
         </ThemedView>
         <View style={styles.actions}>
-          <Button accentColor={homeAction} fullWidth label="Start Another Session" onPress={() => router.replace('/focus/setup')} style={{ backgroundColor: homeAction, borderColor: homeAction }} />
-          <Button accentColor={homeAction} fullWidth label="Return Home" onPress={goHome} variant="secondary" />
+          <Button accentColor={homeAction} fullWidth label={text.anotherSession} onPress={() => router.replace('/focus/setup')} style={{ backgroundColor: homeAction, borderColor: homeAction }} />
+          <Button accentColor={homeAction} fullWidth label={text.backHome} onPress={goHome} variant="secondary" />
         </View>
       </View>
     </ThemedView>

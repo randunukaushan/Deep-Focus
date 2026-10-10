@@ -1,4 +1,6 @@
 import type { FocusSession, SessionProjection } from './session-types';
+// @ts-expect-error The bundled domain test runtime imports TypeScript modules directly.
+import { createStableId } from '../identity/stable-ids.ts';
 
 const SECOND_MS = 1000;
 
@@ -11,7 +13,7 @@ export function createFocusSession(durationMinutes: number, taskName?: string, n
   }
   const timestamp = new Date(now).toISOString();
   return {
-    id: `focus-${now}-${Math.random().toString(36).slice(2, 8)}`,
+    id: createStableId(),
     status: 'active',
     taskName: taskName || undefined,
     plannedDurationSeconds: durationMinutes * 60,

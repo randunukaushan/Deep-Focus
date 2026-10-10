@@ -11,6 +11,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { Palette, Radius, Spacing, Typography } from '@/theme/tokens';
 import { loadActiveSession, loadSessionHistory } from '@/features/focus/session-storage';
+import { useAppLocale } from '@/features/localization/app-locale-context';
 
 type QuickAction = {
   label: string;
@@ -19,16 +20,18 @@ type QuickAction = {
   route: Href;
 };
 
-const QUICK_ACTIONS: QuickAction[] = [
-  { label: 'Tasks', detail: 'Choose what matters next', icon: 'checkbox-outline', route: '/tasks' },
-  { label: 'Goals', detail: 'Keep your direction clear', icon: 'flag-outline', route: '/goals' },
-  { label: 'Plan My Day', detail: 'Create a calm starting point', icon: 'sparkles-outline', route: '/plan-my-day' },
-];
+function getQuickActions(copy: ReturnType<typeof useAppLocale>['copy']): QuickAction[] {
+  return [
+    { label: copy.home.tasks, detail: copy.home.tasksDetail, icon: 'checkbox-outline', route: '/tasks' },
+    { label: copy.home.goals, detail: copy.home.goalsDetail, icon: 'flag-outline', route: '/goals' },
+    { label: copy.home.plan, detail: copy.home.planDetail, icon: 'sparkles-outline', route: '/plan-my-day' },
+  ];
+}
 
-function getGreeting(hour: number) {
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
+function getGreeting(hour: number, copy: ReturnType<typeof useAppLocale>['copy']) {
+  if (hour < 12) return copy.home.morning;
+  if (hour < 18) return copy.home.afternoon;
+  return copy.home.evening;
 }
 
 function formatFocusTime(totalSeconds: number) {
@@ -43,6 +46,7 @@ export function HomeScreen() {
   const router = useRouter();
   const theme = useTheme();
   const colorScheme = useColorScheme();
+  const { copy } = useAppLocale();
   const isDark = colorScheme === 'dark';
   const { height } = useWindowDimensions();
   const [now, setNow] = useState(() => new Date());
@@ -55,10 +59,10 @@ export function HomeScreen() {
   const isNight = hour >= 18 || hour < 6;
   const isMorning = hour >= 6 && hour < 12;
   const calmGreeting = isMorning
-    ? 'A calmer start to the day.'
+    ? copy.home.calmMorning
     : isNight
-      ? 'Make space for a quieter evening.'
-      : 'Make room for the work that matters today.';
+      ? copy.home.calmNight
+      : copy.home.calmDay;
   // Keep the complete home overview visible on common phone viewports while
   // retaining the scroll fallback for smaller screens and larger text sizes.
   const compact = height < 900;
@@ -67,7 +71,8 @@ export function HomeScreen() {
   const homeBorder = isDark ? theme.border : Palette.homeLightBorder;
   const homeAction = isDark ? Palette.mintPrimary : Palette.homeLightAction;
   const homeActionSoft = isDark ? theme.background : Palette.homeLightActionSoft;
-  const greeting = getGreeting(now.getHours());
+  const greeting = getGreeting(now.getHours(), copy);
+  const quickActions = getQuickActions(copy);
   const dateLabel = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
   const [todayProgress, setTodayProgress] = useState({ focusedSeconds: 0, sessionsCompleted: 0 });
   const [pausedSession, setPausedSession] = useState<Awaited<ReturnType<typeof loadActiveSession>>>(null);
@@ -93,8 +98,8 @@ export function HomeScreen() {
 
   const hasProgress = todayProgress.sessionsCompleted > 0;
   const progressLabel = hasProgress
-    ? `${formatFocusTime(todayProgress.focusedSeconds)} focused · ${todayProgress.sessionsCompleted} ${todayProgress.sessionsCompleted === 1 ? 'session' : 'sessions'} completed.`
-    : 'No sessions completed yet — your first focused block starts the day.';
+    ? `${formatFocusTime(todayProgress.focusedSeconds)} · ${todayProgress.sessionsCompleted} ${copy.home.blocks.toLocaleLowerCase()}`
+    : copy.home.noFocus;
 
   return (
     <ThemedView style={[styles.screen, { backgroundColor: homeBackground }]}>
@@ -110,9 +115,9 @@ export function HomeScreen() {
             <View style={styles.topBarSpacer} />
             <View style={styles.brandIdentity}>
               <View style={[styles.brandLogoFrame, { borderColor: homeAction }]}><Image source={require('@/assets/branding/deep-focus-logo.png')} style={styles.brandLogoImage} /></View>
-              <View style={styles.brandBlock}><ThemedText style={[styles.eyebrow, styles.brandMark, { color: homeAction }]}>DEEP FOCUS</ThemedText>{!compact ? <ThemedText themeColor="textSecondary" type="small">Focus on what matters.</ThemedText> : null}</View>
+            <View style={styles.brandBlock}><ThemedText style={[styles.eyebrow, styles.brandMark, { color: homeAction }]}>DEEP FOCUS</ThemedText>{!compact ? <ThemedText themeColor="textSecondary" type="small">{copy.home.brandTagline}</ThemedText> : null}</View>
             </View>
-            <Pressable accessibilityLabel="Open settings" accessibilityRole="button" onPress={() => router.push('/profile/settings')} style={({ pressed }) => [styles.settingsButton, { backgroundColor: homeSurface, borderColor: homeBorder }, pressed && styles.pressed]}><Ionicons color={theme.text} name="settings-outline" size={22} /></Pressable>
+            <Pressable accessibilityLabel={copy.home.settings} accessibilityRole="button" onPress={() => router.push('/profile/settings')} style={({ pressed }) => [styles.settingsButton, { backgroundColor: homeSurface, borderColor: homeBorder }, pressed && styles.pressed]}><Ionicons color={theme.text} name="settings-outline" size={22} /></Pressable>
           </View>
           <View style={[styles.introduction, compact && styles.introductionCompact]}>
             <ThemedText style={[styles.greeting, compact && styles.greetingCompact, { color: isMorning && !isDark ? Palette.homeMorningAccent : theme.text }]} accessibilityRole="header">{greeting}.</ThemedText>
@@ -120,67 +125,67 @@ export function HomeScreen() {
             {!compact ? <ThemedText style={styles.dateLabel} themeColor="textMuted" type="small">{dateLabel}</ThemedText> : null}
           </View>
 
-          <View accessibilityLabel="Start a new focus session" style={[styles.heroCard, { backgroundColor: homeSurface, borderColor: homeBorder }]}>
+          <View accessibilityLabel={copy.home.startFocusAccessibility} style={[styles.heroCard, { backgroundColor: homeSurface, borderColor: homeBorder }]}>
             <View style={[styles.heroGlow, { backgroundColor: isDark ? Palette.navySurfaceElevated : Palette.homeLightActionSoft }]} />
             <View style={[styles.heroContent, compact && styles.heroContentCompact]}>
               <View style={styles.heroHeader}>
                 <View style={[styles.heroIcon, { backgroundColor: homeAction }]}><Ionicons color={Palette.deepNavy} name="timer-outline" size={22} /></View>
                 <View style={styles.heroLabelGroup}>
-                  <ThemedText style={[styles.heroKicker, { color: isDark ? Palette.darkTextSecondary : Palette.lightTextSecondary }]}>YOUR NEXT FOCUS BLOCK</ThemedText>
-                  <ThemedText style={[styles.heroMeta, { color: homeAction }]}>25 MIN · RECOMMENDED</ThemedText>
+                  <ThemedText style={[styles.heroKicker, { color: isDark ? Palette.darkTextSecondary : Palette.lightTextSecondary }]}>{copy.home.heroKicker}</ThemedText>
+                  <ThemedText style={[styles.heroMeta, { color: homeAction }]}>{copy.home.heroMeta}</ThemedText>
                 </View>
               </View>
-              <ThemedText style={[styles.heroTitle, compact && styles.heroTitleCompact, { color: isDark ? Palette.darkTextPrimary : Palette.lightTextPrimary }]}>A calm 25-minute start.</ThemedText>
-              <ThemedText numberOfLines={compact ? 1 : undefined} style={[styles.heroCopy, { color: isDark ? Palette.darkTextSecondary : Palette.lightTextSecondary }]}>Choose one meaningful task. We will take care of the rest.</ThemedText>
+              <ThemedText style={[styles.heroTitle, compact && styles.heroTitleCompact, { color: isDark ? Palette.darkTextPrimary : Palette.lightTextPrimary }]}>{copy.home.heroTitle}</ThemedText>
+              <ThemedText numberOfLines={compact ? 1 : undefined} style={[styles.heroCopy, { color: isDark ? Palette.darkTextSecondary : Palette.lightTextSecondary }]}>{copy.home.heroCopy}</ThemedText>
               <Button
-                accessibilityLabel="Start a 25 minute focus session"
+                accessibilityLabel={copy.home.startFocusAccessibility}
                 fullWidth
-                label="Start Focus Session"
+                label={copy.home.startFocus}
                 onPress={() => router.push('/focus/setup')}
                 style={{ backgroundColor: homeAction, borderColor: homeAction }}
               />
               <View style={[styles.heroFacts, { borderTopColor: homeBorder }, compact && styles.heroFactsCompact]}>
-                <View style={styles.heroFact}><Ionicons color={homeAction} name="timer-outline" size={compact ? 18 : 20} /><ThemedText type="smallBold">25 min</ThemedText>{!compact ? <ThemedText themeColor="textSecondary" type="small">Suggested</ThemedText> : null}</View>
+                <View style={styles.heroFact}><Ionicons color={homeAction} name="timer-outline" size={compact ? 18 : 20} /><ThemedText type="smallBold">25 {copy.focus.minutes}</ThemedText>{!compact ? <ThemedText themeColor="textSecondary" type="small">{copy.home.suggested}</ThemedText> : null}</View>
                 <View style={[styles.heroFactDivider, { backgroundColor: homeBorder }]} />
-                <View style={styles.heroFact}><Ionicons color={homeAction} name="options-outline" size={compact ? 18 : 20} /><ThemedText type="smallBold">5–180 min</ThemedText>{!compact ? <ThemedText themeColor="textSecondary" type="small">Flexible</ThemedText> : null}</View>
+                <View style={styles.heroFact}><Ionicons color={homeAction} name="options-outline" size={compact ? 18 : 20} /><ThemedText type="smallBold">5–180 {copy.focus.minutes}</ThemedText>{!compact ? <ThemedText themeColor="textSecondary" type="small">{copy.home.flexible}</ThemedText> : null}</View>
                 <View style={[styles.heroFactDivider, { backgroundColor: homeBorder }]} />
-                <View style={styles.heroFact}><Ionicons color={homeAction} name="shield-checkmark-outline" size={compact ? 18 : 20} /><ThemedText type="smallBold">Local</ThemedText>{!compact ? <ThemedText themeColor="textSecondary" type="small">Private</ThemedText> : null}</View>
+                <View style={styles.heroFact}><Ionicons color={homeAction} name="shield-checkmark-outline" size={compact ? 18 : 20} /><ThemedText type="smallBold">{copy.home.local}</ThemedText>{!compact ? <ThemedText themeColor="textSecondary" type="small">{copy.home.private}</ThemedText> : null}</View>
               </View>
             </View>
           </View>
 
-          {pausedSession ? <View accessibilityLabel={`Paused focus session: ${pausedSession.taskName || 'Focus session'}`} style={[styles.recoveryCard, { backgroundColor: homeActionSoft, borderColor: homeBorder }]}>
+          {pausedSession ? <View accessibilityLabel={`${copy.home.focusSession}: ${pausedSession.taskName || copy.home.focusSession}`} style={[styles.recoveryCard, { backgroundColor: homeActionSoft, borderColor: homeBorder }]}>
             <View style={styles.recoveryCopy}>
-              <ThemedText style={[styles.sectionEyebrow, { color: homeAction }]} type="smallBold">FOCUS SESSION PAUSED</ThemedText>
-              <ThemedText type="subtitle">{pausedSession.taskName || 'Focus session'}</ThemedText>
-              <ThemedText themeColor="textSecondary" type="small">{formatFocusTime(Math.max(0, pausedSession.plannedDurationSeconds - pausedSession.focusedDurationSeconds))} remaining</ThemedText>
+              <ThemedText style={[styles.sectionEyebrow, { color: homeAction }]} type="smallBold">{copy.home.pausedKicker}</ThemedText>
+              <ThemedText type="subtitle">{pausedSession.taskName || copy.home.focusSession}</ThemedText>
+              <ThemedText themeColor="textSecondary" type="small">{formatFocusTime(Math.max(0, pausedSession.plannedDurationSeconds - pausedSession.focusedDurationSeconds))} {copy.home.remaining}</ThemedText>
             </View>
-            <Button label="Continue" onPress={() => router.push({ pathname: '/focus/session', params: { durationMinutes: String(pausedSession.plannedDurationSeconds / 60), taskName: pausedSession.taskName || '', resume: '1' } })} />
+            <Button label={copy.home.continue} onPress={() => router.push({ pathname: '/focus/session', params: { durationMinutes: String(pausedSession.plannedDurationSeconds / 60), taskName: pausedSession.taskName || '', resume: '1' } })} />
           </View> : null}
 
-          <ThemedView accessibilityLabel={`Today’s focus progress. ${progressLabel}`} style={[styles.progressCard, { backgroundColor: homeSurface, borderColor: homeBorder }, compact && styles.progressCardCompact]}>
+          <ThemedView accessibilityLabel={`${copy.home.focusSoFar}. ${progressLabel}`} style={[styles.progressCard, { backgroundColor: homeSurface, borderColor: homeBorder }, compact && styles.progressCardCompact]}>
             <View style={styles.cardHeading}>
               <View>
-                <ThemedText style={[styles.sectionEyebrow, { color: homeAction }]} type="smallBold">YOUR FOCUS SO FAR</ThemedText>
-                <ThemedText style={compact && styles.cardTitleCompact} type="subtitle">{hasProgress ? formatFocusTime(todayProgress.focusedSeconds) : 'No focus time yet.'}</ThemedText>
+                <ThemedText style={[styles.sectionEyebrow, { color: homeAction }]} type="smallBold">{copy.home.focusSoFar}</ThemedText>
+                <ThemedText style={compact && styles.cardTitleCompact} type="subtitle">{hasProgress ? formatFocusTime(todayProgress.focusedSeconds) : copy.home.noFocus}</ThemedText>
               </View>
               <View style={[styles.statusIcon, { backgroundColor: homeActionSoft }]}><Ionicons color={homeAction} name="leaf-outline" size={20} /></View>
             </View>
             <View style={styles.progressMetrics}>
-              <View style={styles.progressMetric}><ThemedText themeColor="textSecondary" type="smallBold">FOCUS TIME</ThemedText><ThemedText style={compact && styles.metricValueCompact} type="subtitle">{formatFocusTime(todayProgress.focusedSeconds)}</ThemedText></View>
+              <View style={styles.progressMetric}><ThemedText themeColor="textSecondary" type="smallBold">{copy.home.focusTime}</ThemedText><ThemedText style={compact && styles.metricValueCompact} type="subtitle">{formatFocusTime(todayProgress.focusedSeconds)}</ThemedText></View>
               <View style={[styles.progressDivider, { backgroundColor: homeBorder }]} />
-              <View style={styles.progressMetric}><ThemedText themeColor="textSecondary" type="smallBold">BLOCKS</ThemedText><ThemedText style={compact && styles.metricValueCompact} type="subtitle">{todayProgress.sessionsCompleted}</ThemedText></View>
+              <View style={styles.progressMetric}><ThemedText themeColor="textSecondary" type="smallBold">{copy.home.blocks}</ThemedText><ThemedText style={compact && styles.metricValueCompact} type="subtitle">{todayProgress.sessionsCompleted}</ThemedText></View>
             </View>
             {!compact ? <ThemedText themeColor="textSecondary" type="small">{progressLabel}</ThemedText> : null}
           </ThemedView>
 
           <View style={styles.sectionHeader}>
-            <ThemedText style={[styles.sectionEyebrow, { color: homeAction }]} type="smallBold">QUICK ACTIONS</ThemedText>
-            <ThemedText themeColor="textSecondary" type="small">Keep your day clear.</ThemedText>
+            <ThemedText style={[styles.sectionEyebrow, { color: homeAction }]} type="smallBold">{copy.home.quickActions}</ThemedText>
+            <ThemedText themeColor="textSecondary" type="small">{copy.home.keepDayClear}</ThemedText>
           </View>
 
           <View style={styles.quickActions}>
-            {QUICK_ACTIONS.map((action) => (
+            {quickActions.map((action) => (
               <Pressable accessibilityHint={action.detail} accessibilityLabel={action.label} accessibilityRole="button" key={action.label} onPress={() => router.push(action.route)} style={({ pressed }) => [styles.quickAction, { backgroundColor: homeSurface, borderColor: homeBorder }, compact && styles.quickActionCompact, pressed && styles.pressed]}>
                 <View style={[styles.actionIcon, { backgroundColor: homeActionSoft }]}><Ionicons color={homeAction} name={action.icon} size={22} /></View>
                 <View style={styles.actionCopy}>

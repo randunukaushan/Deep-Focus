@@ -3,6 +3,7 @@ export type FocusSessionStatus = 'active' | 'paused' | 'completed' | 'cancelled'
 export type FocusSession = {
   id: string;
   status: FocusSessionStatus;
+  taskId?: string;
   taskName?: string;
   plannedDurationSeconds: number;
   focusedDurationSeconds: number;

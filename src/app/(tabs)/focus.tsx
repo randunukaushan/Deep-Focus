@@ -10,9 +10,11 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { loadActiveSession } from '@/features/focus/session-storage';
 import { Palette, Radius, Spacing } from '@/theme/tokens';
+import { useAppLocale } from '@/features/localization/app-locale-context';
 
 export default function FocusRoute() {
   const router = useRouter();
+  const { copy } = useAppLocale();
   const theme = useTheme();
   const isDark = useColorScheme() === 'dark';
   const homeSurface = isDark ? theme.surface : Palette.homeLightSurface;
@@ -38,41 +40,41 @@ export default function FocusRoute() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           <View style={styles.header}>
-            <ThemedText style={[styles.eyebrow, { color: homeAction }]} type="smallBold">FOCUS</ThemedText>
-            <ThemedText accessibilityRole="header" type="title">Make space for one thing.</ThemedText>
-            <ThemedText themeColor="textSecondary">Choose a calm focus block and begin when you are ready.</ThemedText>
+            <ThemedText style={[styles.eyebrow, { color: homeAction }]} type="smallBold">{copy.focus.eyebrow}</ThemedText>
+            <ThemedText accessibilityRole="header" type="title">{copy.focus.title}</ThemedText>
+            <ThemedText themeColor="textSecondary">{copy.focus.subtitle}</ThemedText>
           </View>
 
           {activeSession ? (
-            <ThemedView accessibilityLabel={`Focus session ${activeSession.status}. ${activeSession.taskName || 'Your focus block'}.`} style={[styles.card, { backgroundColor: homeSurface, borderColor: homeBorder }]}>
+            <ThemedView accessibilityLabel={`${activeSession.status === 'paused' ? copy.focus.sessionPaused : copy.focus.sessionActive}. ${activeSession.taskName || copy.home.focusSession}.`} style={[styles.card, { backgroundColor: homeSurface, borderColor: homeBorder }]}>
               <View style={[styles.icon, { backgroundColor: homeAction }]}><Ionicons color={Palette.deepNavy} name="timer-outline" size={24} /></View>
-              <ThemedText style={[styles.eyebrow, { color: homeAction }]} type="smallBold">{activeSession.status === 'paused' ? 'SESSION PAUSED' : 'SESSION ACTIVE'}</ThemedText>
-              <ThemedText type="subtitle">{activeSession.taskName || 'Your focus block'}</ThemedText>
-              <ThemedText themeColor="textSecondary">{activeSession.status === 'paused' ? 'Your session is ready to continue.' : 'Your focus session is in progress.'}</ThemedText>
-              <Button accentColor={homeAction} fullWidth label={activeSession.status === 'paused' ? 'Resume Session' : 'Return to Session'} onPress={() => router.push(sessionPath)} style={{ backgroundColor: homeAction, borderColor: homeAction }} />
+              <ThemedText style={[styles.eyebrow, { color: homeAction }]} type="smallBold">{activeSession.status === 'paused' ? copy.focus.sessionPaused : copy.focus.sessionActive}</ThemedText>
+              <ThemedText type="subtitle">{activeSession.taskName || copy.home.focusSession}</ThemedText>
+              <ThemedText themeColor="textSecondary">{activeSession.status === 'paused' ? copy.focus.sessionReady : copy.focus.sessionProgress}</ThemedText>
+              <Button accentColor={homeAction} fullWidth label={activeSession.status === 'paused' ? copy.focus.resume : copy.focus.returnToSession} onPress={() => router.push(sessionPath)} style={{ backgroundColor: homeAction, borderColor: homeAction }} />
             </ThemedView>
           ) : (
-            <ThemedView accessibilityLabel="Start a recommended 25 minute focus session" style={[styles.card, { backgroundColor: homeSurface, borderColor: homeBorder }]}>
+            <ThemedView accessibilityLabel={copy.home.startFocusAccessibility} style={[styles.card, { backgroundColor: homeSurface, borderColor: homeBorder }]}>
               <View style={[styles.icon, { backgroundColor: homeActionSoft }]}><Ionicons color={homeAction} name="leaf-outline" size={24} /></View>
-              <ThemedText style={[styles.eyebrow, { color: homeAction }]} type="smallBold">RECOMMENDED START</ThemedText>
-              <ThemedText type="subtitle">A calm 25-minute block.</ThemedText>
-              <ThemedText themeColor="textSecondary">Pick one meaningful task and protect the time to work on it.</ThemedText>
-              <Button accentColor={homeAction} fullWidth label="Start Focus Session" onPress={() => router.push('/focus/setup')} style={{ backgroundColor: homeAction, borderColor: homeAction }} />
+              <ThemedText style={[styles.eyebrow, { color: homeAction }]} type="smallBold">{copy.focus.recommendedStart}</ThemedText>
+              <ThemedText type="subtitle">{copy.focus.calmBlock}</ThemedText>
+              <ThemedText themeColor="textSecondary">{copy.focus.chooseTask}</ThemedText>
+              <Button accentColor={homeAction} fullWidth label={copy.focus.start} onPress={() => router.push('/focus/setup')} style={{ backgroundColor: homeAction, borderColor: homeAction }} />
             </ThemedView>
           )}
 
           {!activeSession ? <View style={[styles.optionsCard, { backgroundColor: homeActionSoft, borderColor: homeBorder }]}>
             <View style={styles.optionCopy}>
-              <ThemedText style={[styles.eyebrow, { color: homeAction }]} type="smallBold">FLEXIBLE TIMING</ThemedText>
-              <ThemedText type="subtitle">Choose your own duration.</ThemedText>
-              <ThemedText themeColor="textSecondary" type="small">Set any focus block between 5 and 180 minutes.</ThemedText>
+              <ThemedText style={[styles.eyebrow, { color: homeAction }]} type="smallBold">{copy.focus.flexibleTiming}</ThemedText>
+              <ThemedText type="subtitle">{copy.focus.chooseDuration}</ThemedText>
+              <ThemedText themeColor="textSecondary" type="small">{copy.focus.durationHint}</ThemedText>
             </View>
-            <Button accentColor={homeAction} label="Configure" onPress={() => router.push('/focus/setup')} variant="secondary" />
+            <Button accentColor={homeAction} label={copy.focus.configure} onPress={() => router.push('/focus/setup')} variant="secondary" />
           </View> : null}
 
           <View style={styles.guidance}>
             <Ionicons color={homeAction} name="shield-checkmark-outline" size={20} />
-            <ThemedText themeColor="textSecondary" type="small">Your session stays saved locally if the app is interrupted.</ThemedText>
+            <ThemedText themeColor="textSecondary" type="small">{copy.focus.savedLocally}</ThemedText>
           </View>
         </View>
       </ScrollView>

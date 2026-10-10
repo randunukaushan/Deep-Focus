@@ -7,9 +7,11 @@ import { ThemedView } from '@/components/themed-view';
 import { Palette, Radius, Spacing } from '@/theme/tokens';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+import { useAppLocale } from '@/features/localization/app-locale-context';
 
 export default function PlanRoute() {
   const router = useRouter();
+  const { copy } = useAppLocale();
   const theme = useTheme();
   const isDark = useColorScheme() === 'dark';
   const action = isDark ? Palette.mintPrimary : Palette.homeLightAction;
@@ -20,12 +22,12 @@ export default function PlanRoute() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.content}>
           <View style={styles.header}>
-            <ThemedText style={{ color: action }} type="smallBold">PLAN</ThemedText>
-            <ThemedText accessibilityRole="header" type="title">Make room for what matters.</ThemedText>
-            <ThemedText themeColor="textSecondary">Choose a task or goal to work on next.</ThemedText>
+            <ThemedText style={{ color: action }} type="smallBold">{copy.plan.eyebrow}</ThemedText>
+            <ThemedText accessibilityRole="header" type="title">{copy.plan.title}</ThemedText>
+            <ThemedText themeColor="textSecondary">{copy.plan.subtitle}</ThemedText>
           </View>
-          <PlanLink action={action} border={border} icon="checkbox-outline" title="Tasks" detail="Keep your next steps clear." onPress={() => router.push('/tasks')} />
-          <PlanLink action={action} border={border} icon="flag-outline" title="Goals" detail="Review the goals you chose." onPress={() => router.push('/goals')} />
+          <PlanLink action={action} border={border} icon="checkbox-outline" title={copy.plan.tasks} detail={copy.plan.tasksDetail} onPress={() => router.push('/tasks')} />
+          <PlanLink action={action} border={border} icon="flag-outline" title={copy.plan.goals} detail={copy.plan.goalsDetail} onPress={() => router.push('/goals')} />
         </View>
       </ScrollView>
     </ThemedView>

@@ -11,6 +11,74 @@
 > was used. The initial direct/transitive split and impact analysis below are
 > not presented as a post-remediation package inventory.
 
+## Fresh audit after auth dependencies — 2026-10-07
+
+Using official npm CLI 11.6.2 from the separate pnpm dlx tool cache, Node
+24.19.0, without installing/updating project dependencies:
+
+- `pnpm dlx npm@11.6.2 audit --json` — exit 1, 32 findings: 12 moderate,
+  20 high, 0 critical; 7 direct package records, 25 transitive package records.
+- `pnpm dlx npm@11.6.2 audit --json --omit=dev` — same 32/12/20/0 counts.
+- `node node_modules/expo/bin/cli install --check` — “Dependencies are up to
+  date.” Root SDK values remain Expo 56.0.23, Router 56.2.21, React Native
+  0.85.3, Reanimated 4.3.1 and Worklets 0.8.3. The SDK 56 compatibility table
+  targets React Native 0.85; no framework downgrade was attempted.
+
+Direct audit records: `@expo/ngrok`, `expo`, `expo-router`,
+`expo-splash-screen`, `react-native`, `react-native-reanimated`,
+`react-native-worklets`. Remaining records are transitive. The unchanged
+`--omit=dev` count is a package-lock/root-manifest classification: those root
+dependencies are placed under `dependencies`, including Expo CLI/Metro tooling.
+It does **not** prove all named packages or call paths ship in the installed
+mobile application. No production mobile bundle was built here.
+
+Call-path triage (not an exploitability certification):
+
+- `decode-uri-component@0.2.2` is brought by `query-string@7.1.3`, a dependency
+  of Expo Router. The reported issue is malformed-input decoding DoS. Version
+  0.5.0 is published as ESM (`type: module`, ESM export), while the installed
+  query-string 7 entrypoint is CommonJS and uses `require`; a simple override
+  would break module loading. Expo Router 58 is a major jump. No override was
+  applied. Treat malformed-link availability as a release blocker pending a
+  compatible upstream fix or reviewed adapter plus tests.
+- `image-size@1.2.1` appears in the Metro/build dependency tree. Advisories
+  describe parser loops on crafted JXL/HEIF/ICNS inputs, affecting build-process
+  availability if an attacker-controlled image reaches that parser. Registry
+  query for `image-size@1.2.2` returned 404; available 2.x is a major API line,
+  so no override was applied. Do not treat repository assets as the only future
+  input until the build path is reviewed.
+- `node-forge@1.4.0` is in Expo CLI/certificate tooling. The advisory concerns
+  RSA PKCS#1 v1.5 signature verification with malformed nested algorithm data.
+  Registry query for 1.4.1 returned 404 and the registry's current version was
+  1.4.0; no patched release could be confirmed. Exposure is build/CLI-side, not
+  evidence of an app-runtime exploit.
+- `uuid` occurs as 3.4.0 under `@expo/ngrok` and 7.0.3 in the root tree. The
+  advisory concerns v3/v5/v6 when a caller supplies a buffer. Inspected call
+  sites in `xcode` and `@expo/ngrok` call `uuid.v4()` without a buffer, so this
+  advisory's stated trigger was not found in those call sites; this is bounded
+  source evidence, not a claim that every consumer is safe. Both uses are
+  tooling/development pathways in this app.
+- `braces`/`micromatch` and `image-size` findings are in the Metro/watch/build
+  chain; crafted patterns/assets can affect developer or build availability.
+  `expo`, `@expo/*`, Metro and Xcode-related records are mostly aggregated
+  descendants, not independent additional CVEs. Do not count 32 package records
+  as 32 distinct root advisories.
+- The `react-native`/virtualized-list, Reanimated and Worklets nodes are also
+  present in the application dependency graph, so their release impact cannot
+  be dismissed as dev-only. Npm's grouped report does not by itself show a
+  vulnerable call path or prove exploitation. Keep them pending a package- and
+  advisory-specific review; maintain the Expo SDK 56/RN 0.85.3 supported set.
+
+Primary advisory references: [braces GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm), [decode-uri-component GHSA-vcc3-ghjq-m6fr](https://github.com/advisories/GHSA-vcc3-ghjq-m6fr), [image-size GHSA-5p2g-fcmc-qvqq](https://github.com/advisories/GHSA-5p2g-fcmc-qvqq), [image-size GHSA-w3rx-r6r6-pgpr](https://github.com/advisories/GHSA-w3rx-r6r6-pgpr), [node-forge GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv), and [uuid GHSA-w5hq-g745-h8pq](https://github.com/advisories/GHSA-w5hq-g745-h8pq). Expo's [SDK 56 version table](https://docs.expo.dev/versions/v56.0.0/) confirms the supported React Native major/minor. These sources inform issue descriptions and compatibility only; no exploit testing against a live service occurred.
+
+**Disposition:** no `audit fix`, force, override, downgrade, lockfile change or
+project dependency change was made during this fresh audit. `pnpm dlx` initially
+hit sandbox `EPERM` resolving the user profile; the authorized retry succeeded.
+The only registry metadata sent was dependency names/versions through the audit
+and targeted package metadata queries; no app/user data or secrets were sent.
+These findings remain a release/security-review gate. This fresh report does not
+erase or replace the historical 2026-10-06 remediation record above.
+
 The six approved Expo SDK 56-compatible direct patches were applied before the
 transitive remediation: `expo` `~56.0.23`, `expo-constants` `~56.0.27`,
 `expo-dev-client` `~56.0.27`, `expo-image` `~56.0.13`, `expo-linking`

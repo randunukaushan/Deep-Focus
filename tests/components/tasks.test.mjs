@@ -26,6 +26,8 @@ function fixture({ tasks = [], loadFailures = 0, saveFailures = 0, save } = {}) 
     '@/components/themed-text': { ThemedText: 'Text' },
     '@/components/themed-view': { ThemedView: 'View' },
     '@/components/ui/button': { Button: 'Button' },
+    '@/features/localization/app-locale-context': { useAppLocale: () => ({ copy: { tasks: { eyebrow: 'TASKS', title: 'Choose what matters next.', subtitle: 'Keep your next steps clear and ready for focus.', add: 'Add a task', newTask: 'NEW TASK', titleLabel: 'Task title', placeholder: 'What needs your attention?', save: 'Save task', cancel: 'Cancel', upNext: 'UP NEXT', completed: 'COMPLETED', archived: 'ARCHIVED', showArchived: 'View archived tasks', hideArchived: 'Hide archived tasks', loading: 'Loading tasks…', loadError: 'Your tasks could not be loaded. Your saved data has not been reset.', retry: 'Retry loading tasks', saving: 'Saving changes…', saveError: 'Your changes could not be saved. Your task list and draft were kept. Try the action again.', noActive: 'No active tasks. Add one whenever you are ready.', cleared: 'You have cleared your task list.', archivedState: 'Archived', completedState: 'Completed', ready: 'Ready for focus', complete: 'Complete' } } }) },
+    '@/features/identity/stable-ids': { createStableId: () => '10000000-0000-4000-8000-000000000001' },
     '@/hooks/use-theme': { useTheme: () => ({}) },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
     '@/theme/tokens': { Palette: {}, Radius: {}, Spacing: {} },
@@ -60,10 +62,10 @@ test('Tasks keeps draft and list unchanged after failed add, then explicit retry
   app.find('Task title').props.onChangeText('Keep my draft'); app.render();
   app.find('Save task').props.onPress(); await app.settle();
   assert.equal(app.find('Task title').props.value, 'Keep my draft');
-  assert.equal(app.find('Keep my draft, pending'), undefined);
+  assert.equal(app.find('Keep my draft, ready for focus'), undefined);
   assert.equal(app.alerts().length, 1);
   app.find('Save task').props.onPress(); await app.settle();
-  assert.ok(app.find('Keep my draft, pending'));
+  assert.ok(app.find('Keep my draft, ready for focus'));
   assert.equal(app.find('Task title'), undefined);
   assert.equal(app.writes(), 2);
 });
@@ -72,7 +74,7 @@ test('Tasks failed completion does not show a completed task', async () => {
   const app = fixture({ tasks: [{ id: 'a', title: 'Existing', status: 'pending' }], saveFailures: 1 });
   app.render(); await app.settle();
   app.find('Complete Existing').props.onPress(); await app.settle();
-  assert.ok(app.find('Existing, pending'));
+  assert.ok(app.find('Existing, ready for focus'));
   assert.equal(app.find('Existing, completed'), undefined);
   assert.equal(app.alerts().length, 1);
 });
@@ -86,6 +88,17 @@ test('Tasks failed load has retry instead of a false empty list', async () => {
   assert.equal(app.alerts().length, 0);
 });
 
+test('Tasks keep archived records out of active sections and reveal them on request', async () => {
+  const archived = { id: 'archived', title: 'Past task', status: 'completed', archivedAt: '2026-10-07T01:00:00.000Z' };
+  const active = { id: 'active', title: 'Current task', status: 'pending' };
+  const app = fixture({ tasks: [archived, active] }); app.render(); await app.settle();
+  assert.ok(app.find('Current task, ready for focus'));
+  assert.equal(app.find('Past task, archived'), undefined);
+  app.find('View archived tasks (1)').props.onPress(); app.render();
+  assert.ok(app.find('Past task, archived'));
+  assert.ok(app.find('Hide archived tasks (1)'));
+});
+
 test('Tasks pending save rejects duplicate submits and protects the draft', async () => {
   let resolve;
   const app = fixture({ save: () => new Promise(done => { resolve = done; }) });
@@ -97,5 +110,5 @@ test('Tasks pending save rejects duplicate submits and protects the draft', asyn
   assert.equal(app.find('Task title').props.editable, false);
   assert.equal(app.find('Save task').props.loading, true);
   resolve(); await app.settle();
-  assert.ok(app.find('One task, pending'));
+  assert.ok(app.find('One task, ready for focus'));
 });

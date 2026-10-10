@@ -9,13 +9,19 @@ import { Button } from '@/components/ui/button';
 import { Palette, Radius, Spacing, Typography } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/features/auth/auth-context';
+import { useAppLocale } from '@/features/localization/app-locale-context';
 
 export default function ForgotPasswordRoute() {
   const router = useRouter();
   const isDark = useColorScheme() === 'dark';
   const theme = useTheme();
+  const auth = useAuth();
+  const { copy } = useAppLocale();
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
 
   const background = isDark ? theme.background : Palette.homeLightBackground;
   const surface = isDark ? theme.surface : Palette.homeLightSurface;
@@ -28,23 +34,23 @@ export default function ForgotPasswordRoute() {
     <ThemedView style={[styles.screen, { backgroundColor: background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.content}>
-          <Pressable accessibilityLabel="Back to sign in" accessibilityRole="button" onPress={() => router.back()} style={styles.back}>
+          <Pressable accessibilityLabel={copy.recovery.backSignIn} accessibilityRole="button" onPress={() => router.back()} style={styles.back}>
             <Ionicons color={action} name="arrow-back" size={20} />
-            <ThemedText style={{ color: action }} type="smallBold">Sign In</ThemedText>
+            <ThemedText style={{ color: action }} type="smallBold">{copy.recovery.backSignIn}</ThemedText>
           </Pressable>
           <View style={[styles.icon, { backgroundColor: softAction, borderColor: border }]}><Ionicons color={action} name="key-outline" size={28} /></View>
-          <ThemedText accessibilityRole="header" style={styles.title} type="title">Reset your password.</ThemedText>
-          <ThemedText themeColor="textSecondary" style={styles.subtitle}>Enter the email connected to your account and we’ll help you get back to your focus practice.</ThemedText>
+          <ThemedText accessibilityRole="header" style={styles.title} type="title">{copy.recovery.resetTitle}</ThemedText>
+          <ThemedText themeColor="textSecondary" style={styles.subtitle}>{copy.recovery.resetSubtitle}</ThemedText>
 
           <ThemedView style={[styles.card, { backgroundColor: surface, borderColor: border }]}>
-            <ThemedText style={styles.label} type="smallBold">ACCOUNT EMAIL</ThemedText>
-            <TextInput accessibilityLabel="Account email address" autoCapitalize="none" autoComplete="email" keyboardType="email-address" onChangeText={(value) => { setEmail(value); setSubmitted(false); }} placeholder="you@example.com" placeholderTextColor={theme.textMuted} style={[styles.input, { borderColor: invalid ? Palette.error : border, color: theme.text }]} textContentType="emailAddress" value={email} />
-            {invalid ? <ThemedText style={styles.error} type="small">Enter your email address.</ThemedText> : null}
-            <Button accentColor={action} disabled={!email.trim()} fullWidth label="Send Reset Link" onPress={() => setSubmitted(true)} style={{ backgroundColor: action, borderColor: action }} />
-            {submitted && email.trim() ? <ThemedText themeColor="textSecondary" style={styles.providerNote} type="small">Password recovery will be enabled after an approved authentication provider is connected.</ThemedText> : null}
+            <ThemedText style={styles.label} type="smallBold">{copy.recovery.accountEmail}</ThemedText>
+            <TextInput accessibilityLabel={copy.recovery.accountEmail} autoCapitalize="none" autoComplete="email" keyboardType="email-address" onChangeText={(value) => { setEmail(value); setSubmitted(false); }} placeholder={copy.recovery.emailPlaceholder} placeholderTextColor={theme.textMuted} style={[styles.input, { borderColor: invalid ? Palette.error : border, color: theme.text }]} textContentType="emailAddress" value={email} />
+            {invalid ? <ThemedText style={styles.error} type="small">{copy.recovery.emailError}</ThemedText> : null}
+            <Button accentColor={action} disabled={busy || !email.trim()} fullWidth label={busy ? copy.recovery.sending : copy.recovery.sendLink} onPress={() => { setSubmitted(true); if (!email.trim()) return; setBusy(true); setMessage(''); void auth.requestPasswordReset(email).then((result) => { setMessage(result.status === 'error' ? copy.recovery.recoveryError : copy.recovery.resetSent); }).finally(() => setBusy(false)); }} style={{ backgroundColor: action, borderColor: action }} />
+            {message ? <ThemedText accessibilityLiveRegion="polite" themeColor="textSecondary" style={styles.providerNote} type="small">{message}</ThemedText> : null}
           </ThemedView>
-          <Button accentColor={action} fullWidth label="Back to Sign In" onPress={() => router.push('/auth/sign-in')} variant="secondary" />
-          <ThemedText style={styles.privacy} themeColor="textMuted" type="small">We won’t reveal whether an email is registered.</ThemedText>
+          <Button accentColor={action} fullWidth label={copy.recovery.backToSignIn} onPress={() => router.push('/auth/sign-in')} variant="secondary" />
+          <ThemedText style={styles.privacy} themeColor="textMuted" type="small">{copy.recovery.privacy}</ThemedText>
         </View>
       </ScrollView>
     </ThemedView>

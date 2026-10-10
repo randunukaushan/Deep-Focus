@@ -1,0 +1,14 @@
+# Task-to-goal association — 2026-10-07
+
+TASK_STATUS: REVIEW_PENDING  
+RISK: HIGH — changes persisted cross-entity ownership links; owner-scoped composite foreign key and real SQLite negative tests are required.  
+REQUIREMENT: V1 task-to-goal association; `DATA_MODEL.md` §7; `DATABASE_SCHEMA.md` task `goal_id` and owner-scoped relationship; L-07 in `revision/07-LUNA-IMPLEMENTATION-PLAYBOOK.md`.  
+APPROVAL: Owner's expanded V1 implementation authorization, 2026-10-07. Existing local SQLite/ownership architecture only; no remote sync, schema migration or production action.  
+BEHAVIOR: Task editor lists active goals in the current local namespace, supports no-goal, and keeps a currently linked terminal goal visible so it can be retained or cleared. Goal-load failure is shown with retry; saving other fields preserves the prior relation.  
+PERSISTENCE: Task details are updated in one SQLite transaction using owner, task ID and expected `updatedAt`. Setting/clearing `goal_id` uses the existing composite `(owner_id, goal_id)` foreign key; due dates remain untouched. Legacy duplicate values in `legacy_extra_json` cannot override a null/updated typed goal/priority/due-date column.  
+FAILURE/SECURITY: Cross-owner/nonexistent goal references are rejected by SQLite and roll back the entire update. Stale task revisions fail closed. The UI reads only the current owner store; backend sync/authorization remains unimplemented and outside this slice.  
+FILES: `src/features/tasks/task-types.ts`, `src/features/tasks/task-storage.ts`, `src/features/storage/local-database.ts`, `src/app/tasks/[taskId].tsx`, `tests/components/task-detail.test.mjs`, `tests/domain/local-database-ownership.test.mjs`, `tests/components/README.md`, this evidence and `docs/CHANGELOG.md`.  
+TESTS: `node --test --test-reporter=spec tests/components/task-detail.test.mjs tests/domain/local-database-ownership.test.mjs` — 21/21 passed, including active/failed goal reads, selection/unlink, real SQLite cross-owner FK rejection, stale duplicate JSON precedence and due-date preservation. Full suite `node --test --test-reporter=tap tests/domain/*.test.mjs tests/components/*.test.mjs tests/navigation/*.test.mjs web/tests/*.test.mjs` — 112/112 passed. `node node_modules/typescript/bin/tsc --noEmit` passed; direct ESLint on changed source/tests passed; `node docs/revision/check-docs.mjs` passed (71 Markdown files, 920 local links, 80/80 requirements); `git diff --check` passed with line-ending notices only.  
+REVIEW: Self-review only. Independent security/storage review remains pending. Android/iOS UI and account-switch/device evidence: NOT_RUN.  
+LIMITS: This edits the association on task detail only; no goal selection in task creation/list, no cloud sync, no task-based goal progress formula and no public web behavior.  
+RELEASE: Not accepted or production-ready pending independent review, backend ownership/sync integration and native verification.

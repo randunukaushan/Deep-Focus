@@ -1,16 +1,36 @@
 import { Image } from 'expo-image';
-import { useState } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { AccessibilityInfo, Dimensions, StyleSheet, View } from 'react-native';
 import Animated, { Easing, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+import { animationMode } from '@/features/accessibility/reduced-motion';
 
 const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
 const DURATION = 600;
 
 export function AnimatedSplashOverlay() {
   const [visible, setVisible] = useState(true);
+  const [reducedMotion, setReducedMotion] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
+      if (mounted) setReducedMotion(enabled);
+    }).catch(() => {
+      if (mounted) setReducedMotion(false);
+    });
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', (enabled) => {
+      if (mounted) setReducedMotion(enabled);
+    });
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, []);
 
   if (!visible) return null;
+  if (reducedMotion === true) return null;
+  if (animationMode(reducedMotion) === 'static') return <View style={styles.backgroundSolidColor} />;
 
   const splashKeyframe = new Keyframe({
     0: {

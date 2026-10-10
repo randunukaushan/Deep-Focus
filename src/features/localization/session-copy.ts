@@ -1,0 +1,16 @@
+import type { AppLocale } from '@/features/settings/settings-storage';
+
+export type SessionCopy = {
+  eyebrow: string; title: string; chosenBlock: string; paused: string; complete: string; ended: string; inFocus: string;
+  percentOfBlock: string; saving: string; retrySave: string; returnHome: string; sessionAttention: string; loading: string;
+  resume: string; pause: string; break: string; completeSession: string; endSession: string; endTitle: string; endDetail: string; continue: string;
+  terminalSaveFailure: string; remaining: string;
+};
+
+const COPY: Record<AppLocale, SessionCopy> = {
+  en: { eyebrow: 'FOCUS SESSION', title: 'Stay with one thing.', chosenBlock: 'Your chosen focus block', paused: 'PAUSED', complete: 'COMPLETE', ended: 'ENDED', inFocus: 'IN FOCUS', percentOfBlock: '% of your focus block', saving: 'Saving session…', retrySave: 'Retry Save', returnHome: 'Return Home', sessionAttention: 'Session needs attention', loading: 'Loading session…', resume: 'Resume Focus', pause: 'Pause Focus', break: 'Take a Break', completeSession: 'Complete Session', endSession: 'End Session', endTitle: 'End Focus Session?', endDetail: 'Your planned focus period has not been completed.', continue: 'Continue Focusing', terminalSaveFailure: 'Session history could not be saved. Your active recovery record is being kept. Retry the save before leaving this screen.', remaining: 'remaining' },
+  si: { eyebrow: 'අවධානම් සැසිය', title: 'එක් දෙයක් සමඟ රැඳී සිටින්න.', chosenBlock: 'ඔබ තෝරාගත් අවධානම් කොටස', paused: 'නවතා ඇත', complete: 'සම්පූර්ණයි', ended: 'අවසන්', inFocus: 'අවධානයේ', percentOfBlock: ' ඔබේ අවධානම් කොටසෙන්', saving: 'සැසිය සුරකිනවා…', retrySave: 'නැවත සුරකින්න', returnHome: 'මුල් පිටුවට', sessionAttention: 'සැසිය පරීක්ෂා කළ යුතුයි', loading: 'සැසිය පූරණය කරමින්…', resume: 'අවධානයට ආපසු', pause: 'අවධානය නවත්වන්න', break: 'විරාමයක් ගන්න', completeSession: 'සැසිය සම්පූර්ණ කරන්න', endSession: 'සැසිය අවසන් කරන්න', endTitle: 'අවධානම් සැසිය අවසන් කරන්නද?', endDetail: 'ඔබේ සැලසුම් කළ අවධානම් කාලය තවම සම්පූර්ණ වී නැත.', continue: 'අවධානය දිගටම කරගෙන යන්න', terminalSaveFailure: 'සැසි ඉතිහාසය සුරැකීමට නොහැකි විය. ඔබේ සක්‍රිය නැවත-ආරම්භ කිරීමේ දත්ත ආරක්ෂිතව තබා ඇත. මෙම තිරයෙන් පිටවීමට පෙර නැවත සුරකින්න.', remaining: 'ඉතිරිව ඇත' },
+  ta: { eyebrow: 'கவன அமர்வு', title: 'ஒரு விஷயத்துடன் இருங்கள்.', chosenBlock: 'நீங்கள் தேர்ந்தெடுத்த கவனத் தொகுதி', paused: 'இடைநிறுத்தம்', complete: 'முடிந்தது', ended: 'முடிந்தது', inFocus: 'கவனத்தில்', percentOfBlock: '% உங்கள் கவனத் தொகுதியில்', saving: 'அமர்வு சேமிக்கப்படுகிறது…', retrySave: 'மீண்டும் சேமிக்கவும்', returnHome: 'முகப்புக்குத் திரும்பு', sessionAttention: 'அமர்வுக்கு கவனம் தேவை', loading: 'அமர்வு ஏற்றப்படுகிறது…', resume: 'கவனத்திற்குத் திரும்பு', pause: 'கவனத்தை இடைநிறுத்து', break: 'இடைவேளை எடுக்கவும்', completeSession: 'அமர்வை முடிக்கவும்', endSession: 'அமர்வை முடிக்கவும்', endTitle: 'கவன அமர்வை முடிக்கவா?', endDetail: 'திட்டமிட்ட கவன நேரம் இன்னும் முடிவடையவில்லை.', continue: 'கவனத்தைத் தொடரவும்', terminalSaveFailure: 'அமர்வு வரலாற்றைச் சேமிக்க முடியவில்லை. உங்கள் செயலில் உள்ள மீட்புப் பதிவு பாதுகாக்கப்பட்டுள்ளது. இந்தத் திரையை விட்டு வெளியேறும் முன் மீண்டும் சேமிக்கவும்.', remaining: 'மீதமுள்ளது' },
+};
+
+export function getSessionCopy(locale: AppLocale): SessionCopy { return COPY[locale] ?? COPY.en; }

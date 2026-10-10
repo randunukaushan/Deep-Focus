@@ -3,6 +3,7 @@ import {
   appendSessionHistory as appendLocalSessionHistory,
   clearActiveSession as clearLocalActiveSession,
   loadActiveSession as loadLocalActiveSession,
+  loadTasks as loadLocalTasks,
   loadSessionHistory as loadLocalSessionHistory,
   persistTerminalSession as persistLocalTerminalSession,
   saveActiveSession as saveLocalActiveSession,
@@ -21,6 +22,13 @@ export async function loadActiveSession(strict = false): Promise<FocusSession | 
     return null;
   }
   return loadLocalActiveSession(strict);
+}
+
+export async function loadFocusableTask(taskId: string) {
+  if (Platform.OS === 'web') throw new Error('Task-linked focus is unavailable on web');
+  if (!taskId.trim()) throw new RangeError('INVALID_TASK_ID');
+  const tasks = await loadLocalTasks();
+  return tasks.find((task) => task.id === taskId && task.status !== 'completed' && task.status !== 'cancelled') ?? null;
 }
 
 export async function clearActiveSession() {
