@@ -9,16 +9,22 @@ import { Button } from '@/components/ui/button';
 import { Palette, Radius, Spacing, Typography } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/features/auth/auth-context';
+import { useAppLocale } from '@/features/localization/app-locale-context';
 
 export default function SignUpRoute() {
   const router = useRouter();
   const isDark = useColorScheme() === 'dark';
   const theme = useTheme();
+  const auth = useAuth();
+  const { copy } = useAppLocale();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
 
   const background = isDark ? theme.background : Palette.homeLightBackground;
   const surface = isDark ? theme.surface : Palette.homeLightSurface;
@@ -26,39 +32,40 @@ export default function SignUpRoute() {
   const action = isDark ? Palette.mintPrimary : Palette.homeLightAction;
   const softAction = isDark ? Palette.navySurfaceElevated : Palette.homeLightActionSoft;
   const emailInvalid = submitted && !email.trim();
-  const passwordInvalid = submitted && password.length < 8;
+  const passwordInvalid = submitted && !password;
   const confirmationInvalid = submitted && confirmation !== password;
 
   return (
     <ThemedView style={[styles.screen, { backgroundColor: background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.content}>
-          <Pressable accessibilityLabel="Back to sign in" accessibilityRole="button" onPress={() => router.back()} style={styles.back}>
+          <Pressable accessibilityLabel={copy.signUp.back} accessibilityRole="button" onPress={() => router.back()} style={styles.back}>
             <Ionicons color={action} name="arrow-back" size={20} />
-            <ThemedText style={{ color: action }} type="smallBold">Sign In</ThemedText>
+            <ThemedText style={{ color: action }} type="smallBold">{copy.signUp.back}</ThemedText>
           </Pressable>
           <View style={[styles.icon, { backgroundColor: softAction, borderColor: border }]}><Ionicons color={action} name="person-add-outline" size={28} /></View>
-          <ThemedText accessibilityRole="header" style={styles.title} type="title">Create your account.</ThemedText>
-          <ThemedText themeColor="textSecondary" style={styles.subtitle}>Keep your focus practice available across supported devices when account sync is ready.</ThemedText>
+          <ThemedText accessibilityRole="header" style={styles.title} type="title">{copy.signUp.title}</ThemedText>
+          <ThemedText themeColor="textSecondary" style={styles.subtitle}>{copy.signUp.subtitle}</ThemedText>
 
           <ThemedView style={[styles.card, { backgroundColor: surface, borderColor: border }]}>
-            <ThemedText style={styles.label} type="smallBold">EMAIL</ThemedText>
-            <TextInput accessibilityLabel="Email address" autoCapitalize="none" autoComplete="email" keyboardType="email-address" onChangeText={setEmail} placeholder="you@example.com" placeholderTextColor={theme.textMuted} style={[styles.input, { borderColor: emailInvalid ? Palette.error : border, color: theme.text }]} textContentType="emailAddress" value={email} />
-            {emailInvalid ? <ThemedText style={styles.error} type="small">Enter your email address.</ThemedText> : null}
-            <ThemedText style={[styles.label, styles.nextLabel]} type="smallBold">PASSWORD</ThemedText>
+            <ThemedText style={styles.label} type="smallBold">{copy.signUp.email}</ThemedText>
+            <TextInput accessibilityLabel={copy.signUp.email} autoCapitalize="none" autoComplete="email" keyboardType="email-address" onChangeText={setEmail} placeholder={copy.signUp.emailPlaceholder} placeholderTextColor={theme.textMuted} style={[styles.input, { borderColor: emailInvalid ? Palette.error : border, color: theme.text }]} textContentType="emailAddress" value={email} />
+            {emailInvalid ? <ThemedText style={styles.error} type="small">{copy.signUp.emailError}</ThemedText> : null}
+            <ThemedText style={[styles.label, styles.nextLabel]} type="smallBold">{copy.signUp.password}</ThemedText>
             <View style={styles.passwordWrap}>
-              <TextInput accessibilityLabel="Password" autoCapitalize="none" autoComplete="new-password" onChangeText={setPassword} placeholder="At least 8 characters" placeholderTextColor={theme.textMuted} secureTextEntry={!showPassword} style={[styles.input, styles.passwordInput, { borderColor: passwordInvalid ? Palette.error : border, color: theme.text }]} textContentType="newPassword" value={password} />
-              <Pressable accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} accessibilityRole="button" onPress={() => setShowPassword((visible) => !visible)} style={styles.eyeButton}><Ionicons color={theme.textSecondary} name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={21} /></Pressable>
+              <TextInput accessibilityLabel={copy.signUp.password} autoCapitalize="none" autoComplete="new-password" onChangeText={setPassword} placeholder={copy.signUp.passwordPlaceholder} placeholderTextColor={theme.textMuted} secureTextEntry={!showPassword} style={[styles.input, styles.passwordInput, { borderColor: passwordInvalid ? Palette.error : border, color: theme.text }]} textContentType="newPassword" value={password} />
+              <Pressable accessibilityLabel={showPassword ? copy.signUp.hidePassword : copy.signUp.showPassword} accessibilityRole="button" onPress={() => setShowPassword((visible) => !visible)} style={styles.eyeButton}><Ionicons color={theme.textSecondary} name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={21} /></Pressable>
             </View>
-            {passwordInvalid ? <ThemedText style={styles.error} type="small">Use at least 8 characters.</ThemedText> : null}
-            <ThemedText style={[styles.label, styles.nextLabel]} type="smallBold">CONFIRM PASSWORD</ThemedText>
-            <TextInput accessibilityLabel="Confirm password" autoCapitalize="none" autoComplete="new-password" onChangeText={setConfirmation} placeholder="Repeat your password" placeholderTextColor={theme.textMuted} secureTextEntry={!showPassword} style={[styles.input, { borderColor: confirmationInvalid ? Palette.error : border, color: theme.text }]} textContentType="newPassword" value={confirmation} />
-            {confirmationInvalid ? <ThemedText style={styles.error} type="small">Passwords must match.</ThemedText> : null}
-            <Button accentColor={action} disabled={!email.trim() || password.length < 8 || confirmation !== password} fullWidth label="Create Account" onPress={() => setSubmitted(true)} style={{ backgroundColor: action, borderColor: action }} />
-            {submitted && email.trim() && password.length >= 8 && confirmation === password ? <ThemedText themeColor="textSecondary" style={styles.providerNote} type="small">Account creation will be enabled after an approved authentication provider is connected.</ThemedText> : null}
+            {passwordInvalid ? <ThemedText style={styles.error} type="small">{copy.signUp.passwordError}</ThemedText> : null}
+            <ThemedText style={[styles.label, styles.nextLabel]} type="smallBold">{copy.signUp.confirmPassword}</ThemedText>
+            <TextInput accessibilityLabel={copy.signUp.confirmPassword} autoCapitalize="none" autoComplete="new-password" onChangeText={setConfirmation} placeholder={copy.signUp.confirmPlaceholder} placeholderTextColor={theme.textMuted} secureTextEntry={!showPassword} style={[styles.input, { borderColor: confirmationInvalid ? Palette.error : border, color: theme.text }]} textContentType="newPassword" value={confirmation} />
+            {confirmationInvalid ? <ThemedText style={styles.error} type="small">{copy.signUp.confirmationError}</ThemedText> : null}
+            <Button accentColor={action} disabled={busy || !email.trim() || !password || confirmation !== password} fullWidth label={busy ? copy.signUp.creatingAccount : copy.signUp.createAccount} onPress={() => { setSubmitted(true); if (!email.trim() || !password || confirmation !== password) return; setBusy(true); setMessage(''); void auth.signUpWithPassword(email, password).then((result) => { if (result.status === 'verification_required') router.replace({ pathname: '/auth/verify-email', params: { email: email.trim() } }); else if (result.status === 'error') setMessage(result.message); }).finally(() => setBusy(false)); }} style={{ backgroundColor: action, borderColor: action }} />
+            <Button accentColor={action} disabled={busy} fullWidth label={copy.signUp.google} onPress={() => { setBusy(true); setMessage(''); void auth.signInWithGoogle().then((result) => { if (result.status === 'error') setMessage(result.message); }).finally(() => setBusy(false)); }} variant="secondary" />
+            {message ? <ThemedText accessibilityLiveRegion="polite" style={styles.error} type="small">{message}</ThemedText> : null}
           </ThemedView>
-          <Button accentColor={action} fullWidth label="Already have an account? Sign In" onPress={() => router.push('/auth/sign-in')} variant="secondary" />
-          <ThemedText style={styles.privacy} themeColor="textMuted" type="small">We will only request the account details needed for secure access.</ThemedText>
+          <Button accentColor={action} fullWidth label={`${copy.signUp.existingAccount} ${copy.signUp.signIn}`} onPress={() => router.push('/auth/sign-in')} variant="secondary" />
+          <ThemedText style={styles.privacy} themeColor="textMuted" type="small">{copy.signUp.privacy}</ThemedText>
         </View>
       </ScrollView>
     </ThemedView>
@@ -81,6 +88,5 @@ const styles = StyleSheet.create({
   passwordInput: { paddingRight: 52 },
   eyeButton: { position: 'absolute', right: 4, top: 3, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   error: { color: Palette.error },
-  providerNote: { textAlign: 'center', lineHeight: Typography.bodySmall.fontSize * 1.4 },
   privacy: { textAlign: 'center', marginTop: Spacing.sm },
 });

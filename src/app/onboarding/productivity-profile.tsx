@@ -8,9 +8,23 @@ import { Button } from '@/components/ui/button';
 import { Palette, Radius, Spacing, Typography } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+import { useAssessmentFlow } from '@/features/assessment/assessment-flow-context';
+import { buildAssessmentProfile } from '@/features/assessment/assessment-definition';
+import { buildAssessmentSettingsSuggestion } from '@/features/assessment/assessment-personalization';
+import { applyAssessmentSettings } from '@/features/assessment/assessment-settings-application';
+import { useState } from 'react';
+import { getAppLocaleCopy } from '@/features/localization/app-locale';
+import { useAppLocale } from '@/features/localization/app-locale-context';
 
 export default function ProductivityProfileRoute() {
   const router = useRouter();
+  const { copy } = useAppLocale();
+  const profileCopy = copy.onboarding?.profile ?? getAppLocaleCopy('en').onboarding!.profile;
+  const { answers, clearAnswers, flowState, errorMessage, retryPersistence } = useAssessmentFlow();
+  const [applyState, setApplyState] = useState<'idle' | 'applying' | 'applied' | 'error'>('idle');
+  const [applyError, setApplyError] = useState(false);
+  const profile = buildAssessmentProfile(answers);
+  const settingsSuggestion = buildAssessmentSettingsSuggestion(answers);
   const isDark = useColorScheme() === 'dark';
   const theme = useTheme();
   const background = isDark ? theme.background : Palette.homeLightBackground;
@@ -23,12 +37,26 @@ export default function ProductivityProfileRoute() {
     <ThemedView style={[styles.screen, { backgroundColor: background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
-          <Pressable accessibilityLabel="Back to assessment" accessibilityRole="button" onPress={() => router.back()} style={styles.back}><Ionicons color={action} name="arrow-back" size={20} /><ThemedText style={{ color: action }} type="smallBold">Assessment</ThemedText></Pressable>
-          <View style={styles.headerRow}><View style={[styles.icon, { backgroundColor: softAction, borderColor: border }]}><Ionicons color={action} name="person-circle-outline" size={32} /></View><View style={styles.headerCopy}><ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">YOUR PROFILE</ThemedText><ThemedText accessibilityRole="header" style={styles.title} type="title">A steady, flexible rhythm.</ThemedText></View></View>
-          <ThemedText themeColor="textSecondary" style={styles.subtitle}>Here is a starting point based on your answers. Keep what feels useful and change anything that does not.</ThemedText>
-          <View style={styles.section}><ThemedText style={[styles.sectionLabel, { color: action }]} type="smallBold">SUGGESTED PREFERENCES</ThemedText><ProfileCard action={action} border={border} detail="Short, steady blocks with a clear finish." icon="timer-outline" surface={surface} title="Focus pace" value="Steady blocks" /><ProfileCard action={action} border={border} detail="A small pause helps you return with more clarity." icon="cafe-outline" surface={surface} title="Recovery" value="Short breaks" /><ProfileCard action={action} border={border} detail="Gentle prompts only, so your attention stays yours." icon="notifications-off-outline" surface={surface} title="Guidance" value="Low interruption" /></View>
-          <ThemedView style={[styles.noteCard, { backgroundColor: surface, borderColor: border }]}><Ionicons color={action} name="sparkles-outline" size={22} /><View style={styles.noteCopy}><ThemedText type="smallBold">Suggestions, not rules.</ThemedText><ThemedText themeColor="textSecondary" type="small">Nothing here changes your settings or tasks until you explicitly choose to apply it.</ThemedText></View></ThemedView>
-          <Button accentColor={action} fullWidth label="Start a Focus Session" onPress={() => router.push('/focus/setup')} style={{ backgroundColor: action, borderColor: action }} /><Button label="Back to Home" onPress={() => router.replace('/(tabs)/home')} variant="ghost" />
+          <Pressable accessibilityLabel={profileCopy.back} accessibilityRole="button" onPress={() => router.back()} style={styles.back}><Ionicons color={action} name="arrow-back" size={20} /><ThemedText style={{ color: action }} type="smallBold">{profileCopy.back}</ThemedText></Pressable>
+          <View style={styles.headerRow}><View style={[styles.icon, { backgroundColor: softAction, borderColor: border }]}><Ionicons color={action} name="person-circle-outline" size={32} /></View><View style={styles.headerCopy}><ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">{profileCopy.eyebrow}</ThemedText><ThemedText accessibilityRole="header" style={styles.title} type="title">{profileCopy.title}</ThemedText></View></View>
+          {!profile ? <>
+            <ThemedView accessibilityLabel={profileCopy.noAnswers} style={[styles.noteCard, { backgroundColor: surface, borderColor: border }]}><Ionicons color={action} name="information-circle-outline" size={22} /><View style={styles.noteCopy}><ThemedText type="smallBold">{profileCopy.noAnswers}</ThemedText><ThemedText themeColor="textSecondary" type="small">{profileCopy.noAnswersDetail}</ThemedText></View></ThemedView>
+            <Button accentColor={action} fullWidth label={profileCopy.start} onPress={() => router.push('/onboarding/assessment')} style={{ backgroundColor: action, borderColor: action }} />
+            <Button label={profileCopy.continueDefaults} onPress={() => router.replace('/(tabs)/home')} variant="ghost" />
+          </> : <>
+            <ThemedText themeColor="textSecondary" style={styles.subtitle}>{profileCopy.subtitle}</ThemedText>
+            <View style={styles.section}><ThemedText style={[styles.sectionLabel, { color: action }]} type="smallBold">{profileCopy.shared}</ThemedText>{profile.sharedPreferences.map((item, index) => <ProfileCard action={action} border={border} detail={profileCopy.sharedDetail} icon={index === 2 ? 'cafe-outline' : 'checkmark-circle-outline'} key={item.questionId} surface={surface} title={item.label} value={item.value} />)}</View>
+            <View style={styles.section}><ThemedText style={[styles.sectionLabel, { color: action }]} type="smallBold">{profileCopy.suggestions}</ThemedText>{profile.suggestions.map((item) => <ProfileCard action={action} border={border} detail={profileCopy.suggestionDetail} icon="sparkles-outline" key={item.title} surface={surface} title={item.title} value={item.text} />)}</View>
+            <ThemedView style={[styles.noteCard, { backgroundColor: surface, borderColor: border }]}><Ionicons color={action} name="shield-checkmark-outline" size={22} /><View style={styles.noteCopy}><ThemedText type="smallBold">{profileCopy.saved}</ThemedText><ThemedText themeColor="textSecondary" type="small">{profileCopy.savedDetail}</ThemedText>{flowState === 'saving' ? <ThemedText themeColor="textSecondary" type="small">{profileCopy.saving}</ThemedText> : null}{errorMessage ? <ThemedText accessibilityRole="alert" themeColor="textSecondary" type="small">{profileCopy.saveError}</ThemedText> : null}</View></ThemedView>
+            {errorMessage ? <Button accentColor={action} label={profileCopy.retry} onPress={retryPersistence} variant="secondary" /> : null}
+            {settingsSuggestion ? <>
+              <ThemedView accessibilityLabel={profileCopy.review} style={[styles.noteCard, { backgroundColor: surface, borderColor: border }]}><Ionicons color={action} name="options-outline" size={22} /><View style={styles.noteCopy}><ThemedText type="smallBold">{profileCopy.review}</ThemedText><ThemedText themeColor="textSecondary" type="small">{profileCopy.reviewDetail.replace('{focus}', String(settingsSuggestion.defaultFocusDurationMinutes)).replace('{break}', String(settingsSuggestion.defaultBreakDurationMinutes))}</ThemedText>{applyState === 'applied' ? <ThemedText type="smallBold">{profileCopy.applied}</ThemedText> : null}{applyState === 'error' ? <ThemedText accessibilityRole="alert" type="small">{profileCopy.applyError}</ThemedText> : null}</View></ThemedView>
+              <Button accentColor={action} disabled={applyState === 'applying' || flowState === 'saving' || flowState === 'error'} fullWidth label={applyState === 'applied' ? profileCopy.appliedButton : profileCopy.apply} onPress={() => { setApplyState('applying'); setApplyError(false); void applyAssessmentSettings(answers).then(() => setApplyState('applied')).catch(() => { setApplyState('error'); setApplyError(true); }); }} style={{ backgroundColor: action, borderColor: action }} />
+              {applyError ? <ThemedText accessibilityRole="alert" themeColor="textSecondary" type="small">{profileCopy.applyError}</ThemedText> : null}
+            </> : null}
+            <Button accentColor={action} fullWidth label={profileCopy.startFocus} onPress={() => router.push('/focus/setup')} style={{ backgroundColor: action, borderColor: action }} />
+            <Button label={profileCopy.useDefaults} onPress={() => { clearAnswers(); router.replace('/(tabs)/home'); }} variant="ghost" />
+          </>}
         </View>
       </ScrollView>
     </ThemedView>

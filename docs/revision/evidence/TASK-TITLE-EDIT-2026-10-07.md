@@ -1,0 +1,13 @@
+# Task title editing — 2026-10-07
+
+TASK_STATUS: REVIEW_PENDING  
+RISK: HIGH because this changes persisted task lifecycle/integrity behavior; write is reversible and owner-scoped, but concurrent changes must not be overwritten.  
+REQUIREMENT: V1 task scope supports editing; canonical task identity, lifecycle and ownership remain in `DATA_MODEL.md` §7 and `DATABASE_SCHEMA.md` tasks; implementation sequence is L-07 in `revision/07-LUNA-IMPLEMENTATION-PLAYBOOK.md`.  
+APPROVAL: Expanded V1 implementation authorization, 2026-10-07. Only canonical optional task description and priority fields were exposed; no schema migration, backend behavior or lifecycle policy was introduced.  
+BASELINE: Existing task details supported read/focus/complete but no edit action; the worktree contained unrelated dirty user/previous implementation changes, preserved.  
+FILES: `src/features/storage/local-database.ts`, `src/features/tasks/task-storage.ts`, `src/features/tasks/task-types.ts`, `src/app/tasks/[taskId].tsx`, `tests/components/task-detail.test.mjs`, `tests/domain/local-database-ownership.test.mjs`, this evidence and `docs/CHANGELOG.md`.  
+ACCEPTANCE: Active task title, description and priority edit preserve ID and unrelated goal/due-date values; a stale `updatedAt`, missing/foreign task, or terminal task cannot be changed; failed writes preserve existing data/draft; blank or overlong titles and unsupported priorities are rejected.  
+TESTS: Focused route/SQLite command `node --test --test-reporter=spec tests/components/task-detail.test.mjs tests/domain/local-database-ownership.test.mjs` — 13/13 passed, including actual in-memory SQLite owner/revision/terminal/field-preservation checks. Full suite `node --test --test-reporter=tap tests/domain/*.test.mjs tests/components/*.test.mjs tests/navigation/*.test.mjs web/tests/*.test.mjs` — 104/104 passed. `node node_modules/typescript/bin/tsc --noEmit` passed; direct ESLint on changed implementation/tests passed; `node docs/revision/check-docs.mjs` passed (69 Markdown files, 920 local links, 80/80 requirements).  
+REVIEW: Self-review only. Independent review remains pending because this changes persisted task behavior. Native Android/iOS interaction, keyboard, screen-reader and restart verification: NOT_RUN. `git diff --check` pending.  
+LIMITS: This adds title editing only. Description, priority, due-date, task/goal association UI, archive/delete policy, cloud sync and release integration remain separate work/gates.  
+RECOMMENDED_NEXT_ACTION: Continue with an independent-review-safe local task lifecycle slice; do not accept the persisted task changes until required review and device evidence are complete.

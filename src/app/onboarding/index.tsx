@@ -8,9 +8,15 @@ import { Button } from '@/components/ui/button';
 import { Palette, Radius, Spacing, Typography } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+import { useAssessmentFlow } from '@/features/assessment/assessment-flow-context';
+import { getAppLocaleCopy } from '@/features/localization/app-locale';
+import { useAppLocale } from '@/features/localization/app-locale-context';
 
 export default function OnboardingRoute() {
   const router = useRouter();
+  const { copy } = useAppLocale();
+  const introCopy = copy.onboarding?.intro ?? getAppLocaleCopy('en').onboarding!.intro;
+  const { clearAnswers } = useAssessmentFlow();
   const isDark = useColorScheme() === 'dark';
   const theme = useTheme();
   const background = isDark ? theme.background : Palette.homeLightBackground;
@@ -25,20 +31,20 @@ export default function OnboardingRoute() {
         <View style={styles.content}>
           <Pressable accessibilityLabel="Back to welcome" accessibilityRole="button" onPress={() => router.back()} style={styles.back}>
             <Ionicons color={action} name="arrow-back" size={20} />
-            <ThemedText style={{ color: action }} type="smallBold">Welcome</ThemedText>
+            <ThemedText style={{ color: action }} type="smallBold">{introCopy.back}</ThemedText>
           </Pressable>
           <View style={[styles.heroIcon, { backgroundColor: softAction, borderColor: border }]}><Ionicons color={action} name="compass-outline" size={34} /></View>
-          <ThemedText accessibilityRole="header" style={styles.title} type="title">Build a focus practice that fits.</ThemedText>
-          <ThemedText themeColor="textSecondary" style={styles.subtitle}>A few thoughtful questions help Deep Focus make the experience more useful without adding pressure.</ThemedText>
+          <ThemedText accessibilityRole="header" style={styles.title} type="title">{introCopy.title}</ThemedText>
+          <ThemedText themeColor="textSecondary" style={styles.subtitle}>{introCopy.subtitle}</ThemedText>
 
           <View style={styles.steps}>
-            <Step action={action} border={border} icon="create-outline" number="01" title="Share what helps" detail="Tell us about your preferred pace and focus environment." surface={surface} />
-            <Step action={action} border={border} icon="options-outline" number="02" title="Shape your setup" detail="Review the suggestions before anything is applied." surface={surface} />
-            <Step action={action} border={border} icon="leaf-outline" number="03" title="Start gently" detail="Begin with a calm, reliable session when you are ready." surface={surface} />
+            <Step action={action} border={border} icon="create-outline" number="01" title={introCopy.stepOneTitle} detail={introCopy.stepOneDetail} surface={surface} />
+            <Step action={action} border={border} icon="options-outline" number="02" title={introCopy.stepTwoTitle} detail={introCopy.stepTwoDetail} surface={surface} />
+            <Step action={action} border={border} icon="leaf-outline" number="03" title={introCopy.stepThreeTitle} detail={introCopy.stepThreeDetail} surface={surface} />
           </View>
-          <Button accentColor={action} fullWidth label="Start Personal Assessment" onPress={() => router.push('/onboarding/assessment')} style={{ backgroundColor: action, borderColor: action }} />
-          <Button label="Skip for now" onPress={() => router.replace('/(tabs)/home')} variant="ghost" />
-          <ThemedText style={styles.privacy} themeColor="textMuted" type="small">You stay in control. Your answers are suggestions, not commitments.</ThemedText>
+          <Button accentColor={action} fullWidth label={introCopy.start} onPress={() => { clearAnswers(); router.push('/onboarding/assessment'); }} style={{ backgroundColor: action, borderColor: action }} />
+          <Button label={introCopy.skip} onPress={() => router.replace('/(tabs)/home')} variant="ghost" />
+          <ThemedText style={styles.privacy} themeColor="textMuted" type="small">{introCopy.privacy}</ThemedText>
         </View>
       </ScrollView>
     </ThemedView>

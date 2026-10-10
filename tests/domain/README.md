@@ -1,5 +1,23 @@
 # Timer-domain regression harness — L-02A
 
+## Authentication and route gate — October 7
+
+`node --test --test-reporter=tap tests/domain/auth-service.test.mjs
+tests/domain/auth-routing.test.mjs` checks password, Google PKCE and Apple nonce
+service outcomes, verification/recovery privacy, strict callback URLs, replay
+coalescing and protected-route gating. Provider calls use fakes; these tests do
+not verify Supabase, SecureStore, real OAuth callbacks, RLS or native UI/device
+behavior. HIGH-risk auth/ownership review remains pending.
+
+## Goals local read recovery — October 7
+
+`node --test --test-reporter=tap tests/domain/goal-read-state.test.mjs` checks
+that successful empty goals/history differ from failures in either read and
+that a transient failure can be retried. The helper exposes only a generic
+error state; actual Goals route recovery is covered by
+`tests/components/goals.test.mjs`. This does not verify native persistence or
+screen-reader behavior.
+
 ## Eight audit-finding repairs — October 6–7, 2026
 
 See [repair evidence](../../docs/revision/evidence/AUDIT-FIXES-2026-10-06.md).
@@ -278,3 +296,11 @@ reachable. This does not establish inclusion/exploitability in the shipped app;
 impact and remediation scope are assessed in
 `docs/revision/evidence/Dependency-Audit-2026-10-06.md`. No project dependency,
 manifest or lockfile changes were made by audit; no audit fix was run.
+# Assessment profile rules — 2026-10-08
+
+`assessment-profile.test.mjs` checks the versioned seven-question definition,
+stable/unique IDs, complete supported answers, and deterministic output that
+keeps user-selected facts distinct from optional suggestions. It is an in-memory
+pure domain test; it does not prove persisted drafts or native recovery. Six
+focused domain/route cases pass; see
+`docs/revision/evidence/ASSESSMENT-PROFILE-IN-MEMORY-2026-10-08.md`.

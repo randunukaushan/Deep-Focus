@@ -35,6 +35,20 @@ function assertGoalInterval(goal: Goal) {
 }
 
 export function getGoalProgress(goal: Goal, sessions: FocusSession[]) {
+  const eligible = eligibleGoalEvents(goal, sessions);
+  let currentValue: number;
+  if (goal.type === 'session_count') currentValue = eligible.filter((session) => session.status === 'completed').length;
+  else currentValue = eligible.reduce((total, session) => {
+    if (!Number.isSafeInteger(session.focusedDurationSeconds) || session.focusedDurationSeconds < 0) {
+      throw new RangeError('INVALID_SESSION: focused duration must be a nonnegative integer in seconds');
+    }
+    return total + session.focusedDurationSeconds;
+  }, 0);
+
+  return { currentValue, progress: Math.min(1, currentValue / goal.targetValue) };
+}
+
+function eligibleGoalEvents(goal: Goal, sessions: FocusSession[]) {
   assertGoalInterval(goal);
   const unique = new Map<string, FocusSession>();
   for (const session of sessions) {
@@ -47,24 +61,33 @@ export function getGoalProgress(goal: Goal, sessions: FocusSession[]) {
 
   const startsAt = Date.parse(goal.startsAt);
   const endsAt = goal.legacyOpenPeriod ? Number.POSITIVE_INFINITY : Date.parse(goal.endsAt!);
-  const eligible = [...unique.values()].filter((session) => {
+  return [...unique.values()].filter((session) => {
     const eventAt = terminalTimestamp(session);
     if (!eventAt) return false;
     const instant = Date.parse(eventAt);
     if (!Number.isFinite(instant)) throw new RangeError('INVALID_SESSION: terminal event has no valid timestamp');
     return instant >= startsAt && instant < endsAt;
+  }).sort((left, right) => {
+    const timestampOrder = Date.parse(terminalTimestamp(left)!) - Date.parse(terminalTimestamp(right)!);
+    return timestampOrder || left.id.localeCompare(right.id);
   });
+}
 
-  let currentValue: number;
-  if (goal.type === 'session_count') currentValue = eligible.filter((session) => session.status === 'completed').length;
-  else currentValue = eligible.reduce((total, session) => {
-    if (!Number.isSafeInteger(session.focusedDurationSeconds) || session.focusedDurationSeconds < 0) {
-      throw new RangeError('INVALID_SESSION: focused duration must be a nonnegative integer in seconds');
+/** Returns the first verified terminal event that reaches this goal's target. */
+export function getGoalCompletionAt(goal: Goal, sessions: FocusSession[]): string | null {
+  let currentValue = 0;
+  for (const session of eligibleGoalEvents(goal, sessions)) {
+    if (goal.type === 'session_count') {
+      if (session.status === 'completed') currentValue += 1;
+    } else {
+      if (!Number.isSafeInteger(session.focusedDurationSeconds) || session.focusedDurationSeconds < 0) {
+        throw new RangeError('INVALID_SESSION: focused duration must be a nonnegative integer in seconds');
+      }
+      currentValue += session.focusedDurationSeconds;
     }
-    return total + session.focusedDurationSeconds;
-  }, 0);
-
-  return { currentValue, progress: Math.min(1, currentValue / goal.targetValue) };
+    if (currentValue >= goal.targetValue) return terminalTimestamp(session);
+  }
+  return null;
 }
 
 export function formatGoalValue(goal: Goal, value: number) {

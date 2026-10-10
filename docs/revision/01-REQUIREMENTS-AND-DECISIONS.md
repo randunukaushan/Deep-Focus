@@ -147,6 +147,32 @@ Approval update, 2026-09-14: the owner explicitly accepted Supabase backend/data
 | ADR-011 | Retention, hosting region, operational objectives | Classify data, select region and retention/RPO/RTO with owner; tested recoverability | Production personal data |
 | ADR-012 | PARTIAL: Expo SQLite local domain data and SecureStore credentials approved; versioned all-or-nothing JSON import and no automatic account claim approved October 6 | Single versioned SQLite schema, validated migration transaction, writer barrier, source JSON retained; local records remain local-only until explicit transfer | Native transaction/restart/duplicate evidence, independent review, installed-build behavior, credential/key/backup policy and retention/cleanup remain open; no production migration |
 
+### V1 implementation authorization — 2026-10-07
+
+The owner approved continuing the agreed V1 implementation in dependency order
+on a separate implementation branch, including code, UI, tests, bug fixes,
+compatible dependency changes and local commits. The current task does not
+authorize commits, pushes, deployments, store submissions, production data or
+migrations, real charges, paid service activation, or real-minor pilot/release.
+Existing user changes and review/device gates remain in force.
+
+The owner explicitly superseded the earlier auth exclusion: Supabase Auth,
+accounts, trusted backend/API and secure sync are now in scope. Use only the
+named development project `deep-focus-dev` (`wffyrevlhnqiycoybqia`, Singapore);
+do not alter any other project. Guest mode is not supported. Implement Google
+and email/password sign-in; prepare Apple sign-in for iOS. Protect offline local
+data by account identity and do not automatically claim the pre-account
+`device_local` namespace. This approval does not resolve credential/key backup,
+provider secret setup, policy/retention, RLS, or independent-review requirements.
+
+OpenAI remains the selected AI provider with a configurable model, but use mock
+or test integration until credentials and spending limits are approved. Treat
+AI output as a proposal and apply only the exact user-confirmed plan. Public
+Website and Account Portal may be implemented locally; full productivity web
+remains excluded. Android verification is in scope; iOS/AWS Device Farm checks
+remain `NOT_RUN` until separately available. Previously approved SQLite
+migration, goal calculations and ages 15–17 development decisions are unchanged.
+
 ## Approval record
 
 On 2026-09-14 the owner replied “ඔව් දිගටම කරගෙන යන්න” to the explicit question asking approval of “Supabase backend/database/auth + Next.js website/portal”, and requested deeper Sri Lanka student/teacher research. ADR-001's provider selection and ADR-002's framework selection are therefore approved. A later “හරි කරගෙන යන්න” continues that same documentation/research work; it is not blanket approval of unrelated ADRs.

@@ -1,4 +1,1690 @@
 # Changelog
+- Post-focus break record සඳහා local-only backend foundation එක එකතු කළා.
+  Owned terminal focus session පරීක්ෂාව, server-derived `actualMs`, duplicate
+  rejection, bounded timestamps, RLS/server-only migration, gateway route සහ
+  sync payload wiring ඇතුළත්. Focused checks **49/49 PASS**; full suite
+  **701/701 PASS**; TypeScript, affected ESLint, docs checker සහ diff check
+  **PASS**. Mobile materializer, OS scheduling, remote apply, independent
+  review සහ Android verification තවම `NOT_RUN / REVIEW_PENDING`.
+- PostgreSQL sync change contract එකේ තිබූ mismatch එක නිවැරදි කිරීමට
+  local-only migration candidate එකක් එකතු කළා. `settings` upsert changes
+  පිළිගන්න අතර delete tombstones සඳහා `payload = NULL` නීතියත් schema එකට
+  ඇතුළත් කළා. Operation/payload consistency constraint එක නිසා වැරදි
+  payload එකක් සමඟ sync change commit වීම වැළකේ. Migration සහ security
+  contract checks **12/12 PASS**. Remote apply, PostgreSQL execution,
+  independent review සහ production migration තවම `NOT_RUN / REVIEW_PENDING`.
+- User settings sync සඳහා mobile SQLite materializer එක එකතු කළා. Remote
+  payload validation, owner isolation, stale-version protection, replay safety
+  සහ receipt/mirror/settings/cursor එකම transaction එකක atomic කිරීම ඇතුළත්.
+  Local SQLite schema version 12 migration එකෙන් settings typed columns සහ
+  sync receipt constraint එක එකතු කළා; පරණ JSON source මකා නැහැ. Mobile
+  focused checks **24/24 PASS**; full suite **693/693 PASS**; TypeScript,
+  affected ESLint, docs checker සහ diff check **PASS**. Supabase/production
+  apply, independent security review සහ Android device verification තවම
+  `NOT_RUN / REVIEW_PENDING`.
+- Canonical settings contract එකට ගැළපෙන local-only `df_private.user_settings`
+  migration foundation එක එකතු කළා. Owner binding, version, bounded defaults,
+  RLS සහ `service_role`-only grants ඇතුළත්. Supabase වෙත apply කළේ නැහැ.
+  Migration checks **8/8 PASS**; full suite **686/686 PASS**; TypeScript,
+  affected ESLint, docs checker සහ diff check **PASS**. Owner-bound
+  `GET /v1/settings` read route එකත් එකතු කළා. දැන් owner/version-bound
+  `PATCH /v1/settings` සහ `settings` sync entity support එකත් ඇත. Settings
+  focused checks **37/37 PASS**, full suite **692/692 PASS**. Mobile materializer,
+  remote runtime/RLS, independent review සහ device verification තවම
+  `NOT_RUN / REVIEW_PENDING`.
+- Local gateway candidate එකට owner-scoped `DELETE /v1/tasks/{id}` එකතු කළා.
+  Task එක physical delete නොකර version bump එකක් සහ null-payload task tombstone
+  එකක් sync feed එකට දමයි; කලින් focus-session history රැකේ. Gateway transaction
+  integration regression එකත් එකතු කළා. Focused checks **49/49 PASS**; full suite
+  **685/685 PASS**; TypeScript, affected ESLint,
+  docs checker සහ diff check **PASS**. Reminder cancellation සහ live planning
+  link cleanup සඳහා canonical storage contract නැති නිසා ඒවා `REVIEW_PENDING`.
+  Remote runtime, independent security review සහ Android/device verification
+  තවම `NOT_RUN / REVIEW_PENDING`.
+- Local gateway candidate එකට owner-scoped `DELETE /v1/goals/{id}` එකතු කළා.
+  Physical delete නොකර soft-delete version bump එකක්, null-payload goal
+  tombstone එකක් සහ committed sync sequence එකට බැඳුණු idempotency receipt එකක්
+  භාවිතා කරයි. Focused checks **55/55 PASS**; full suite **680/680 PASS**;
+  TypeScript, affected ESLint, docs checker සහ diff check **PASS**. Remote
+  runtime, independent security review සහ Android/device verification තවම
+  `NOT_RUN / REVIEW_PENDING`.
+- Sync push/pull validators වල canonical delete change එකට `payload: null`
+  නිවැරදිව allow කළා. Upsert payload validation දුර්වල කළේ නැහැ; delete hash,
+  ordering සහ replay checks තවම ක්‍රියාත්මකයි. Focused checks **12/12 PASS**;
+  full suite **693/693 PASS**; TypeScript, ESLint සහ docs checker **PASS**.
+- PostgreSQL mutation transaction එකට optional response finalizer එකක් එකතු කළා.
+  Sync change sequence එක DB transaction එකෙන් ලැබුණු පසුව response එකත්
+  idempotency receipt එකත් එකම committed result එකට බැඳිය හැක. මෙය canonical
+  delete tombstone සඳහා foundation එකක් පමණයි; delete route සක්‍රිය කළේ නැහැ.
+  Focused checks **31/31 PASS**; full suite **691/691 PASS**; TypeScript,
+  ESLint, docs checker සහ diff check **PASS**.
+- Local server candidate එකට owner-scoped `PATCH /v1/goals/{id}` එකතු කළා.
+  `expectedVersion` අනිවාර්යයි; title/description පමණක් වෙනස් කළ හැකි අතර
+  version match නොවුණොත් conflict වේ. Commit එකෙන් පසු patched goal එක owner
+  sync change feed එකට ඇතුළත් වේ. Focused checks **28/28 PASS**; full suite
+  **690/690 PASS**; TypeScript, ESLint, docs checker සහ diff check **PASS**.
+  Goal delete tombstone/receipt එක වෙනම `REVIEW_PENDING`.
+- Canonical sync command 14 අතරින් remote pusher එකේ අඩුවී තිබූ task/goal delete
+  සහ patch, break, settings, reminder commands map කළා. Versioned delete
+  requests `Expected-Version` header එකෙන් පමණක් යවයි; remote API client එකට
+  idempotent `DELETE` සහ range validation එකතු කළා. Focused remote checks
+  **15/15 PASS**; full suite **687/687 PASS**; TypeScript, ESLint සහ docs
+  checker **PASS**. Remote runtime සහ independent review තවම
+  `NOT_RUN / REVIEW_PENDING`.
+- Gateway evidence notes වල පරණ test counts current repository outputට ගලපලා update කළා:
+  entrypoint **10/10**, execution **7/7**, full suite **685/685**. Code behavior
+  වෙනස් කළේ නැහැ; docs checker සහ affected checks **PASS**. Remote runtime සහ
+  independent review තවම `NOT_RUN / REVIEW_PENDING`.
+- Sync outbox cleanup එකේ failed load එකකට පස්සේ ඇතිවිය හැකි unhandled rejection
+  අවදානම ඉවත් කළා. මුල් error එක caller වෙතම යන අතර ඊළඟ retry එකට store lock
+  නොවී නැවත sync විය හැකි බව regression test එකෙන් තහවුරු කළා. Sync focused
+  checks **20/20 PASS**; full suite **685/685 PASS**; TypeScript, affected ESLint
+  සහ docs checker **PASS**. Remote sync runtime සහ independent review තවම
+  `NOT_RUN / REVIEW_PENDING`.
+- Server entitlement migration contract එකට `service_role` පමණක් privilege ලැබෙන බවත්
+  `public/anon/authenticated` grants නොමැති බවත් regression assertions දෙකකින් තහවුරු කළා.
+  Full suite, TypeScript, affected ESLint සහ docs checker **PASS**. Live RLS,
+  remote runtime සහ independent review තවම `NOT_RUN / REVIEW_PENDING`.
+- AI proposal එකේ allowance reservation fail වුණොත් raw storage error leak නොවී
+  safe `DEPENDENCY_UNAVAILABLE` ලැබෙන ලෙස සකස් කළා; provider call එකට පෙරම
+  නවත්වන regression test එකක් එක් කළා. AI/planning focused checks
+  **22/22 PASS**; full suite **684/684 PASS**; TypeScript, affected ESLint සහ
+  docs checker **PASS**. Remote runtime සහ independent review තවම
+  `NOT_RUN / REVIEW_PENDING`.
+- AI apply boundary එකේ session recheck raw failuresත් safe
+  `DEPENDENCY_UNAVAILABLE` response එකකට map කළා. Server-defined auth errors
+  preserve කරන අතර apply callback එකට යාම නවත්වන regression test එකක් එකතු කළා.
+  AI/planning focused checks **21/21 PASS**; full suite **683/683 PASS**;
+  TypeScript, affected ESLint සහ docs checker **PASS**. Remote runtime සහ
+  independent review තවම `NOT_RUN / REVIEW_PENDING`.
+- AI confirmed-plan apply callback එකේ raw errors safe `DEPENDENCY_UNAVAILABLE`
+  boundary එකකට map කළා; දැනටමත් server-defined `SafeBoundaryError` codes
+  preserve කරනවා. Provider/session/apply leakage regression coverage සමඟ
+  AI/planning focused checks **20/20 PASS**; full suite **682/682 PASS**;
+  TypeScript, affected ESLint සහ docs checker **PASS**. සැබෑ provider සහ
+  remote runtime තවම `NOT_RUN / REVIEW_PENDING`.
+- Authenticated gateway සඳහා synthetic accounts දෙකක isolation regression එකක්
+  එක් කළා. Account A සහ Account B requests දෙකම verified actor/session සහ
+  owner-scoped resource එකටම බැඳෙන බව පරීක්ෂා වේ. Gateway focused checks
+  **23/23 PASS**; full suite **681/681 PASS**; TypeScript, affected ESLint සහ
+  docs checker **PASS**. මෙය local boundary evidence එකක් පමණයි; සැබෑ
+  Supabase/RLS පරීක්ෂණ තවම `NOT_RUN / REVIEW_PENDING`.
+- Confirmed AI plan apply boundary එකට apply-වීමට පෙර verified actor/session
+  recheck එක අනිවාර්ය කළා. Revoked-session regression test එක server apply
+  callback එකට පෙර නවත්වන බව තහවුරු කරයි. AI/planning focused checks
+  **19/19 PASS**; full suite **680/680 PASS**; TypeScript, affected ESLint සහ
+  docs checker **PASS**. සැබෑ provider, remote allowance store සහ independent
+  review තවම `NOT_RUN / REVIEW_PENDING`.
+- PostgreSQL snapshot metadata/page adapters වලටත් `sessionId` අනිවාර්ය කළා.
+  Session recheck එක metadata/page private readsට පෙර සිදු වන අතර missing-session
+  direct composition එක fail-closed වේ. Snapshot focused checks **21/21 PASS**;
+  full suite **679/679 PASS**; TypeScript, affected ESLint සහ docs checker
+  **PASS**. Remote RLS, independent review සහ device verification තවම
+  `NOT_RUN / REVIEW_PENDING`.
+- PostgreSQL sync pull/commit adapters වලට `sessionId` දැන් අනිවාර්ය කළා.
+  Session recheck එක private sync head/change queriesට පෙර transaction එක තුළම
+  සිදු වේ; session නැති direct composition එක fail-closed වේ. Sync focused
+  checks **19/19 PASS**; full suite **677/677 PASS**; TypeScript, affected
+  ESLint සහ docs checker **PASS**. Remote RLS, independent review සහ device
+  verification තවම `NOT_RUN / REVIEW_PENDING`.
+- PostgreSQL read-handler boundary එක දැන් `sessionId` නැති direct composition එකක්
+  දත්ත query වෙත යාමට පෙර `AUTH_REQUIRED` ලෙස නවත්වයි. Valid session තිබෙන reads
+  සහ missing-session regression coverage එකතු කළා. Gateway/read focused checks
+  **22/22 PASS**; full suite **676/676 PASS**; TypeScript, affected ESLint සහ
+  docs checker **PASS**. Remote RLS, independent review සහ device verification
+  තවම `NOT_RUN / REVIEW_PENDING`.
+- PostgreSQL entitlement read contract එකෙන් `sessionId` දැන් අනිවාර්ය කළා.
+  Usage reserve/read paths දැනටමත් කළ app-session recheck එකට එම ID එකම pass
+  කරන නිසා, session-boundary එක මඟහැරෙන internal composition එකක් compile-time
+  මට්ටමේදීත් වැළකේ. Entitlement/capability/usage focused checks **29/29 PASS**;
+  full suite **675/675 PASS**. Remote PostgreSQL/RLS, independent security
+  review සහ device verification තවම `NOT_RUN / REVIEW_PENDING`.
+- Server AI planning boundary candidate එකක් එක් කළා. AI allowance එක server-side
+  reserve නොවුණොත් provider call නොකරයි; provider failure එකේ reservation
+  release කරයි; success එකේ consume කරයි. Plan apply callback එක explicit,
+  matching confirmation token එකෙන් පසුව පමණක් කැඳවයි. AI/usage focused checks
+  **31/31 PASS**; full suite **675/675 PASS**; TypeScript, affected ESLint සහ
+  docs checker **PASS**. මෙය සැබෑ OpenAI integration එකක් නොවන අතර provider,
+  credentials, remote storage සහ independent review තවම
+  `NOT_RUN / REVIEW_PENDING`.
+- AI provider failure එක raw error එකක් ලෙස ඉහළට නොයවා
+  `AI_PROVIDER_UNAVAILABLE` safe boundary code එකකට map කළා; allowance release
+  සහ apply-not-called regression එකත් රැකුණා. AI boundary checks
+  **31/31 PASS**.
+- Rate-limit denial response එකට bounded `Retry-After` header එක සම්බන්ධ කළා.
+  Header එක server-derived seconds වලින් පමණක් එන අතර error body එකේ secret හෝ
+  internal detail නැත. Gateway/error-boundary checks **18/18 PASS**; full
+  suite **670/670 PASS**; TypeScript, affected ESLint සහ docs checker **PASS**.
+- Gateway error path එකට allowlisted diagnostic logger hook එකක් සම්බන්ධ කළා.
+  `SafeBoundaryError` code/status/retryability සහ validated request ID පමණක්
+  log කරයි; raw error message, stack, SQL, token හෝ request body නොයයි. Logger
+  එක fail වුණත් public response එක වෙනස් නොවේ. Error-boundary/gateway checks
+  **14/14 PASS**; full suite **670/670 PASS**; TypeScript, affected ESLint සහ
+  docs checker **PASS**. Remote logging integration සහ independent review
+  `NOT_RUN / REVIEW_PENDING`.
+- Gateway rate-limit සඳහා local PostgreSQL atomic counter adapter සහ
+  `gateway_rate_limit_buckets` migration candidate එක් කළා. Owner/operation/
+  fixed-window key එක `ON CONFLICT` update එකකින් ගණන් කරයි; malformed DB result
+  fail-closed වේ. Local concurrent counter contract එකත් පරීක්ෂා කරයි.
+  Rate-limit/migration focused checks **26/26 PASS**; full suite **671/671
+  PASS**; TypeScript, affected ESLint සහ docs checker **PASS**.
+  Remote SQL, retention cleanup, distributed load test සහ independent review
+  තවම `NOT_RUN / REVIEW_PENDING`.
+- Authenticated gateway එකට actor/operation scoped atomic rate-limit admission
+  සම්බන්ධ කළා. Counter එක deny කළොත් handler එකට යාමට පෙර bounded `429`
+  response එකක් ලැබේ. Gateway/rate-limit checks **11/11 PASS**; full suite
+  **662/662 PASS**; TypeScript, affected ESLint සහ docs checker **PASS**.
+  Distributed counter, retention cleanup සහ runtime configuration තවම
+  `REVIEW_PENDING`.
+- Authenticated mutation gateway එකේ write handlers සඳහා `sessionId` දැන්
+  අනිවාර්යයි. Session එක නොමැති request එක owner/profile/head write කිරීමට
+  පෙර `AUTH_REQUIRED` ලෙස නවතයි. Gateway/domain focused checks **23/23 PASS**;
+  full suite **661/661 PASS**; TypeScript, affected ESLint සහ docs checker
+  **PASS**. Remote PostgreSQL/RLS සහ independent review
+  `NOT_RUN / REVIEW_PENDING`.
+- Snapshot build/staging writes දැන් verified `sessionId` එකෙන් transaction
+  ඇතුළත recheck කරයි. Revoked session එකකදී snapshot insert/update එකට පෙර
+  fail-closed වේ. Snapshot staging/build checks **14/14 PASS**; full suite
+  **660/660 PASS**; TypeScript, affected ESLint සහ docs checker **PASS**.
+  Remote PostgreSQL/RLS, independent review සහ device verification
+  `NOT_RUN / REVIEW_PENDING`.
+- Snapshot metadata, page සහ signed-cursor reads වලට verified `sessionId`
+  transaction එකට බැඳුණා. Revoked session එකකදී snapshot query එකට පෙර
+  `AUTH_REQUIRED` ලෙස නවතන regression coverage එක එක් කළා. Snapshot read/cursor
+  checks **12/12 PASS**; full regression **659/659 PASS**; TypeScript සහ
+  affected ESLint **PASS**; docs checker **PASS** (226 Markdown, 936 links,
+  80/80 requirements). Real PostgreSQL/RLS, independent security review සහ
+  Android/device verification `NOT_RUN / REVIEW_PENDING`.
+- Entitlement/usage migration contract tests තවත් තද කළා: profile foreign key,
+  owner-capability primary key, composite allowance/receipt ownership සහ client
+  role grants නොමැති බව explicitව පරීක්ෂා කරයි. Migration/security checks
+  **9/9 PASS**; full regression **657/657 PASS**; TypeScript සහ affected ESLint
+  **PASS**. Remote SQL/RLS execution සහ independent review තවම
+  `NOT_RUN / REVIEW_PENDING`.
+- AI/cloud usage service boundary එකේ reserve, settle සහ allowance read සඳහා
+  verified `sessionId` දැන් අනිවාර්ය කළා. Session එකක් නොමැති හෝ revoked වූ විට
+  entitlement, allowance හෝ receipt data වෙත යාමට පෙර fail-closed වේ. Usage
+  focused checks **34/34 PASS**; full regression **657/657 PASS**; TypeScript
+  සහ affected ESLint **PASS**. Live billing/provider integration,
+  PostgreSQL/RLS සහ independent review තවම `NOT_RUN / REVIEW_PENDING`.
+- Server entitlement reads වලට session-bound transaction recheck එක එක් කළා.
+  AI/cloud capability record එක කියවීමට පෙර active app session එක lock කරයි;
+  revoked session එකකදී capability data වෙත නොයයි. Entitlement focused checks
+  **11/11 PASS**; full regression **655/655 PASS**; TypeScript සහ affected
+  ESLint **PASS**. Live billing/provider integration, PostgreSQL/RLS සහ
+  independent review තවම `NOT_RUN / REVIEW_PENDING`.
+- Authenticated PostgreSQL read handlers වලටත් transaction-level app-session
+  recheck එක එක් කළා. Session revoke/expiry race එකක් තිබුණත් protected query
+  එකට පෙර `AUTH_REQUIRED` ලෙස නවතයි. Read/gateway focused checks **17/17 PASS**;
+  full regression **653/653 PASS**; TypeScript සහ affected ESLint **PASS**.
+  Real PostgreSQL/RLS, independent security review සහ Android verification
+  තවම `NOT_RUN / REVIEW_PENDING`.
+
+- Sync pull/commit gateway එකට verified app session recheck එක සම්බන්ධ කළා.
+  Pull සහ commit දෙකේම data read/head lock කිරීමට පෙර `app_sessions` row එක
+  transaction එකේ lock කර active, නොකල් ඉකුත් වූ සහ revoke නොකළ බව පරීක්ෂා කරයි.
+  Sync gateway tests **4/4 PASS**; අදාළ adapter checks සමඟ **28/28 PASS**;
+  full regression **651/651 PASS**; TypeScript සහ affected ESLint **PASS**.
+  Real PostgreSQL/RLS සහ independent security review තවම
+  `NOT_RUN / REVIEW_PENDING`.
+- Backup restore regression coverage දැන් පළමු transaction rollback වීමෙන් පසු
+  එකම digest-bound artifact එක නැවත භාවිතයෙන් සාර්ථක retry එකක්ද පරීක්ෂා කරයි.
+  Backup checks **12/12 PASS**; full regression **650/650 PASS**; TypeScript සහ
+  affected ESLint **PASS**. මෙය actual database restore හෝ production backup
+  evidence එකක් නොවන අතර ඒවා තවම `NOT_RUN / REVIEW_PENDING`.
+
+- Domain mutation contract එකට session-bound negative coverage එක එක් කළා:
+  malformed session ID එක transaction එක විවෘත කිරීමට පෙර reject වෙයි; session
+  recheck adapter එක නොමැති නම් owner head lock එකට යාමට පෙර fail-closed වෙයි.
+  Focused transaction/gateway/adapter checks **24/24 PASS**; full regression
+  **649/649 PASS**; TypeScript සහ affected ESLint **PASS**. Real PostgreSQL/RLS,
+  independent security review සහ Android/device verification තවම
+  `NOT_RUN / REVIEW_PENDING`.
+
+- Domain mutation writes දැන් actorගේ app session එකත් එකම database transaction එකේ
+  නැවත lock කර පරීක්ෂා කරයි. Active, නොකල් ඉකුත් වූ සහ revoke නොකළ session එකක්
+  නැතිනම් mutation applier එකට හෝ sync head lock එකට නොයයි. Gateway එක verified
+  session ID එක transaction context එකට pass කරන බවට regression assertion එකක්ද
+  එක් කළා. Focused checks **26/26 PASS**; full regression **647/647 PASS**;
+  TypeScript සහ affected ESLint **PASS**. Real PostgreSQL/RLS execution,
+  independent security review සහ Android/device verification තවම
+  `NOT_RUN / REVIEW_PENDING`.
+
+- Domain mutation transaction එක `sync_heads` lock කිරීමට පෙර එකම transaction
+  එකේ actorගේ active profile row එක lock කරලා නැවත පරීක්ෂා කරන ලෙස ශක්තිමත්
+  කළා. Missing/disabled profile එකකින් mutation එකක් ඉදිරියට නොයයි. නව
+  regression test සමඟ focused domain/gateway checks **12/12 PASS**; full
+  regression **645/645 PASS**. Real PostgreSQL/RLS execution, independent
+  review සහ device verification තවම `NOT_RUN / REVIEW_PENDING`.
+
+- Migration safety gate එකට private-table migration එකකින් `public`, `anon` හෝ
+  `authenticated` වෙත direct `GRANT` එකක් නොයන බවට වෙනම assertion එකක් එක්
+  කළා. Migration safety checks **3/3 PASS**; full regression **644/644 PASS**.
+  මෙය static SQL evidence එකක් පමණයි; remote migration/RLS execution,
+  independent review සහ device verification තවම `NOT_RUN / REVIEW_PENDING`.
+
+- PostgreSQL task action, sync head advance සහ snapshot publish `RETURNING`
+  contracts සම්පූර්ණ කළා. Task action එකේ SQL එක දැන් code එක validate කරන
+  `owner_id` field එකම ආපසු ලබා දෙයි; sync head සහ ready snapshot දෙකම owner හා
+  resource identity validate කරයි. Foreign returned metadata සඳහා regression
+  tests 2ක් එක් කළා. Combined focused checks **27/27 PASS**; full regression
+  **644/644 PASS**. Remote PostgreSQL/RLS execution, independent review සහ
+  device verification තවම `NOT_RUN / REVIEW_PENDING`.
+
+- PostgreSQL usage reservation සහ settlement writes වල returned receipt/allowance
+  metadata validate කරන ලෙස ශක්තිමත් කළා. Foreign owner, capability හෝ period
+  metadata ලැබුණොත් grant/settlement එක සාර්ථක ලෙස report කරන්නේ නැහැ. නව
+  regression checks 5ක් සමඟ usage adapter focused checks **16/16 PASS**;
+  full regression **642/642 PASS**. TypeScript, affected ESLint, docs checker
+  සහ diff checkත් සාර්ථකයි. Remote entitlement/RLS review, independent review
+  සහ device verification තවම `NOT_RUN / REVIEW_PENDING`.
+
+- Session revocation outbox insert එකේ returned `owner_id`, `session_id` සහ
+  `revocation_id` validate කරන ලෙස ශක්තිමත් කළා. Foreign outbox metadata
+  ලැබුණොත් revocation එක created ලෙස report කරන්නේ නැහැ. Focused checks
+  **7/7 PASS**; full regression **637/637 PASS**. Remote auth/RLS review,
+  independent review සහ device verification තවම `NOT_RUN / REVIEW_PENDING`.
+
+- App session create/revoke writes වල returned owner, session ID සහ revoke
+  status validate කරන ලෙස auth adapter එක ශක්තිමත් කළා. Foreign session
+  metadata ලැබුණොත් write එක පිළිගන්නේ නැහැ. Focused checks **6/6 PASS**;
+  full regression **636/636 PASS**. Remote auth/RLS review, independent review
+  සහ device verification තවම `NOT_RUN / REVIEW_PENDING`.
+
+- Mutation receipt ලියන විට returned `owner_id`, operation සහ `mutation_id`
+  request receipt එකට ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස ශක්තිමත් කළා. Foreign
+  receipt metadata ලැබුණොත් idempotency result එක පිළිගන්නේ නැහැ. Focused
+  checks **11/11 PASS**; full regression **635/635 PASS**. Remote RLS,
+  independent review සහ device verification තවම `NOT_RUN / REVIEW_PENDING`.
+
+- Sync head advance එකේ returned `owner_id` සහ sequence verified actor/next
+  sequence එකට ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස ශක්තිමත් කළා. Foreign head
+  metadata ලැබුණොත් advance එක පිළිගන්නේ නැහැ. Sync writer focused checks
+  **7/7 PASS**; full regression **634/634 PASS**. Remote RLS, independent
+  review සහ device verification තවම `NOT_RUN / REVIEW_PENDING`.
+
+- Mutation-to-sync change writer එකේ returned insert row එකේ `owner_id`,
+  sequence සහ hash පරීක්ෂා කරන ලෙස ශක්තිමත් කළා. Foreign metadata ලැබුණොත්
+  sync head advance නොකර fail-closed වේ. Sync writer focused checks **6/6
+  PASS**; full regression **633/633 PASS**. Remote RLS, independent review
+  සහ device verification තවම `NOT_RUN / REVIEW_PENDING`.
+
+- PostgreSQL sync transaction change insert එකේ returned `owner_id`, sequence සහ
+  hash request එකට ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස ශක්තිමත් කළා. Foreign insert
+  metadata එකක් ලැබුණොත් owner head advance නොකර fail-closed වේ. Sync focused
+  checks **11/11 PASS**; full regression **632/632 PASS**. Remote RLS,
+  independent review සහ device verification තවම `NOT_RUN / REVIEW_PENDING`.
+
+- Task actions වල අවසාන update එකෙන් ආපසු ලැබෙන task `owner_id` සහ `id`
+  verified actor/task එකට ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස ශක්තිමත් කළා. Foreign
+  metadata එකක් ලැබුණොත් success response එකක් නොදෙයි. Focused checks
+  **5/5 PASS**; full regression **631/631 PASS**. Remote RLS, independent
+  review සහ device verification තවම `NOT_RUN / REVIEW_PENDING`.
+
+- Task creation `RETURNING` row එකේ `owner_id`, `workspace_id` සහ `id`
+  verified actor/request එකට ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස ශක්තිමත් කළා.
+  Foreign metadata එකක් ලැබුණොත් success response එකක් නොදෙයි. Focused checks
+  **8/8 PASS**; full regression **630/630 PASS**. Remote RLS, independent
+  review සහ device verification තවම `NOT_RUN / REVIEW_PENDING`.
+
+- Task patch update එකේ returned task `owner_id` සහ `id` verified actor/task
+  එකට ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස ශක්තිමත් කළා. Foreign ownership metadata
+  එකක් ලැබුණොත් success response එකක් නොදෙයි. Focused checks **6/6 PASS**;
+  full regression **629/629 PASS**. Remote RLS, independent review සහ device
+  verification තවම `NOT_RUN / REVIEW_PENDING`.
+
+- Session event update එකේ returned session `owner_id` සහ `id` verified
+  actor/session එකට ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස ශක්තිමත් කළා. Foreign
+  metadata එකක් ලැබුණොත් success response එකක් නොදෙයි. Focused checks
+  **7/7 PASS**; full regression **628/628 PASS**. Remote RLS, independent
+  review සහ device verification තවම `NOT_RUN / REVIEW_PENDING`.
+
+- Session event insert එකෙන් ආපසු ලැබෙන event `owner_id`, `session_id`,
+  `sequence` සහ `type` request එකට ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස ශක්තිමත් කළා.
+  Foreign හෝ replay-shaped metadata එකක් ලැබුණොත් session update නොකර
+  fail-closed වේ. Focused checks **6/6 PASS**; full regression **627/627
+  PASS**. Remote RLS, independent review සහ device verification තවම
+  `NOT_RUN / REVIEW_PENDING`.
+
+- Focus session start කිරීමේදී returned session `owner_id`, `workspace_id` සහ
+  `id` verified actor/request එකට ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස ශක්තිමත් කළා.
+  Foreign metadata එකක් ලැබුණොත් response එක පිළිගන්නේ නැහැ. Focused checks
+  **7/7 PASS**; full regression **626/626 PASS**. Remote RLS, independent
+  review සහ device verification තවම `NOT_RUN / REVIEW_PENDING`.
+
+- Goal creation සඳහා database එකෙන් ආපසු ලැබෙන goal `owner_id`, `workspace_id`
+  සහ `id` verified actor/request එකට ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස ශක්තිමත්
+  කළා. Foreign metadata එකක් ලැබුණොත් response එක accept නොකර
+  `DEPENDENCY_UNAVAILABLE` ලෙස fail-closed වේ. Focused checks **6/6 PASS**;
+  full regression **625/625 PASS**. Remote RLS, independent review සහ device
+  verification තවම `NOT_RUN / REVIEW_PENDING`.
+
+- Task actions (`begin`, `complete`, `cancel`, `archive`) සඳහා current task row
+  එකේ returned `owner_id` සහ `id` verified actor/request එකට ගැළපෙනවාදැයි
+  පරීක්ෂා කරන ලෙස ශක්තිමත් කළා. Foreign metadata එකක් ලැබුණොත් state update
+  නොකර fail-closed වේ. Focused checks **4/4 PASS**; full regression
+  **624/624 PASS**. Remote RLS, independent review සහ device verification
+  තවම `NOT_RUN / REVIEW_PENDING`.
+
+- Task patch කරන විට goal join එකෙන් ආපසු ලැබෙන task owner, task ID, goal owner,
+  goal workspace සහ goal ID නැවත validate කරන ලෙස ශක්තිමත් කළා. Foreign
+  metadata එකක් ලැබුණොත් task update නොකර fail-closed වේ. Focused checks
+  **5/5 PASS**; full regression **623/623 PASS**. Remote RLS/workspace
+  isolation, independent review සහ device verification තවම
+  `NOT_RUN / REVIEW_PENDING`.
+
+- Task create goal lookup එක returned owner, workspace සහ goal ID verified
+  actor/request එකට ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස ශක්තිමත් කළා. Foreign goal
+  metadata එකක් task එකකට භාවිත වීම නවත්වන regression test එකක් එක් කළා.
+  Remote RLS/workspace isolation, independent review සහ device verification
+  තවම `NOT_RUN / REVIEW_PENDING`. Focused checks **7/7 PASS**; full
+  regression **622/622 PASS**.
+
+- Task create workspace lookup එක returned owner සහ workspace ID verified actor
+  එකට ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස ශක්තිමත් කළා. Foreign workspace metadata
+  එකක් task එකකට භාවිත වීම නවත්වන regression test එකක් එක් කළා. Remote
+  RLS/workspace isolation, independent review සහ device verification තවම
+  `NOT_RUN / REVIEW_PENDING`. Focused checks **6/6 PASS**; full regression
+  **621/621 PASS**.
+
+- Task නැති `startSession` අවස්ථාවේ workspace lookup එක returned owner සහ ID
+  verified actor/request එකට ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස ශක්තිමත් කළා.
+  Foreign workspace metadata එකක් session එකකට භාවිත වීම නවත්වන regression test
+  එකක් එක් කළා. Remote RLS/session isolation, independent review සහ device
+  verification තවම `NOT_RUN / REVIEW_PENDING`. Focused checks **6/6 PASS**;
+  full regression **620/620 PASS**.
+
+- Snapshot staging retry එක existing page row එක accept කිරීමට පෙර returned
+  owner සහ snapshot identity පරීක්ෂා කරන ලෙස ශක්තිමත් කළා. Foreign page metadata
+  එකක් ready snapshot එකකට ඇතුළු වීම නවත්වන regression test එකක් එක් කළා.
+  Remote snapshot/RLS, independent review සහ device verification තවම
+  `NOT_RUN / REVIEW_PENDING`. Focused staging/build checks **12/12 PASS**;
+  full regression **619/619 PASS**.
+
+- Idempotency mutation receipt reads වල returned owner, operation සහ mutation ID
+  replay request එකට ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස adapter එක ශක්තිමත් කළා.
+  Foreign receipt data එකක් replay success එකක් වීම නවත්වන regression test එකක්
+  එක් කළා. Remote database/RLS, independent review සහ device verification තවම
+  `NOT_RUN / REVIEW_PENDING`. Focused checks **6/6 PASS**; full regression
+  **618/618 PASS**.
+
+- Goal creation workspace lookup එක returned owner සහ workspace ID verified
+  actor/request එකට ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස ශක්තිමත් කළා. Foreign workspace
+  metadata එකක් goal එකකට බැඳීම නවත්වන regression test එකක් එක් කළා. Remote
+  RLS/workspace isolation, independent review සහ device verification තවම
+  `NOT_RUN / REVIEW_PENDING`. Focused checks **5/5 PASS**; full regression
+  **617/617 PASS**.
+
+- Start-session task lookup එක returned owner, workspace සහ task ID request
+  එකට ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස ශක්තිමත් කළා. Foreign task metadata එකක්
+  session snapshot එකට copy වීම නවත්වන regression test එකක් එක් කළා. Remote
+  RLS/session isolation, independent review සහ device verification තවම
+  `NOT_RUN / REVIEW_PENDING`. Focused checks **5/5 PASS**; full regression
+  **616/616 PASS**.
+
+- Session event update එකේ locked session row එකේ returned owner සහ session ID
+  verified actor/resource එකට ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස ශක්තිමත් කළා.
+  Foreign row එකක් fail-closed කරන regression test එකක් එක් කළා. Remote
+  RLS/event isolation, independent review සහ device verification තවම
+  `NOT_RUN / REVIEW_PENDING`. Focused checks **5/5 PASS**; full regression
+  **615/615 PASS**.
+
+- App-session registry read එක returned owner සහ session identity request එකට
+  ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස ශක්තිමත් කළා. Foreign session row එකක්
+  authorization/revocation flow එකට යාම නවත්වන regression test එකක් එක් කළා.
+  Remote auth/RLS, independent review සහ device verification තවම
+  `NOT_RUN / REVIEW_PENDING`. Focused checks **5/5 PASS**; full regression
+  **614/614 PASS**.
+
+- Usage allowance reads වල owner, capability සහ period scope එකත්, settlement
+  receipt reads වල owner සහ receipt identity එකත් නැවත validate කරන ලෙස adapter
+  එක ශක්තිමත් කළා. Foreign allowance row එකක් fail-closed කරන regression test
+  එකක් එක් කළා. Remote entitlement execution, independent review සහ device
+  verification තවම `NOT_RUN / REVIEW_PENDING`. Focused checks **11/11 PASS**;
+  full regression **613/613 PASS**.
+
+- Sync transaction replay reads වල stored change owner identity එක request
+  account එකට ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස adapter එක ශක්තිමත් කළා. Foreign
+  replay row එකක් fail-closed කරන regression test එකක් එක් කළා. Remote RLS,
+  independent review සහ device verification තවම `NOT_RUN / REVIEW_PENDING`.
+  Focused checks **7/7 PASS**; full regression **612/612 PASS**.
+
+- Mutation-to-sync change writer එක committed entity row එකේ owner සහ entity ID
+  request එකට ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස ශක්තිමත් කළා. Foreign row එකක්
+  sync stream එකට ඇතුළු වීම නවත්වන regression test එකක් එක් කළා. Remote RLS,
+  independent review සහ device verification තවම `NOT_RUN / REVIEW_PENDING`.
+  Focused checks **5/5 PASS**; full regression **611/611 PASS**.
+
+- Sync pull adapter එක returned change row එකේ `owner_id` request account එකට
+  ගැළපෙනවාදැයි පරීක්ෂා කරන ලෙස ශක්තිමත් කළා. වෙනත් account එකක returned row
+  එකක් fail-closed කරන regression test එකක් එක් කළා. Remote RLS, independent
+  review සහ device verification තවම `NOT_RUN / REVIEW_PENDING`. Focused sync
+  pull checks **5/5 PASS**; full regression **610/610 PASS**.
+
+- Ready snapshot metadata reads වල returned owner සහ snapshot identity request
+  එකට ගැළපෙනවාදැයි නැවත පරීක්ෂා කළා. Foreign metadata row එකක් fail-closed
+  කරන regression test එකක් එක් කළා. Remote RLS, independent review සහ device
+  verification තවම `NOT_RUN / REVIEW_PENDING`. Metadata/read focused checks
+  **10/10 PASS**; page සහ metadata/read එකතුව **21/21 PASS**.
+
+- Snapshot page reads වල returned owner, snapshot සහ page identity request එකට
+  ගැළපෙනවාදැයි adapter boundary එකේම නැවත පරීක්ෂා කළා. Foreign-shaped returned
+  row එකක් fail-closed කරන regression test එකක් එක් කළා. Remote RLS, independent
+  review සහ device verification තවම `NOT_RUN / REVIEW_PENDING`. Focused snapshot
+  checks **8/8 PASS**.
+
+- Entitlement expiry timestamp එක වැරදි නම් capability access grant නොකරන
+  fail-closed behavior එකට adapter regression coverage එකක් එක් කළා. Remote
+  entitlement execution සහ independent review තවම `NOT_RUN / REVIEW_PENDING`.
+
+- Task create applier එක goal link එකක් නැති අවස්ථාවකත් workspace ownership එක
+  server-side තහවුරු කරන ලෙස ශක්තිමත් කළා. Foreign workspace task creation සඳහා
+  regression test එකක් එක් කළා. Remote RLS execution සහ independent review තවම
+  `NOT_RUN / REVIEW_PENDING`. Focused task checks **9/9 PASS**; full regression
+  **606/606 PASS**.
+
+- Task edit එකක `goalId` වෙනස් කරන විට goal එක එකම owner workspace එකට අයිතිදැයි
+  server-side තහවුරු කරන ලෙස patch applier එක ශක්තිමත් කළා. Cross-workspace
+  link regression test එකක් එක් කළා. Remote RLS execution සහ independent review
+  තවම `NOT_RUN / REVIEW_PENDING`. Focused checks **12/12 PASS**; full
+  regression **605/605 PASS**.
+
+- Task එකක් නැති focus session එකක් ආරම්භ කරන විට workspace ownership එකත්
+  server-side තහවුරු කරන ලෙස start-session applier එක ශක්තිමත් කළා. Foreign
+  workspace regression test එකක් එක් කළා. Remote RLS execution සහ independent
+  review තවම `NOT_RUN / REVIEW_PENDING`. Focused checks **12/12 PASS**; full
+  regression **604/604 PASS**.
+
+- Goal create applier එක verified actorට අයිති workspace එකක් පමණක් භාවිත කරන
+  ලෙස server-side check එකක් එක් කළා. Foreign workspace goal creation සඳහා
+  regression test එකක් එක් කළා. Remote RLS execution සහ independent review තවම
+  `NOT_RUN / REVIEW_PENDING`. Focused checks **8/8 PASS**; full regression
+  **603/603 PASS**.
+
+- Task create applier එක linked goal එකේ owner සහ workspace දෙකම server-side
+  පරීක්ෂා කරන ලෙස ශක්තිමත් කළා. Foreign හෝ වෙනත් workspace goal එකකට task
+  link කිරීම නවත්වන regression test එකක් එක් කළා. Remote RLS execution සහ
+  independent review තවම `NOT_RUN / REVIEW_PENDING`. Focused checks **8/8
+  PASS**; full regression **602/602 PASS**.
+
+- PostgreSQL read handlers වල returned resource/profile row identity නැවත
+  පරීක්ෂා කර foreign හෝ malformed row එකක් DTO එකක් ලෙස යැවීම වසා දැමුවා.
+  Account-isolation regression tests දෙකක් එක් කළා. Remote RLS execution සහ
+  independent review තවම `NOT_RUN / REVIEW_PENDING`. Focused read checks **9/9
+  PASS**; full regression **601/601 PASS**.
+
+- Entitlement storage row එක requested owner සහ capability සමඟ exact match නොවුණොත්
+  server capability grant එකකට map නොකර fail-closed කරන ලදී. Foreign-shaped
+  storage row එකක් සඳහා account-isolation regression test එකක් එක් කළා. Remote
+  entitlement execution සහ independent review තවම `NOT_RUN / REVIEW_PENDING`.
+  Focused entitlement checks **13/13 PASS**; full regression **599/599 PASS**.
+
+- PostgreSQL usage reservation එකේ allowance update වූ පසු receipt insert එක
+  තහවුරු නොකර success වීම වසා දැමුවා. `returning receipt_id` සහ missing
+  acknowledgement regression test එකක් එක් කළා. Remote billing/provider
+  execution සහ independent review තවම `NOT_RUN / REVIEW_PENDING`. Focused usage
+  checks **25/25 PASS**; full regression **598/598 PASS**.
+
+- PostgreSQL sync transaction adapter එකේ `sync_changes` insert acknowledgement
+  නැතිව owner head එක advance වීම වසා දැමුවා. Expected sequence සහ exact hash
+  පරීක්ෂා කරන regression test එකක් එක් කළා. Remote PostgreSQL/RLS සහ independent
+  review තවම `NOT_RUN / REVIEW_PENDING`. Focused adapter checks **6/6 PASS**;
+  full regression **597/597 PASS**.
+
+- PostgreSQL `sync_changes` insert එකෙන් expected sequence සහ exact change hash
+  ආපසු ලැබුණාදැයි තහවුරු නොවුණොත් owner sync head එක advance නොකරන ලෙස
+  fail-closed කළා. Missing acknowledgement සඳහා regression test එකක් එක් කළා;
+  focused gateway/sync checks **8/8 PASS**, full regression **596/596 PASS**.
+  Remote PostgreSQL/RLS execution සහ independent review තවම
+  `NOT_RUN / REVIEW_PENDING`.
+
+- PostgreSQL focus-session event insert එක ලියා ඇති බව `returning sequence` මගින්
+  තහවුරු නොවුණොත් session update එකෙන් success නොකියන ලෙස fail-closed කළා.
+  Database acknowledgement නැති අවස්ථාවට regression test එකක් එක් කළා. Remote
+  database execution සහ independent review තවම `REVIEW_PENDING`. Focused checks
+  **7/7 PASS**; full regression **595/595 PASS**, TypeScript, affected ESLint සහ
+  docs checkerත් **PASS**.
+
+- PostgreSQL app-session create කිරීමේ `INSERT` එකෙන් `session_id` row එකක්
+  ආපසු ලැබුණාදැයි තහවුරු නොකර success වාර්තා වීම වසා දැමුවා. `returning
+  session_id` සහ database acknowledgement නැති විට fail-closed regression test
+  එකක් එක් කළා. Remote auth/database execution සහ independent review තවම
+  `REVIEW_PENDING`. Focused checks **4/4 PASS**; full regression **594/594
+  PASS**, TypeScript, affected ESLint සහ docs checkerත් **PASS**.
+
+- PostgreSQL domain mutation receipt එක ලියූ බව `returning mutation_id` row එකෙන්
+  තහවුරු නොවුණොත් mutation එක සාර්ථක ලෙස වාර්තා නොකර
+  `DEPENDENCY_UNAVAILABLE` ලෙස fail-closed කරන ලදී. Database acknowledgement
+  නැති වීම සඳහා regression test එකක් එක් කළා; gateway test harness එකත් සැබෑ
+  returning row එක නිරූපණය කරන ලෙස යාවත්කාලීන කළා. Focused checks **15/15
+  PASS**; remote database execution සහ independent review තවම
+  `REVIEW_PENDING`.
+
+- Usage settlement receipt update එකේ affected row එක තහවුරු නොකර success කියන
+  අවදානම වසා දැමුවා. `returning receipt_id` check එක සහ regression test එකක්
+  එක් කළා. Focused usage checks **24/24 PASS**; remote provider/billing,
+  PostgreSQL concurrency සහ independent review තවම `REVIEW_PENDING`. Full
+  regression **592/592 PASS**, TypeScript, ESLint සහ docs checkerත් **PASS**.
+
+- Usage settlement එකේ allowance counter එක වෙනස් වුණත් receipt status row එක
+  update නොවුණොත් success කියන අවදානම වසා දැමුවා. `returning receipt_id`
+  පරීක්ෂාවක් සහ fail-closed regression test එකක් එක් කළා. සැබෑ billing/provider
+  execution සහ independent review තවම `REVIEW_PENDING`.
+
+- App-session admission සහ revoke transition එක storage එකෙන් ලැබෙන registry row
+  එකේ owner/session IDs, timestamps සහ status/revocation ගැළපීම නැවත validate
+  කරන ලෙස fail-closed කළා. Corrupt row එකක් authorization හෝ revoke write එකක්
+  බවට පත් නොවන regression test එකක් එක් කළා. Remote auth execution සහ
+  independent review තවම `REVIEW_PENDING`. Focused auth/session checks
+  **20/20 PASS**; full regression **591/591 PASS**, TypeScript, ESLint සහ docs
+  checkerත් **PASS**.
+
+- Revocation worker එක storage එකෙන් ලැබෙන claim record එකේ owner/session UUID,
+  `processing` state, lease ID සහ lease expiry නැවත පරීක්ෂා කරන ලෙස fail-closed
+  කළා. වැරදි හෝ පැරණි lease එකකින් provider action එකකට යාම වළක්වන regression
+  test එකක් එක් කළා. Remote provider execution සහ independent review තවම
+  `REVIEW_PENDING`. Focused revocation checks **12/12 PASS**; full regression
+  **590/590 PASS**, TypeScript, ESLint සහ docs checkerත් **PASS**.
+
+- සියලුම private-table migrations සඳහා RLS enable කිරීම සහ `public`/`anon`/
+  `authenticated` table access revoke කිරීම අනිවාර්ය කරන migration safety
+  regression guard එකක් එක් කළා. දැනට තිබෙන migrations වල security boundary
+  වෙනස් කළේ නැහැ; remote execution සහ independent review තවම
+  `REVIEW_PENDING`.
+
+- PostgreSQL sync head එක update වූ බව row count එකෙන් තහවුරු නොකර සාර්ථක බව
+  පෙන්විය හැකි අවදානම වසා දැමුවා. Transaction adapter සහ mutation change writer
+  දෙකම `returning last_sequence` පරීක්ෂා කර row එකක් නොවෙනස් වුණොත් fail-closed
+  වේ. Focused checks **11/11 PASS**; remote PostgreSQL/RLS සහ independent
+  review තවම `REVIEW_PENDING`. Full regression **588/588 PASS**, TypeScript,
+  affected ESLint සහ docs checkerත් **PASS**.
+
+- Server pull එකෙන් නිකුත් කරන signed `payload.signature` cursor එක sync
+  transaction boundary එකේ පැරණි single-segment validation නිසා නවතින ගැටලුව
+  නිවැරදි කළා. පැරණි opaque cursor support එක රැකගෙන bounded signed format එක
+  සහ regression test එකක් එක් කළා. Focused checks **15/15 PASS**; remote
+  full regression suite **586/586 PASS**, TypeScript **PASS**, affected ESLint
+  **PASS**, docs checker **PASS**; remote
+  PostgreSQL/RLS, independent review සහ device verification තවම
+  `REVIEW_PENDING` / `NOT_RUN`.
+
+- Remote sync එකට නොගැලපෙන local mutation (`session.terminal`, malformed
+  payload/target/command/ID) offline retry loop එකකට යවන්නේ නැතිව per-item
+  permanent rejection ලෙස quarantine කරන ලෙස සකස් කළා. Batch එකේ කලින්
+  accepted items අහිමි නොවන ලෙස partial result එක රැකේ. Focused tests සහ full
+  regression evidence පසුව සටහන් කරයි; remote production sync තවම
+  `REVIEW_PENDING`.
+
+  Verification: focused sync checks **16/16 PASS**, full regression suite
+  **585/585 PASS**, TypeScript **PASS**, affected ESLint **PASS**, සහ docs
+  checker **PASS** (80/80 requirements). Remote production wiring සහ
+  independent/device review තවම `REVIEW_PENDING`.
+
+- Local sync pull apply validator එක server pull boundary එකෙන් එන signed
+  `payload.signature` cursor පිළිගන්නා ලෙස ගලපලා, cursor එක page data සමඟ
+  atomic store callback වෙතම යන regression test එකක් එක් කළා. පැරණි
+  single-segment fixtures රැකේ; real server/local SQLite integration තවම
+  `REVIEW_PENDING`.
+
+- Server entitlement boundary එක malformed `verifiedBy`/`policyVersion` metadata
+  එකක් නිසා access grant නොකරන ලෙස fail-closed කළා. Focused entitlement,
+  PostgreSQL admission සහ usage checks වලින් පරීක්ෂා කරයි; live billing/provider
+  execution සහ independent review තවම `REVIEW_PENDING`.
+
+- App-session issue path එකේ owner-provided/verified `issuedAt` අගය record එකේ
+  රැකගෙන PostgreSQL insert එකට parameter ලෙස යවන ලෙස නිවැරදි කළා; runtime
+  clock එකෙන් නිහඬව වෙනස් timestamp එකක් හදන්නේ නැහැ. Adapter regression එකෙන්
+  ඒක පරීක්ෂා කරයි. Remote auth execution සහ independent security review තවම
+  `REVIEW_PENDING`.
+
+- Local snapshot mirror validator එක server build එකෙන් එන signed
+  `payload.signature` cursor පිළිගන්නා ලෙස server-side validators සමඟ ගලපලා,
+  complete mirror swap regression test එකක් එකතු කළා. පැරණි cursor ආකෘතියද
+  රැකේ; remote/device/independent review evidence තවම `REVIEW_PENDING`.
+
+- Incremental sync cursor parser එක malformed base64 input එකේ raw decoder
+  error නොපෙන්වා `SYNC_CURSOR_INVALID` ලෙස fail-closed වන ලෙසත්, token එකට
+  උපරිම දිග සීමාවක් ඇති ලෙසත් දැඩි කළා. Focused checks සහ full regression
+  results evidence record එකේ දක්වා ඇත; remote security execution සහ
+  independent review තවම `REVIEW_PENDING`.
+
+- Snapshot cursor validation materializer, staging සහ page reader අතර ගලපලා
+  පැරණි single-segment cursors රැකගෙන signed `payload.signature` opaque cursors
+  ද පිළිගන්නා ලෙස සකස් කළා. Build integration failure එකෙන් හමු වූ contract
+  mismatch එකට regression coverage තිබේ; full suite evidence ඊළඟ check එකේ
+  සටහන් කරයි. Remote execution සහ independent review තවම `REVIEW_PENDING`.
+
+- Materializer → PostgreSQL staging composition candidate එකක් එකතු කළා.
+  Authorized records pages වලට බෙදා signed cursors සමඟ existing transactional
+  stager වෙත යවයි; staging failure propagate කරන අතර `ready` තත්ත්වය තමන්ම
+  ප්‍රකාශ නොකරයි. Focused checks: **4/4 PASS**. Public job route, real
+  PostgreSQL/RLS, secret custody, retention සහ independent review තවම
+  `REVIEW_PENDING`.
+
+- Snapshot materializer එකට asynchronous server-signed cursor factory එකක්
+  බැඳිය හැකි කළා. Non-final page එකට signed next-page cursor එකක් සහ final
+  page එකට `null` තබයි; owner, snapshot, page count, expiry සහ secret
+  boundaries validate කරයි. Focused checks: **4/4 PASS**. Secret custody,
+  route wiring, remote execution, RLS සහ independent review තවම
+  `REVIEW_PENDING`.
+
+- Snapshot page cursor handler composition candidate එකක් එකතු කළා. HMAC cursor
+  verify වූ පසුව පමණක් signed owner/snapshot/page index එකෙන් page reader එකට
+  යයි; client page index, foreign/tampered/expired/wrong-secret cursor විශ්වාස
+  නොකරයි. Focused checks: **5/5 PASS**. Public route registration, secret
+  custody, real RLS සහ independent review තවම `REVIEW_PENDING`.
+
+- Snapshot page සඳහා owner/snapshot/page/expiry-bound HMAC opaque cursor
+  candidate එකක් එකතු කළා. Incremental sync cursor එකෙන් scope එක වෙන් කරයි;
+  tamper, foreign reuse, expiry සහ invalid secret tests තිබේ. Focused checks:
+  **5/5 PASS**. Secret custody, route wiring, real RLS සහ independent review
+  තවම `REVIEW_PENDING`.
+
+- Snapshot materialization boundary එකක් එකතු කළා. Authorized records stable
+  order එකට pages 100ක් බැගින් බෙදයි; empty snapshot, duplicate identity,
+  malformed record, digest සහ cursor checks තිබේ. Focused checks: **5/5 PASS**.
+  JCS implementation, cursor minting, real database materialization සහ review
+  gates තවම `REVIEW_PENDING`.
+
+- Snapshot metadata/page readers සඳහා verified actor-bound read-handler
+  composition candidate එකක් එකතු කළා. Missing/expired/foreign rows safe
+  `NOT_FOUND` ලෙස හසුරුවයි. Focused checks: **4/4 PASS**; route registry,
+  opaque cursor wiring, real RLS සහ independent review තවම `REVIEW_PENDING`.
+
+- Owner-bound, unexpired `ready` snapshot metadata reader candidate එකක් එකතු
+  කළා. Contract version, digest, page count, timestamp සහ decimal PostgreSQL
+  `bigint` validation තිබේ. Focused checks: **5/5 PASS**; job lifecycle, RLS,
+  remote execution සහ independent review තවම `REVIEW_PENDING`.
+
+- PostgreSQL snapshot staging adapter candidate එකක් එකතු කළා. Owner-bound
+  metadata `FOR UPDATE`, immutable page retry/deduplication, complete-page
+  `ready` transition, duplicate entity checks සහ PostgreSQL `bigint` සීමා
+  enforce කරයි. Focused checks: **7/7 PASS**. Remote PostgreSQL execution,
+  RLS, retention, independent security review සහ production migration තවම
+  `REVIEW_PENDING`.
+
+- PostgreSQL snapshot page reader candidate එකක් එකතු කළා. Owner-bound snapshot
+  join, `ready` status, expiry check සහ malformed page fail-closed validation
+  තිබේ. Entity identity/version/payload validation සහ PostgreSQL bigint
+  high-water සහ snapshot metadata consistency handling ද එක් කළා. Focused checks:
+  **7/7 PASS**; staging writes,
+  retention සහ mirror swap
+  තවම `REVIEW_PENDING`.
+
+- Local migration safety contract checks එකතු කළා: version prefixes duplicate නොවීම,
+  `BEGIN`/`COMMIT` transaction boundary සහ destructive reset statements නොතිබීම.
+  Focused checks: **2/2 PASS**; remote rollback/restart verification තවම
+  `REVIEW_PENDING`.
+
+- Sync adapter එක private `focus_session` storage kind එක canonical wire
+  `session` kind එකට pull වෙද්දී map කරන අතර, inbound `session` changes storage
+  සඳහා legacy internal kind එකට normalize කරයි. Focused pull/transaction checks:
+  **8/8 PASS**; remote sync runtime සහ independent review තවම
+  `REVIEW_PENDING`.
+
+- Owner-bound PostgreSQL read handlers එකතු කළා: profile, tasks, goals සහ focus sessions
+  list/read operations. Fixed owner predicates, bounded result sizes, safe DTO mapping සහ
+  privacy-preserving not-found behavior තිබේ. Focused coverage **3/3 PASS**; real SQL/RLS
+  execution සහ independent review තවම `REVIEW_PENDING`.
+
+- Gateway handler registry එක local PostgreSQL transaction සහ operation-specific appliers
+  සමඟ සම්බන්ධ කළා. `createTask`, `patchTask`, task actions, goal create සහ session writes
+  සඳහා verified context, idempotency receipt සහ SQL adapter එක එක chain එකක යයි. Focused
+  coverage **3/3 PASS**; remote integration සහ independent review තවම `REVIEW_PENDING`.
+
+- `applySessionEvent` සඳහා owner/version/sequence-bound PostgreSQL SQL applier candidate එක
+  එකතු කළා. Pause/resume/complete/cancel event order, focused/paused milliseconds, state
+  transitions සහ completion target enforce කරයි. Focused coverage **3/3 PASS**; SQL
+  execution සහ independent review තවම `REVIEW_PENDING`.
+
+- `applyTaskAction` සඳහා owner/version-bound PostgreSQL SQL applier candidate එක එකතු කළා.
+  Begin/complete/cancel/archive transitions, route ID binding සහ deleted/terminal protection
+  enforce කරයි. Focused coverage **3/3 PASS**; SQL execution සහ independent review තවම
+  `REVIEW_PENDING`.
+
+- `startSession` සඳහා owner-bound PostgreSQL SQL applier candidate එක එකතු කළා. Verified
+  task title snapshot, seconds-based timer input, contract version 2 සහ unsafe/foreign
+  task rejection enforce කරයි. Focused coverage **3/3 PASS**; SQL execution සහ
+  independent review තවම `REVIEW_PENDING`.
+
+- `createGoal` සඳහා owner-bound PostgreSQL SQL applier candidate එක එකතු කළා. Goal type/unit,
+  positive target, ordered UTC instants, bounded timezone සහ allowlisted fields enforce කරයි.
+  Focused coverage **3/3 PASS**; SQL execution සහ independent review තවම `REVIEW_PENDING`.
+
+- `patchTask` සඳහා optimistic-version සහ owner-bound PostgreSQL SQL applier candidate එක
+  එකතු කළා. Optional fields පැහැදිලිව update/clear කරයි; stale, foreign, deleted හෝ
+  terminal records fail-closed කරයි. Focused coverage **3/3 PASS**; SQL execution සහ
+  independent review තවම `REVIEW_PENDING`.
+
+- `createTask` සඳහා owner-bound PostgreSQL SQL applier candidate එක එකතු කළා. Owner ID
+  trusted context එකෙන් පමණක් ගනී; typed due fields parameterized SQL වෙත map කරයි;
+  body owner injection සහ malformed result fail-closed කරයි. Focused coverage **3/3 PASS**.
+  SQL execution සහ independent review තවම `REVIEW_PENDING`.
+
+- Local PostgreSQL domain-mutation adapter contract එක එකතු කළා. `sync_heads` owner lock,
+  receipt replay, exact mutation apply input සහ receipt insert එක caller-owned transaction
+  එකක තබයි. Focused adapter coverage **4/4 PASS**; remote wiring සහ independent review
+  තවම `REVIEW_PENDING`.
+
+- Domain mutation transaction එක `requestSha256` සහ validated body එක adapter `apply` call එකට
+  එකට ලබාදෙයි. එම නිසා PostgreSQL adapter එකට එකම transaction එක තුළ mutation apply කිරීමත්
+  intent-bound receipt එක ලිවීමත් කළ හැක. Focused transaction coverage **6/6 PASS**.
+
+- Gateway mutation hash එක server-derived handler context එකට ලබාදෙන ලෙස wiring කළා.
+  Domain transaction එකට operation/path/validated body එකට බැඳුණු idempotency hash එකක්
+  ලැබෙනවා. Focused execution test එකෙන් exact hash එක පරීක්ෂා කළා; PostgreSQL adapter
+  wiring සහ independent security review තවම `REVIEW_PENDING`.
+
+- Gateway mutation canonical hash helper එක එකතු කළා. Operation/path/body සඳහා
+  key-order independent SHA-256 hash එකක් සාදයි; owner ID, token හෝ secret එකක්
+  input එකට ඇතුළත් නොකරයි. Focused checks **3/3 PASS**; receipt/database wiring
+  සහ PostgreSQL evidence තවම `REVIEW_PENDING`.
+
+- Revocation retry schedule එක එකතු කළා. Attempt count අනුව exponential delay එකක්
+  ගණනය කර bounded maximum එකක නවත්වයි; raw provider error වෙනුවට allowlisted
+  code පමණක් තබයි. Focused checks **3/3 PASS**; production backoff policy සහ
+  worker runtime තවම `REVIEW_PENDING`.
+
+- Revocation outbox worker lease/fencing contract එක එකතු කළා. Claim එක worker සහ
+  lease IDකට බැඳේ; stale completion ප්‍රතික්ෂේප කරයි; provider failure එක raw
+  error නොතබා allowlisted code සහ retry time සමඟ schedule කරයි. Focused checks
+  **4/4 PASS**; real worker/RPC concurrency තවම `REVIEW_PENDING`.
+
+- App-session provider revocation outbox candidate එක එකතු කළා. Session revoke
+  සහ durable outbox enqueue එක එක transaction එකක සිදු කරයි; provider API call එක
+  transaction ඇතුළේ නොකරයි; replay/foreign/failure cases fail-closed. Focused
+  checks **4/4 PASS**; actual worker/provider runtime තවම `REVIEW_PENDING`.
+
+- Gateway rate-limit admission contract එක එකතු කළා. Actor සහ operation scoped
+  atomic counter store එකක් හරහා bounded window/limit පරීක්ෂා කරයි; denied request
+  `429 RATE_LIMITED`, malformed counter result `503` ලෙස fail-closed වේ.
+  Focused checks **4/4 PASS**; distributed production limiter තවම `REVIEW_PENDING`.
+
+- Domain mutation transaction contract එක එකතු කළා. Owner-head lock, owner/operation/
+  mutation receipt replay, changed-payload conflict, domain apply සහ receipt write
+  එකම caller-owned transaction එකක අනුපිළිවෙළට යයි. Focused checks **5/5 PASS**;
+  සැබෑ PostgreSQL RPC/transaction execution තවම `REVIEW_PENDING`.
+
+- Gateway success response validation එක එකතු කළා. Operation එකට ගැළපෙන
+  `200/201` status, object body, undefined-field rejection, JSON serializability
+  සහ 256 KiB response limit පරීක්ෂා කරයි. Invalid handler output success ලෙස
+  නොයයි. Focused execution checks **7/7 PASS**; response schema/runtime තවම
+  `REVIEW_PENDING`.
+
+- Personal-core DTO semantic validation එක එකතු කළා. UUID, version, timestamp,
+  duration, text, due, goal unit සහ session/task transition fields contract
+  limits අනුව පරීක්ෂා කරයි. Invalid semantic payload handler/database layer වෙත
+  නොයයි. Focused checks **4/4 PASS**; full schema/runtime integration තවම
+  `REVIEW_PENDING`.
+
+- Gateway entrypoint composition එක එකතු කළා. Request admission → route-specific
+  DTO → owner authorization → domain handler යන අනුපිළිවෙළ එකම local entrypoint
+  එකකින් පවත්වාගෙන යයි; malformed/foreign requests handler හෝ owner store වෙත
+  නොයයි. Focused checks **4/4 PASS**; සැබෑ Edge Function runtime සහ database
+  transaction තවම `REVIEW_PENDING`.
+
+
+- Gateway owner authorization boundary එක එකතු කළා. Resource, workspace සහ
+  linked goal/task owner IDs server-side store callback එකෙන් actor සමඟ සසඳයි;
+  foreign/missing ownership `404` ලෙස fail-closed වන අතර handler එක ඊට පෙර
+  නොකැඳවේ. Focused authorization/execution checks **9/9 PASS**; සැබෑ
+  PostgreSQL/RLS transaction proof තවම `REVIEW_PENDING`.
+
+- Domain handler execution boundary එක එකතු කළා. Admitted operation එකට අදාළ
+  handler එක පමණක් server-derived actor/resource/body context සමඟ කැඳවයි; handler
+  නැතිනම් හෝ raw error එකක් ආවොත් safe `DEPENDENCY_UNAVAILABLE` response එකක්
+  පමණක් දෙයි. Focused checks **4/4 PASS**; සැබෑ domain/database handlers සහ
+  Supabase runtime තවම `REVIEW_PENDING`.
+
+- Personal-core operation DTO admission එක එකතු කළා. Route එක අනුව allowed සහ
+  required body fields පරීක්ෂා කරයි; `ownerId` වැනි client ownership injection
+  fields ප්‍රතික්ෂේප කරයි; task action ID එක path ID සමඟ ගැළපිය යුතුය. Focused
+  checks **4/4 PASS**; full semantic schema validation, handler/database write
+  සහ remote runtime තවම `REVIEW_PENDING`.
+
+- Personal-core gateway route allowlist එක එකතු කළා. Approved OpenAPI operation
+  14ක් method/path අනුව map කරයි; unknown route, wrong method සහ malformed
+  resource UUID domain layer එකට යාමට පෙර fail-closed වේ. Router focused checks
+  **3/3 PASS**; actual Edge Function handlers, database authorization සහ remote
+  runtime තවම `REVIEW_PENDING`.
+
+- Gateway request admission candidate එක එකතු කළා. `/v1` method/path, verified
+  actor UUID, write idempotency key, request/body byte limits, JSON object shape
+  සහ unknown-field rejection domain handler එකට පෙර සිදු කරයි. Gateway focused
+  checks **5/5 PASS**; සැබෑ Edge Function route, provider auth සහ database
+  transaction තවම `REVIEW_PENDING`.
+
+- Usage reservation/settlement transaction helpers එකතු කළා. Allowance read,
+  receipt replay check සහ reserve/consume/release write එක caller-owned
+  transaction boundary එකකට බැඳේ. Usage focused checks **10/10 PASS**; සැබෑ
+  PostgreSQL concurrency තවම `REVIEW_PENDING`.
+
+- AI usage execution lifecycle එක තද කළා. Settled receipt replay එක provider
+  call එකට යන්නේ නැහැ; reserved call success එක consume කරයි, provider failure
+  එක release කරයි, settlement failure එක success ලෙස නොපෙන්වයි. Usage focused
+  checks **9/9 PASS**; live provider/ledger තවම `REVIEW_PENDING`.
+
+- Request session admission candidate එක එකතු කළා. Bearer token එක provider
+  verifier එකෙන් තහවුරු කර active app-session registry row එක නැවත පරීක්ෂා
+  කරයි; guest fallback, raw provider errors සහ malformed-token pass-through නැහැ.
+  Focused checks **5/5 PASS**; live Auth/Edge Function runtime තවම
+  `REVIEW_PENDING`.
+
+- App-session revoke race boundary එක එකතු කළා. Registry read සහ revoke
+  transition එක caller-owned transaction එකකින් එකට සිදු කරයි; issue path එකටත්
+  transaction helper එකක් ඇත. Focused app-session checks **7/7 PASS**; සැබෑ
+  Supabase transaction/runtime තවම `REVIEW_PENDING`.
+
+- Backup export candidate එක එකතු කළා. Verified owner source එකෙන් records
+  කියවා ownership/duplicate checks පසු digest-bound manifest එකක් සාදයි; source
+  failures සඟවන්නේ නැහැ. Backup focused checks **11/11 PASS**; actual storage,
+  retention සහ restore runtime තවම `REVIEW_PENDING`.
+
+- Supabase server-side sync pull candidate එක එකතු කළා. Verified actor සහ signed
+  cursor scope පරීක්ෂා කර owner-bound high-water page එකක් කියවයි; malformed,
+  unordered හෝ store-failure result එක fail-closed වේ. Focused checks **4/4
+  PASS**; remote read, RLS සහ independent review තවම `REVIEW_PENDING`.
+
+- Supabase server-side sync transaction candidate එක එකතු කළා. Verified actor,
+  cursor-owner binding, locked-head conflict, canonical replay hash සහ atomic
+  change/head commit contract එක පනවයි. Focused checks **5/5 PASS**; PostgreSQL,
+  Edge Function සහ independent review තවම `REVIEW_PENDING`.
+
+- Stale sync cursor recovery සඳහා SQLite reset adapter එක එකතු කළා. Remote
+  receipts/cursors පමණක් reset කර snapshot bootstrap එකට ඉඩ දෙයි; remote mirror,
+  local tasks සහ pending work නොමකයි. Real SQLite recovery check **1/1 PASS**;
+  සම්පූර්ණ suite **367/367 PASS**; cloud/device/independent review තවම
+  `REVIEW_PENDING`.
+
+- Incremental SQLite sync pull adapter එක එකතු කළා. Account-scoped sequence
+  receipts, duplicate replay handling, conflicting replay rejection සහ cursor
+  update එක එක transaction එකකින් සිදු කරයි. Cursor write failure එකේ entity,
+  receipt සහ cursor rollback වේ. Focused checks **26/26 PASS** සහ සම්පූර්ණ suite
+  **366/366 PASS**; cloud/device/independent review තවම `REVIEW_PENDING`.
+
+- SQLite remote mirror apply candidate එක එකතු කළා. Account-scoped remote
+  entities සහ sync cursor එක එකම transaction එකකින් replace කරයි; local domain
+  rows, pending outbox සහ local overlay preserve කරයි. Simulated cursor-write
+  failure එකේ පෙර mirror/cursor නැවත ලැබීම තහවුරු කළා. SQLite focused checks
+  **21/21 PASS** සහ සම්පූර්ණ suite **365/365 PASS**; cloud/device/independent
+  review තවම `REVIEW_PENDING`.
+
+- Snapshot mirror apply boundary එක එකතු කළා. සම්පූර්ණ snapshot validation
+  පසුව එක් atomic store callback එකකට entities යවයි; outbox සහ local overlay
+  preserve flags අනිවාර්යයි. Apply-boundary checks **3/3 PASS**; සැබෑ domain-row
+  swap සහ cloud/device verification තවම `REVIEW_PENDING`.
+
+- Backup payload සඳහා canonical JSON SHA-256 digest helper එක එකතු කළා. Object
+  key order වෙනස් වුණත් digest එක ස්ථාවරයි; data වෙනස් වුණොත් digest mismatch
+  හඳුනාගත හැක. Backup focused checks **8/8 PASS**; actual backup storage සහ
+  restore transaction තවම `REVIEW_PENDING`. Restore path එක caller digest එක
+  පමණක් නොව payload එකම නැවත hash කරයි; focused checks **9/9 PASS**.
+
+- Server boundary එකට allowlisted safe diagnostic log helper එක එකතු කළා.
+  Error/message/stack/token values serialize නොකර event, status, stable code,
+  retryability සහ bounded request ID පමණක් තබයි. Focused checks **5/5 PASS**;
+  live log sink සහ secret rotation තවම `REVIEW_PENDING`.
+
+- App-session issue/revoke lifecycle candidate එක එකතු කළා. Session issue එක
+  verified owner UUID සහ valid expiry වලට බැඳී ඇත; revoke එක foreign owner,
+  expired record සහ repeated revoke fail-closed කරයි. Focused checks **6/6
+  PASS**; provider/session database transaction තවම `REVIEW_PENDING`.
+
+- Usage allowance ledger සඳහා private Supabase migration candidate එකක් එකතු
+  කළා. Owner/capability/period key, consumed/reserved limit check, composite
+  replay receipt key, allowance foreign key සහ client direct grants නැති RLS
+  boundary ඇත. Contract checks **12/12 PASS**; remote apply සහ PostgreSQL
+  concurrency verification තවම `REVIEW_PENDING`.
+
+- Server-side usage allowance decision boundary එක එකතු කළා. Verified active
+  capability, owner, capability, period, policy version, consumed/reserved
+  counters සහ bounded request units පරීක්ෂා කරයි; limit ඉක්මවීම fail-closed වේ.
+  Payment/provider integration හෝ live charge එකක් නැහැ. Focused checks **7/7
+  PASS** සහ replay-safe atomic reservation/consume/release contract checks
+  **7/7 PASS**; actual database write integration තවම review gate යටතේ.
+
+- Local SQLite snapshot staging adapter එක එකතු කළා. Snapshot header/page writes
+  transaction එකකින් owner-scoped ලෙස සිදු කරයි; retry duplicate pages
+  idempotent, වෙනස් replay conflict, incomplete finalize reject, reopen පසුව
+  ready snapshot නැවත කියවිය හැක. Interrupted staging එක pages නොමකා failed
+  state එකේ තබා explicit resume එකක් ලබාගනී. Validated snapshot orchestration එක
+  owner-bound ලෙස stage/finalize කරයි; validated mirror pages live domain rows
+  වෙනස් නොකර local staging වෙත map කරයි. Focused checks **20/20 PASS** සහ full suite
+  **361/361 PASS**; mirror swap, crash recovery සහ device/cloud verification
+  තවම `REVIEW_PENDING`.
+
+- Local SQLite schema version **9** එකට owner-scoped snapshot staging සහ page
+  tables එකතු කළා. High-water, page/digest, cursor, JSON validity සහ composite
+  foreign-key checks ඇත; existing outbox, active session සහ resources tables
+  වෙනස් නොවේ. Focused ownership/migration checks **17/17 PASS** සහ full suite
+  **344/344 PASS**; actual mirror swap තවම `REVIEW_PENDING`.
+
+- Sync snapshot staging සඳහා versioned migration candidate එකක් එකතු කළා.
+  Owner-bound snapshot metadata/pages, high-water/page-count/digest constraints,
+  expiry/status fields, composite page FK සහ private RLS boundary ඇත. Client
+  direct grants නැහැ. Focused migration checks: **5/5 PASS**; PostgreSQL execution
+  සහ ready-state transaction තවම `REVIEW_PENDING`.
+
+- App-session registry සඳහා වෙනම versioned Supabase migration candidate එකක්
+  එකතු කළා. Owner FK, active/revoked state, expiry constraints, index සහ RLS
+  policies ඇත; `anon`/`authenticated` direct grants නොමැත. Focused migration
+  checks: **4/4 PASS**; SQL execution සහ remote apply තවම `REVIEW_PENDING`.
+
+- Server-side app-session registry admission candidate එක එකතු කළා. Provider
+  verifier එකෙන් ලැබුණු issuer/audience/subject/session expiry claims සහ active
+  registry row එක එකට පරීක්ෂා කරයි; revoked/foreign/missing sessions fail-closed.
+  Focused checks: **3/3 PASS**; සැබෑ Supabase session registry සහ revocation
+  transaction තවම `REVIEW_PENDING`.
+
+- Snapshot mirror candidate එක complete pages, high-water, cursor, page digest සහ
+  duplicate entity identities පරීක්ෂා කරලා එක staged-install callback එකකට පමණක්
+  යවයි. Validation හෝ store failure එකකදී partial success නොපෙන්වයි. Focused
+  checks: **3/3 PASS**; සැබෑ SQLite mirror swap/cloud snapshot තවම
+  `REVIEW_PENDING`.
+
+- Sync pull cursor එක stale වුණාම `SYNC_RESET_REQUIRED` සඳහා snapshot bootstrap
+  ආරම්භ කරන recovery policy එක එකතු කළා. Local outbox සහ unsynced overlay රැකෙනවා;
+  `AUTH_REQUIRED`, `ACCESS_DENIED`, rate-limit සහ transient failure වෙනම
+  හැසිරවෙයි. Focused checks: **3/3 PASS**; actual cloud snapshot/install
+  transaction තවම `REVIEW_PENDING`.
+
+- Backup restore candidate එක දැන් සම්පූර්ණ payload එක validate කරලා, owner/schema/
+  digest/empty-target checks පසු එක transaction callback එකකට පමණක් යවයි.
+  Foreign හෝ duplicate records write වීමට පෙර ප්‍රතික්ෂේප වේ; transaction failure
+  caller වෙත යන නිසා rollback/retry කළ හැක. Focused checks: **7/7 PASS**;
+  actual SQLite/PostgreSQL restore transaction තවම `REVIEW_PENDING`.
+
+- Remote client එක gatewayගේ nested safe error envelope එකෙන් `code` නිවැරදිව
+  කියවයි. එමඟින් `ACCESS_DENIED` සහ `VERSION_CONFLICT` වැනි server decisions
+  outbox quarantine policy එකට යන අතර private error message එකක් නොගනී.
+  Focused checks: remote client **7/7 PASS**, remote sync pusher **6/6 PASS**;
+  live gateway integration තවම `REVIEW_PENDING`.
+
+- Local outbox sync එකේ server-side permanent rejection policy එක එකතු කළා.
+  `ACCESS_DENIED`, `ENTITY_DELETED`, `VERSION_CONFLICT` සහ validation වැනි
+  user-action අවශ්‍ය ප්‍රතික්ෂේප `rejected` ලෙස quarantine කරයි; network/transport
+  failures පමණක් retry කරයි. Focused checks: **26/26 PASS**; actual remote
+  mutation transaction සහ recovery UI තවම `REVIEW_PENDING`.
+
+- Local sync pull adapter එකක් එකතු කළා. Change page එකේ cursor, sequence,
+  entity IDs, entity kinds සහ page size පරීක්ෂා කරලා, page එකත් cursor එකත්
+  එකම atomic store callback එකකට පමණක් යවයි. Validation හෝ storage failureකදී
+  cursor advance නොවේ. Focused checks: **4/4 PASS**; real cloud pull/local
+  mirror transaction තවම `REVIEW_PENDING`.
+
+- Server mutation guard candidate එකක් එකතු කළා. Verified actor සහ resource
+  ownership match වීම අනිවාර්යයි; foreign resources privacy-preserving
+  `not_found` ලෙස ප්‍රතික්ෂේප වේ. එකම mutation receipt එකේ එකම payload නම්
+  replay කරන අතර වෙනස් payload එකක් conflict වේ. Focused checks: **4/4 PASS**;
+  actual database transaction/row-lock execution තවම `REVIEW_PENDING`.
+
+- Sync mutation batch validation දැන් එක් එක් item එකේ UUID mutation ID,
+  command සීමාව, UUID target ID, object payload සහ client ownership fields
+  පරීක්ෂා කරයි. Invalid items server dispatcher එකට යන්නේ නැහැ. Focused
+  gateway checks: **12/12 PASS**; per-item database authorization තවම
+  `REVIEW_PENDING`.
+
+- AI/cloud capability admission සඳහා server-only entitlement candidate එකක්
+  එකතු කළා. Matching verified owner, capability, active status, policy version
+  සහ expiry පමණක් පිළිගනී; client flags, prices හෝ provider claims වලින් access
+  ලැබෙන්නේ නැහැ. Database reader එක server-only admission policy එකට compose
+  කරලා active, expired සහ missing entitlement checks එකතු කළා. Focused checks:
+  **7/7 PASS**, foreign-owner isolation check ඇතුළුව. Real billing/webhook/
+  allowance ledger integration තවම
+  `REVIEW_PENDING`.
+
+- Entitlement, allowance/receipt සහ app-session migration candidates සඳහා RLS,
+  owner binding, bounded counters, foreign keys සහ service-role access static
+  contract checks එකතු කළා. Migration SQL එක remote Supabase එකට යොදා නැහැ.
+  Outbox ownership, private provider-error boundary සහ lease fencing checks ද
+  එක් කළා. Focused checks: **6/6 PASS**; remote execution, advisors සහ independent
+  security review තවම `REVIEW_PENDING`.
+
+- Usage reservation service එක entitlement read, allowance lock සහ receipt
+  write එක එකම PostgreSQL transaction boundary එකකට compose කළා. Entitlement
+  නැති විට allowance query එකට යන්නේ නැහැ. Reservation, settlement සහ
+  admission/allowance snapshot checks: **8/8 PASS**;
+  live provider, billing සහ remote database execution තවම `REVIEW_PENDING`.
+
+- Non-destructive backup restore admission candidate එකක් එකතු කළා. Restore
+  කිරීමට පෙර verified owner, schema version, payload SHA-256 සහ empty-target
+  condition පරීක්ෂා කරයි; foreign/future/corrupt/overwrite cases fail-closed.
+  Focused checks: **4/4 PASS**. Actual backup storage, restore transaction සහ
+  retention policy තවම `REVIEW_PENDING`.
+
+- Server boundary helpers now reject public/short/control-character secrets,
+  non-HTTPS service URLs and raw provider/SQL/stack errors. Public error
+  responses use stable safe codes only. Focused checks: **4/4 PASS**; actual
+  secret-store injection and Edge Function runtime verification remain
+  `REVIEW_PENDING`.
+
+- Server-only signed sync cursor candidate එකක් එකතු කළා. Cursor එක owner,
+  endpoint, page limit, decimal sequence high-water mark සහ expiry සමඟ HMAC
+  signature එකකට බැඳේ; tamper, cross-account reuse, wrong limit, expiry සහ
+  දුර්වල secret fail-closed වේ. Focused cursor checks: **4/4 PASS**. Key
+  storage, rotation සහ live database integration `REVIEW_PENDING`.
+
+- Personal sync gateway routing now includes bounded `GET /v1/sync` and
+  `POST /v1/sync/mutations` contracts with actor-derived identity, cursor/page
+  limits and a maximum batch of 25. Database cursor signing, transaction
+  ordering and per-item authorization remain isolated review gates. Focused
+  gateway checks: **11/11 PASS**.
+
+- Mutation requests now carry a canonical JSON SHA-256 digest alongside the
+  idempotency key, allowing the reviewed server/database receipt layer to
+  distinguish a safe replay from the same key being reused with changed data.
+  Raw tokens and secrets are not hashed or logged. Focused gateway checks:
+  **9/9 PASS**; live receipt execution remains `REVIEW_PENDING`.
+
+- Personal API gateway now fail-closes when the verified resolver returns a
+  non-UUID actor, and regression coverage records expired/revoked-session
+  rejection plus stable idempotency-key forwarding for server-side replay
+  handling. Focused gateway checks: **8/8 PASS**; TypeScript and ESLint pass.
+  This remains an isolated contract boundary, not live Supabase/RLS evidence.
+
+- Backend migration candidate RLS now declares explicit owner-bound
+  `SELECT`/`INSERT`/`UPDATE`/`DELETE` policies, including both existing-row and
+  resulting-row checks for updates. Direct client grants remain revoked and
+  the remote development project was not changed. Focused contract checks:
+  **3/3 PASS**; TypeScript and affected-file ESLint pass. Isolated SQL/RLS
+  penetration verification remains `REVIEW_PENDING`.
+
+- Password recovery outcome messages now use the approved Sinhala/Tamil/English
+  locale copy and do not expose provider error text directly in native recovery
+  routes.
+
+- The local account portal now clears password state when signing out and exposes
+  its busy state to assistive technology; provider and sync behavior are
+  unchanged.
+
+- Native Sign In email and password validation now use the shared
+  Sinhala/Tamil/English locale copy instead of hardcoded English messages;
+  authentication behavior is unchanged.
+
+- Home duration facts now use the selected locale's minute copy; Settings
+  labels, stored seconds/minute values and timer behavior remain unchanged.
+
+## 2026-10-09
+
+- Onboarding profile application failures now use safe localized copy instead
+  of exposing raw exception text; profile accessibility labels also use the
+  selected locale. Focused check: **1/1 PASS**; TypeScript and ESLint pass.
+
+- Assessment persistence now stores stable safe failure categories instead of
+  copying arbitrary storage exception text into flow state. Focused check:
+  **1/1 PASS**; TypeScript and ESLint pass.
+
+- Focus setup preset labels and accessibility names now use the selected
+  locale's minute copy instead of hardcoded English text. Focused check: **1/1
+  PASS**; TypeScript and ESLint also pass.
+
+- Teacher assignment draft saving state now uses localized Sinhala, Tamil and
+  English copy instead of a hardcoded ellipsis. Focused check: **1/1 PASS**;
+  TypeScript and ESLint also pass.
+
+- Auth callback loading indicator now uses the localized callback loading title
+  instead of a hardcoded English accessibility label. Focused checks are
+  **2/2 PASS**; TypeScript and ESLint also pass.
+
+- Settings duration and language option accessibility labels now use the
+  localized section copy and distinguish selectable options from their parent
+  cards. Focused settings/localization checks are **10/10 PASS**; TypeScript
+  and ESLint also pass.
+
+- Home focus hero accessibility labeling now reuses the selected locale's
+  existing start-focus copy instead of a hardcoded English label. Focused
+  checks are **4/4 PASS**; TypeScript and ESLint also pass. The full suite
+  after the regression test is **305/305 PASS**.
+
+- Onboarding assessment accessibility labels now use the approved localized
+  copy for the back action and progress indicator. Focused assessment and
+  locale checks are **8/8 PASS**; TypeScript and ESLint also pass. The full
+  suite after the regression test is **304/304 PASS**.
+
+- Auth session/configuration/link errors now use locale-aware safe copy in
+  `AuthProvider` for Sinhala, Tamil and English. The focused auth-copy checks
+  are **2/2 PASS**; TypeScript and ESLint also pass. The full suite after the
+  regression test is **303/303 PASS**.
+
+- Resource mutation failures now use localized, resource-specific safe copy
+  instead of exposing raw storage error messages. The focused resource and
+  locale checks are **5/5 PASS**; TypeScript and ESLint also pass. The full
+  suite after adding the regression test is **302/302 PASS**.
+
+- Resources loading state now uses resource-specific Sinhala/Tamil/English
+  copy instead of the unrelated Tasks loading message. The focused check is
+  **1/1 PASS** and the full suite is **301/301 PASS**.
+
+- Tasks save failures now use the existing localized task copy, preserving the
+  draft and list behavior. The focused check is **1/1 PASS** and the full suite
+  is **300/300 PASS**.
+
+- Progress History accessibility summaries now use localized history copy for
+  the focus-time summary, filter-empty state and session-list count. The
+  focused check is **1/1 PASS** and the full suite is **299/299 PASS**.
+
+- Added a fail-closed Cloud Resources upload-intent boundary. It requires
+  explicit selection, matching ownership, consent and a server-verified active
+  entitlement, but performs no upload, download, quota reservation or charge;
+  focused checks are **4/4 PASS** and the full suite is **298/298 PASS**.
+
+- Added a Profile-linked local teacher assignment draft screen with Sinhala,
+  Tamil and English labels, accessible fields and explicit save/error states.
+  It remains device-local and performs no invite or cloud write; the current
+  full suite remains **294/294 PASS**.
+- Rebuilt the Android debug APK after the education UI slice: `assembleDebug`
+  succeeded with **662** tasks (61 executed, 601 up-to-date). Device install,
+  runtime and accessibility evidence remain `NOT_RUN` because no device was
+  connected.
+- A fresh Android device probe could not start the local `adb` daemon
+  (`failed to check server version`); no device evidence was inferred.
+
+- Added a local-only, versioned teacher assignment draft boundary with bounded
+  text and Sri Lankan education metadata validation. It does not create classes,
+  invite learners or send server writes; focused tests are **4/4 PASS** and the
+  current full suite is **294/294 PASS**.
+- Added SQLite v8 owner-scoped persistence for teacher assignment drafts. Newer
+  revisions replace older local drafts, stale writes are rejected, owners remain
+  isolated and corrupt metadata fails closed; storage tests are **3/3 PASS**.
+
+- Progress summary and goal-card accessibility labels now use localized copy
+  for totals, focus time and goal progress; analytics and navigation are
+  unchanged. Progress tests are **4/4 PASS** and the full suite is
+  **287/287 PASS**.
+- Progress period selector accessibility now uses localized Progress copy;
+  period selection and analytics calculations are unchanged. The full
+  **287/287** suite remains pass.
+- Active Task row accessibility labels now use localized ready-state copy
+  instead of hard-coded `pending`; task behavior is unchanged. Tasks tests are
+  **5/5 PASS** and the full suite is **287/287 PASS**.
+- Task detail accessibility labels now use localized Task Detail copy for
+  loading, summary, description, due-date and no-goal states. Task editing,
+  validation and persistence are unchanged; Task detail tests are **19/19
+  PASS** and the full suite is **287/287 PASS**.
+- Profile signed-in status and sign-out accessibility labels now use the
+  localized account copy; authentication and sign-out behavior are unchanged.
+  The full **287/287** suite remains pass.
+- Root auth-gate loading text and its accessibility label now use the existing
+  localized sign-in loading copy. Secure session restore and route decisions are
+  unchanged; the full **287/287** suite remains pass.
+- Profile and Focus tab accessibility labels now use existing localized copy;
+  the Focus tab no longer announces raw internal session statuses. Navigation
+  and session behavior are unchanged; the full **287/287** suite remains pass.
+- Settings accessibility labels now use the existing localized copy for loading,
+  failure/retry, navigation, duration, appearance, language and local-data
+  states. Settings persistence and save-retry behavior are unchanged; component
+  tests are **6/6 PASS** and the full suite remains **287/287 PASS**.
+- The True Zen Break route now localizes its timer, visible duration choices and
+  duration-choice
+  accessibility labels in `en`/`si`/`ta`; saved settings, retry behavior and
+  countdown units are unchanged. Focused checks, typecheck, lint and the full
+  **287/287** suite pass; human translation and device review remain pending.
+- The active focus-session route now localizes its remaining-time warning,
+  timer accessibility label and terminal history-save recovery message in
+  `en`/`si`/`ta`, without changing seconds-based timing or persistence
+  behavior. Locale/session tests, typecheck, lint and the full **286/286**
+  suite pass; human translation and device review remain pending.
+- Added a pure Task/Goal sync mutation-envelope draft. It binds each validated
+  create payload to the verified actor and workspace and carries a UUID
+  idempotency key; it does not enqueue or send remote writes. Invalid identity
+  or mutation IDs fail closed. Focused tests are **5/5 PASS** and the bundled
+  suite is **286/286 PASS**; server receipts, RLS, outbox integration and
+  independent security review remain pending.
+- New locally-created Tasks, Goals and Focus Sessions now receive UUID-shaped
+  stable IDs while existing legacy IDs remain unchanged. Timer storage remains
+  seconds-based; this only prepares new records for the reviewed server contract
+  and does not enable remote sync. Stable-ID regression tests were added; the
+  the bundled suite was **276/276 PASS** at that slice.
+- Added a side-effect-free Task/Goal create-payload boundary that requires
+  verified UUID record and workspace IDs, preserves explicit fields, and makes
+  the seconds-to-milliseconds goal conversion explicit. It is not wired to
+  remote writes until workspace bootstrap, server ownership and review gates
+  exist; builder tests cover legacy-ID rejection and conversion safety.
+- Added a fail-closed `/me` workspace-bootstrap parser that binds the returned
+  profile to the already verified session actor, validates the personal
+  workspace UUID and positive version, and rejects extra or malformed fields.
+  It performs no network or local account write until the real backend exists;
+  the bundled suite after this slice is **282/282 PASS**.
+- Added the typed client boundary that requests only `GET /v1/me` and passes the
+  response through the ownership-bound parser. It is not wired into auth startup
+  or a deployed server, so it cannot create a local workspace from unverified
+  data. The full bundled suite after this slice is **284/284 PASS**.
+- Native Profile now shows the existing owner-scoped SQLite outbox status in
+  Sinhala/Tamil/English. It reports loading, local read failure, no pending
+  changes or pending local changes without claiming that secure remote sync is
+  active. TypeScript, affected lint and the full **274/274** runtime suite pass;
+  backend/RLS, independent security review and Android device verification stay
+  pending. Evidence: `LOCAL-SYNC-STATUS-UI-2026-10-09.md`.
+- Local personal API gateway boundary එක එක් කළා. Bearer identity, actor
+  derivation, UUID idempotency, owner-field rejection, approved route mapping සහ
+  safe dependency errors tests සමඟ සකස් කළා. මෙය Edge Function එකට deploy කරලා
+  නැති local boundary එකක් පමණයි; RLS, transaction receipts සහ independent
+  security review තවම pending.
+- Local remote-sync dispatcher boundary එකක් එක් කළා. Approved personal API
+  routes සඳහා command mapping, UUID idempotency keys, client-supplied owner
+  field rejection, legacy seconds-based terminal snapshot rejection සහ
+  permanent conflict/retryable error වෙන්කිරීම tests සමඟ සකස් කළා. එය app
+  startup එකට හෝ remote project එකට තවම සම්බන්ධ කර නැහැ; reviewed gateway,
+  server schema සහ independent security review අවශ්‍යයි.
+- Supabase CLI `2.120.0` එක තාවකාලික, project එකෙන් පිටත runtime එකකින් භාවිත කර
+  local `supabase/migrations/20261009071127_personal_core_v1.sql` schema candidate එක
+  සකස් කළා. එහි private `df_private` tables, composite owner foreign keys,
+  RLS enablement සහ direct client grants නැති බවට structural tests එකතු කළා.
+  මෙය remote project එකට යොදා නැහැ; SQL execution, RLS penetration test සහ
+  independent security review තවම `REVIEW_PENDING`.
+- Local Android debug APK එක Gradle wrapper එකෙන් සාර්ථකව build කළා. APK hash
+  සහ build output evidence එක `ANDROID-DEBUG-BUILD-2026-10-09.md` හි සටහන් කර ඇත.
+  Device/emulator එකක් නොතිබූ නිසා install සහ Android end-to-end verification
+  තවම `NOT_RUN`; backend security review සහ production release readiness ද
+  තවම pending ය.
+- Website tests `17/17`, TypeScript, ESLint සහ local optimized `next build`
+  pass වුණා. Build එකෙන් static pages 16/16 generate වුණා. Sandboxed run එකේ
+  Windows path access දෝෂයක් තිබුණත්, අවශ්‍ය local access සමඟ build එක
+  සාර්ථකයි. Browser/provider/deployment review තවම pending; remote publish කළේ
+  නැහැ.
+- Account Portal session verification error එකට Sinhala/Tamil/English retry
+  action එකක් එක් කළා. Provider error එකක් hidden success එකක් ලෙස නොපෙන්වා,
+  userට නැවත session check කරන්න පුළුවන්; provider sync behavior වෙනස් කළේ නැහැ.
+- Mobile no-guest route guard audit එක ලේඛනගත කළා. Signed-out usersට protected
+  routes වෙත direct navigation කළත් sign-in වෙත යොමු වන අතර, session restore
+  වනතුරු protected UI නොපෙන්වයි. Provider/RLS/device acceptance මෙයින් තහවුරු
+  නොවේ.
+- Sync outbox response validation එක තද කළා. එකම mutation එක accepted සහ
+  rejected දෙකේම තිබුණොත්, duplicate ID තිබුණොත් හෝ foreign ID එකක් තිබුණොත්
+  local mutation acknowledge නොකර retryable error එකක් තබයි. New regression
+  test එක ඇතුළුව bundled-runtime suite එක **241/241 PASS** ලෙස නැවත පරීක්ෂා
+  කළා. Real server/RLS sync තවම review-pending.
+- Corrupt local outbox එකක duplicate `mutationId` තිබුණොත් remote push එකට යැවීම
+  නවතා `SYNC_OUTBOX_INVALID` retry state එකක් තබන validation එකක් එක් කළා.
+- Duplicate outbox regression test එකෙන් පසුව full bundled-runtime suite එක
+  **242/242 PASS**. Corrupt local rows server push boundary එකට නොයන බව local
+  safety test එකෙන් තහවුරු කළා; real backend sync තවම review-pending.
+- Authenticated remote API boundary එකේ 2xx response එකක් වුණත් වැරදි JSON,
+  array/scalar response හෝ decode failure එකක් නම් `REMOTE_RESPONSE_INVALID`
+  ලෙස fail-closed කරන ලදි. Server error status fallback එක රැකගෙන focused
+  boundary tests **6/6**, full bundled-runtime suite **244/244**, TypeScript සහ
+  affected lint සහ project Expo lint pass වුණා. Remote server/RLS, independent
+  security review සහ Android device verification තවම pending.
+- Native Session History සහ Session Detail routes වල title,
+  loading/error/empty states, filters, statuses, metrics සහ accessibility hints
+  shared `en`/`si`/`ta` locale layer එකට ගෙනා. Focused history/locale tests
+  **7/7**, full bundled-runtime suite **244/244**, TypeScript සහ affected lint
+  pass. Translation review සහ Android device gate තවම `REVIEW_PENDING`; session
+  storage/calculations වෙනස් කළේ නැහැ.
+- Native Rewards route එකේ heading, loading/error/empty states, milestone copy,
+  statuses සහ accessibility labels `en`/`si`/`ta` locale module එකට ගෙනා.
+  Rewards tests **3/3**, full bundled-runtime suite **244/244**, TypeScript සහ
+  affected lint pass. Reward calculations, session history සහ entitlement
+  behavior වෙනස් කළේ නැහැ; translation/device review තවම pending.
+- Native Progress route එකේ heading, loading/error/empty states, period controls,
+  metrics, insight සහ navigation copy `en`/`si`/`ta` locale module එකට ගෙනා.
+  Progress tests **4/4**, full bundled-runtime suite **244/244**, TypeScript සහ
+  affected lint pass. Progress calculations, time windows සහ local storage
+  behavior වෙනස් කළේ නැහැ; translation/device review තවම pending.
+- Extended native Task Detail with locale-driven Sinhala/English labels for
+  loading, editing, goals, dates, priorities, archive/delete actions and
+  status copy. Existing accessibility labels and task safety behavior remain
+  intact. Focused Task Detail tests pass 19/19; the current bundled-runtime
+  regression suite passes 240/240. No backend, migration, dependency,
+  production or release gate was changed.
+- Extended native Settings with locale-driven Sinhala/Tamil/English sections,
+  saved-error recovery, focus/break preferences, accessibility, privacy and
+  account status copy. Existing settings persistence and timer units are
+  unchanged; focused Settings tests pass 6/6.
+- Extended the onboarding productivity-profile surface with Sinhala/English
+  locale copy for saved-answer previews, retry/error states and the explicit
+  local-settings confirmation flow. Assessment persistence and suggestion
+  semantics are unchanged; focused onboarding tests pass 4/4.
+- Extended the seven-question assessment screen with Sinhala/English locale
+  copy for navigation, progress context, loading/error/retry, answer choices,
+  skip and profile actions. Question IDs, validation and local persistence are
+  unchanged; the bundled assessment suite remains 4/4.
+- Extended the onboarding entry screen with Sinhala/English locale copy for
+  its introduction, three-step explanation, privacy note and navigation
+  actions. Assessment routing and answer-clearing behavior are unchanged.
+- Added Tamil locale copy for the complete onboarding flow: entry, assessment
+  and productivity profile. Question IDs, persistence, validation and explicit
+  settings confirmation remain unchanged; human translation review is still
+  required.
+
+- Recorded a read-only backend gate: the local personal-core contract checker
+  passed 36 DTO fixtures, 7 cursor fixtures, 14 operations and 9 declared
+  prototype tables; the approved development Supabase project remains empty
+  with zero migrations and zero security-advisor lints. This is not deployed
+  schema/RLS proof. A fresh bundled-runtime root regression run passed 188/188,
+  with typecheck, lint and documentation checks passing. No migration, remote
+  write, dependency change, commit or push was made. See
+  `revision/evidence/BACKEND-READONLY-GATE-2026-10-09.md`.
+- Extended the approved `si/ta/en` locale layer to the native Plan, Focus and
+  Profile tabs, including account state, recovery, preference and privacy copy.
+  Timer, ownership and persistence behavior did not change; human translation
+  and device accessibility review remain pending.
+- Extended locale coverage to the local Plan My Day preview: time input,
+  loading/error/empty states, task selection, reordering, proposal confirmation
+  and start actions now use `si/ta/en` copy. The preview remains local-only;
+  saved-plan lifecycle and AI provider integration remain review-pending.
+- Extended the local account portal with `en/si/ta` copy selected from the
+  HTTP-only site-locale cookie. Sign-in, sign-up, reset, session-state,
+  sync-boundary and browser-secret safety messages are translated without
+  changing provider authentication or private-data behavior. Portal sync
+  remains review-pending.
+- Extended the native Goals screen with locale-driven headings, goal composer,
+  validation, loading/error/empty states and accessibility labels for
+  `en`/`si`/`ta`. Goal storage, calculations, seconds units and ownership
+  behavior did not change.
+- Extended the native Tasks screen with locale-driven headings, composer,
+  validation, loading/error/empty states, archive controls and task-row
+  accessibility labels for `en`/`si`/`ta`. Task persistence, retry behavior,
+  completion semantics and owner boundaries did not change.
+- Extended the native Focus setup screen with locale-driven task selection,
+  duration choices, loading/error validation and start/back actions for
+  `en`/`si`/`ta`. Timer state, duration bounds and saved settings behavior did
+  not change.
+- Removed the unnecessary Windows-sensitive Turbopack root override from the
+  local website config. An elevated local verification then completed the
+  Next.js production build successfully: compile, TypeScript, page data and
+  static generation for all 16 pages. This is build evidence only; no hosting
+  or deployment was performed.
+- Extended the native Session Summary screen with locale-driven completion,
+  cancellation, metrics, status and next-session copy for `en`/`si`/`ta`.
+  Session calculations, stored history and seconds-based units did not change.
+- Started the local-resource foundation with bounded domain validation for
+  user-entered references and explicit HTTPS links. Unsafe schemes, embedded
+  credentials, control characters and invalid bounds are rejected; no network
+  fetch, file import, cloud upload, AI input or task persistence was added in
+  this slice.
+- Added a local SQLite v6 resource repository for explicit references and
+  HTTPS links. Resources and task links are owner-scoped, revision-checked,
+  duplicate-safe and transaction-backed; missing resources are retained rather
+  than deleted, and corrupt rows fail closed. Added five real SQLite regression
+  tests plus the existing ownership suite; the fresh focused run passed 22/22.
+  This remains `REVIEW_PENDING`: no file picker/import, cloud upload, AI input,
+  paid storage, UI or production migration was added.
+- Fresh full verification after the resource slice passed `196/196` root tests,
+  root typecheck, root lint, documentation checks and `git diff --check`.
+  The test-run module warnings are tooling warnings only; no test was skipped.
+- Added an isolated configurable AI-planning provider boundary with a
+  deterministic local mock. It validates bounded task input, returns a
+  proposal marked as requiring confirmation, and rejects mismatched or early
+  confirmations without changing tasks. No OpenAI request, credential, cost,
+  allowance or live provider integration was added.
+- Fresh full verification after the planning slice passed `199/199` root tests,
+  typecheck, lint, documentation checks and `git diff --check`.
+- Added a local advertising-policy guard only: it requires explicit consent and
+  adult eligibility, and blocks ads on focus, recovery, True Zen Break, auth and
+  settings surfaces. No advertising SDK, targeting, impression call or paid
+  service was activated.
+- Fresh full verification after the ad-policy slice passed `202/202` root tests,
+  typecheck, lint, documentation checks and `git diff --check`.
+- Added the first local Resources UI slice. Users can add bounded references or
+  explicit HTTPS links, review locally stored items, and mark an item missing
+  without deleting its history. The Profile screen links to it in all three
+  supported locales. File import, network fetch, cloud upload and paid storage
+  remain disabled.
+- Added task-detail resource association. Users can link or unlink an active
+  owner-scoped local resource revision without uploading or syncing content;
+  focused task-detail coverage remains `19/19` passing.
+- Added local confirmed-plan persistence for Plan My Day. SQLite v7 stores
+  ordered plan items under the active owner, retires a replaced plan, rejects
+  foreign tasks and rolls back invalid writes. No task status is changed and
+  no AI request or remote sync is performed; focused UI/domain coverage is
+  `11/11` passing.
+- Added a tested local outbox sync orchestration boundary. It sends only due
+  mutations in bounded batches, uses a stable retry idempotency key, acknowledges
+  only explicit server mutation IDs, and retains rejected or malformed results
+  for retry; concurrent calls for the same owner share one push. Focused sync
+  coverage is `6/6` passing. No remote endpoint is enabled because the reviewed
+  sync contract and backend runtime are still pending.
+- Localized the Task detail resource-association labels, empty state and
+  recoverable link errors through the approved `en`/`si`/`ta` locale layer;
+  task behavior and storage boundaries are unchanged.
+- Added a local-only entitlement decision boundary for AI and cloud resources.
+  Core focus remains available, premium access requires a matching
+  server-verified active entitlement, and the sandbox provider cannot purchase
+  or restore anything. No prices, charges, billing provider or premium grant
+  were enabled.
+- Added a local classroom-policy foundation for synthetic/adult development
+  fixtures: invite previews omit tokens, expired/revoked invites fail closed,
+  and policy-version agreement is required. Real-minor pilot access remains
+  disabled unless separately approved legal and pilot gates are present; no
+  classroom data or remote sharing is enabled.
+
+## 2026-10-08
+
+- Added owner-scoped local UI-locale preference storage for the approved
+  Sinhala, Tamil and English choices. Existing settings migrate additively to
+  schema v5 with an English fallback; the Settings screen saves the choice
+  without changing timer defaults. The locale now also drives the five primary
+  native navigation labels through a small stable-ID copy layer. Full screen
+  translations, font and accessibility review, and Android runtime verification
+  remain pending.
+- Added explicit local onboarding personalization: after review and confirmation,
+  assessment choices can set future focus and break defaults; failed writes are
+  visible and existing tasks/goals/session state remain unchanged. Device and
+  human language/accessibility review remain pending.
+- Added reduced-motion handling to the native splash overlay. The overlay stays
+  static while the device preference is being read and skips the decorative
+  animation when reduced motion is enabled; installed-device accessibility
+  verification remains pending.
+- Added an Android SQLite v4, owner-scoped durable outbox foundation for
+  terminal focus-session mutations. History and the pending mutation commit
+  atomically; retries, acknowledgement, payload-digest validation and account
+  isolation are covered by real SQLite tests. This remains `REVIEW_PENDING` and
+  is not a deployed backend sync implementation.
+
+- Started the public-site locale preference foundation for the approved Sinhala, Tamil and English interface locales. Full page translations and human language/accessibility review remain pending; no site deployment.
+- Localized public homepage copy and shared shell labels for Sinhala, Tamil and English. Other public content pages remain English and localized wording awaits human language review.
+- Added Sinhala/Tamil copies for personal, education, roadmap, updates and help pages; untranslated commercial/legal/feature pages disclose that the content remains English.
+- Added an evidence-based V1 implementation checklist that distinguishes local implementation, incomplete integrations, verification gates, and owner actions.
+- Added local SQLite onboarding draft restore, serialized/revision-checked saves, retry-visible errors, and owner-scoped cancellation for skipped assessments. Applying suggestions to settings/tasks remains separate and pending.
+- Added an explicit local Plan My Day proposal confirmation gate before starting a proposed task. It remains an in-memory confirmation only; no plan, schedule, reminder, AI call or task mutation is persisted.
+- Added provider-backed email/password and Google development flows to the local account portal using only the publishable Supabase key. Private sync, privileged credentials and deletion controls remain review-pending.
+- Added a tested remote API client boundary that requires authenticated bearer
+  access, HTTPS `/v1/` paths and idempotency keys for mutations while preserving
+  server conflict codes; no remote endpoint was contacted.
+- Added a local account-portal status foundation that refuses fake sessions and clearly separates pending provider/backend work from the public preview.
+- Rebuilt the local Android debug APK successfully (exit code 0) and recorded
+  its artifact hash. Device installation and runtime verification remain
+  `NOT_RUN` because no Android device or emulator is attached.
+- Added an additive local SQLite v3 default-focus-duration setting (25/45/60
+  minutes), Settings controls, and Focus Session Setup restoration. Existing
+  break settings and older local data remain preserved; persisted-storage review
+  and installed-device verification remain pending.
+- Added ignored local development configuration for the approved Supabase
+  development project using only its publishable client values; no private key,
+  remote schema write or deployment was performed.
+
+## Unreleased — 2026-10-08
+
+- Personal Assessment now has a versioned seven-question V1 definition with
+  stable question/option IDs, required-answer validation, reversible choices,
+  and a deterministic profile that separates exactly what the user shared
+  from optional starting suggestions. Answers remain only in the onboarding
+  flow's memory and are cleared when it is left; they do not modify settings or
+  tasks. This is a preview only, not persisted onboarding. Storage wiring waits
+  for independent review and Android migration verification. Focused domain and
+  route tests: 6/6 PASS; see
+  [assessment profile evidence](revision/evidence/ASSESSMENT-PROFILE-IN-MEMORY-2026-10-08.md).
+
+## Unreleased — 2026-10-07
+
+- Prepared an isolated HIGH-risk auth owner-binding candidate using Supabase
+  `getClaims()` and same-account SecureStore offline binding. It is deliberately
+  not wired into the active `AuthProvider`; the existing auth path remains
+  unchanged pending independent security review. Mocked tests do not prove
+  native SecureStore, real Supabase, offline, or account-switch behavior. See
+  [auth owner-binding evidence](revision/evidence/AUTH-SESSION-OWNER-BINDING-2026-10-07.md).
+- The public Features page now shows an evidence-linked status for core focus,
+  tasks/progress, Plan My Day and the Account Portal, with surface and date.
+  Every item is explicitly unreleased; prototype/plan limitations remain visible.
+  Responsive cards follow light/dark text contrast checks. Public copy is still
+  pending independent content/accessibility review and has not been published.
+  Web suite: 9/9 PASS; TypeScript, ESLint and Next.js build pass (15 static
+  routes generated). Browser/screen-reader checks remain NOT_RUN. See
+  [feature-status evidence](revision/evidence/WEB-FEATURE-STATUS-2026-10-07.md).
+- Added owner-scoped SQLite assessment-draft tables and a version-2 local schema
+  upgrade. Draft answers are type-checked, saved atomically with revision checks,
+  and can be reopened; the upgrade rollback/retry, duplicate, concurrent-writer,
+  corrupted-value and account-isolation cases use real SQLite. This is storage
+  groundwork only: onboarding UI is not wired, assessment questions/result rules
+  remain separate, and the high-risk migration is `REVIEW_PENDING`. Focused real
+  SQLite suite: 15/15 PASS; whole-suite results are in the evidence note. No
+  production database was opened or migrated. See
+  [assessment-storage evidence](revision/evidence/ASSESSMENT-STORAGE-V2-2026-10-07.md).
+- Rewards now distinguishes a failed local session-history read from a genuine
+  empty history. Failures show a generic accessible message and retry action;
+  milestone totals render only after a successful read. No reward rules, writes,
+  or trusted XP were added. Route regressions: 3/3 PASS; combined checks recorded
+  in the task evidence. Device/screen-reader verification remains NOT_RUN. See
+  [Rewards recovery evidence](revision/evidence/REWARDS-READ-RECOVERY-2026-10-07.md).
+- Plan My Day suggestions now preserve a user-controlled task order. Accessible
+  earlier/later controls reorder only visible blocks, disable at list boundaries,
+  and use 48dp targets. This changes only the in-memory preview; it does not save
+  a plan or touch tasks. Available time now rejects values below the approved
+  25-minute starting duration and integers outside JavaScript's safe range with
+  an accessible explanation. Tests: focused route 6/6 PASS; full suite 163/163
+  PASS; typecheck and affected-file ESLint pass. See
+  [proposal-order evidence](revision/evidence/PLAN-MY-DAY-PROPOSAL-ORDER-2026-10-07.md).
+- Plan My Day now distinguishes task loading, a local read failure with retry,
+  and a successfully empty task list. A delayed read resolving after the route
+  loses focus is ignored; proposal controls remain disabled until tasks load.
+  This is local recovery only—the proposal is still heuristic, not OpenAI-backed,
+  and it does not write tasks or schedules. Route regressions: 3/3 PASS; full
+  suite: 160/160 PASS; typecheck and affected-file ESLint pass. See
+  [Plan My Day recovery evidence](revision/evidence/PLAN-MY-DAY-READ-RECOVERY-2026-10-07.md).
+- The public-site header now switches to a native, keyboard-operable disclosure
+  on small screens, keeping the menu reachable without JavaScript and giving its
+  trigger and links 48px minimum targets with visible focus. Desktop navigation
+  remains unchanged. Web suite 8/8, TypeScript, ESLint and Next production build
+  pass; browser/screen-reader checks remain NOT_RUN. See the
+  [small-screen navigation evidence](revision/evidence/WEB-MOBILE-NAV-2026-10-07.md).
+- Progress now has local week/month/all-time summaries for actual focused
+  seconds (including ended-early sessions), completed-session count, completed
+  tasks and saved goal progress, plus a timezone-aware weekly activity chart.
+  Conflicting or invalid local records fail closed instead of inflating totals
+  or appearing as zero; no client reward/XP grants or cloud analytics were
+  added. Domain and route tests pass; the current combined full suite is
+  156/156. TypeScript and direct affected-file ESLint pass. Native/device,
+  localization, and independent review
+  remain pending. See
+  [local Progress evidence](revision/evidence/PROGRESS-LOCAL-ANALYTICS-2026-10-07.md).
+- Settings now load and save the existing 5/10/15-minute default break choice
+  with distinct loading/read-error states, serialized updates, and truthful
+  save-failure recovery. The old value remains selected until SQLite confirms
+  the write; web reports the unsupported local-SQLite path instead of claiming
+  an in-memory value was persisted. No settings schema/migration changed. Four
+  route regressions cover load, save, retry and duplicate writes; the combined
+  suite is 156/156 PASS, with typecheck and affected-file ESLint PASS. Native
+  device/review checks remain pending. See
+  [Settings recovery evidence](revision/evidence/SETTINGS-BREAK-RECOVERY-2026-10-07.md).
+- The optional break screen now handles saved-setting read failures without an
+  unhandled rejection. It offers retry, or lets the user explicitly choose an
+  unsaved break length without overwriting preferences; it only starts once a
+  saved or manually chosen length is known. Three route regressions cover saved
+  default, read failure/manual choice and retry. Combined suite: 151/151 PASS;
+  typecheck and affected ESLint pass. Android verification is NOT_RUN. See
+  [break recovery evidence](revision/evidence/FOCUS-BREAK-SETTINGS-RECOVERY-2026-10-07.md).
+- Tasks can now be archived and restored without deleting the task, changing
+  its ID, or detaching focus history. Archive state is owner-scoped, revision-
+  checked and retained through the existing JSON extension field (no schema
+  migration); archived records are hidden from active lists and Plan My Day,
+  remain discoverable on request, cannot start new focus work, and remain in
+  history/progress sources. SQLite tests cover reopen/retry, stale revisions,
+  owner isolation and history preservation; route tests cover restore/error and
+  list behavior. Full suite: 156/156 PASS; typecheck and affected ESLint PASS.
+  Independent review/device checks remain pending. See
+  [task archive evidence](revision/evidence/TASK-ARCHIVE-2026-10-07.md).
+- Recorded the owner's expanded V1 implementation authorization: Supabase Auth,
+  backend, secure sync, Google/email sign-in, Apple-ready iOS flow, no guest mode,
+  and the exact `deep-focus-dev` project. This records scope only; it does not
+  claim authentication, account isolation, provider setup, independent review,
+  device verification or release readiness. See
+  [authorization and auth task brief](revision/evidence/V1-AUTH-FOUNDATION-TASK-2026-10-07.md).
+- Added a `REVIEW_PENDING` mobile authentication/local-identity candidate:
+  SecureStore-backed Supabase Auth, email/password, Google PKCE, Apple iOS,
+  verification/recovery routes, signed-out gating, sign-out, and account-scoped
+  SQLite namespaces. Auth service/route-gate tests cover key error and callback
+  replay paths. Provider configuration, backend/RLS/sync, native behavior and
+  independent security review are still unverified; this is not release-ready.
+- Task detail and Plan My Day now pass a stored `taskId` into focus setup. Setup
+  and the session hook resolve the task in the active owner namespace; session
+  history stores the stable relationship and title snapshot. Missing/completed
+  tasks fail closed, and SQLite's existing composite owner foreign key rejects
+  cross-owner references. Focus/session, real-SQLite ownership and task-route
+  regressions pass; this persisted HIGH-risk slice remains `REVIEW_PENDING` for
+  independent storage/ownership review and native verification.
+- Task detail now supports editing an active task's title. SQLite performs an
+  owner-scoped conditional update against the loaded `updatedAt`, preserves the
+  stable task ID, returns the database timestamp, and refuses stale or terminal
+  task edits. Failed saves retain the draft; conflicts offer a reload instead
+  of overwriting newer data. The focused route/SQLite tests pass; task editing
+  remains part of the broader task lifecycle `REVIEW_PENDING` and has not had
+  native accessibility/device verification.
+- The same task editor now also supports the existing optional description and
+  low/medium/high priority fields. They are validated and updated with the title
+  in the same owner-scoped, revision-checked SQLite statement; goal links and due
+  dates are preserved. No new schema fields were added. Actual tests are recorded
+  in the task evidence; due-date editing and a separate reversible archive state
+  remain open.
+- Task editing can now associate a task with one of the active goals owned by
+  the current local namespace, or clear the optional link. SQLite's composite
+  owner/goal foreign key rejects cross-account links. A storage regression found
+  and fixed stale duplicate `goalId`/priority/due-date values being resurrected
+  from legacy JSON after typed-column updates. Goal-read errors are recoverable;
+  no account sync or goal-progress formula changed. Independent review remains
+  pending.
+- Task deletion is now an explicit confirmation flow. The owner-scoped SQLite
+  transaction detaches linked focus sessions by clearing only `task_id`, keeps
+  each existing `task_name` snapshot (or the task title when no snapshot exists),
+  and then deletes the task. Revision mismatch, duplicate requests, and write
+  failure do not delete newer data or history. Independent review and device
+  verification remain pending; see the task deletion evidence.
+- Goal detail now edits the title and target for active current-period goals.
+  Focus targets show minutes while SQLite continues storing seconds; period
+  boundaries, type, status, identity and derived progress are preserved. Writes
+  are owner-scoped and revision-checked; failures retain the draft and stale
+  revisions require reload. Route and real-SQLite regressions cover retry,
+  conflict, unit conversion and account isolation. Independent review remains
+  `REVIEW_PENDING`; device verification is `NOT_RUN`. See the
+  [goal-edit evidence](revision/evidence/GOAL-EDIT-2026-10-07.md).
+- Goal detail now offers confirmed goal deletion. SQLite checks the loaded goal
+  revision and atomically unlinks its tasks (advancing task revisions) before
+  deleting the goal; task records and focus history remain. Stale requests and
+  injected transaction failure leave the goal and links unchanged. Independent
+  review remains `REVIEW_PENDING`; Android device/accessibility checks are
+  `NOT_RUN`. See the [goal-deletion evidence](revision/evidence/GOAL-DELETE-2026-10-07.md).
+- Task detail now edits an optional due date using strict `YYYY-MM-DD` input,
+  stored as UTC midnight for stable cross-device calendar dates. Existing dates
+  remain unchanged unless edited; blank clears, invalid dates do not write. The
+  local schema is unchanged; SQLite typed due-date values now override stale
+  legacy JSON duplicates. Tests cover date parsing/formatting, failed validation,
+  update/clear and account isolation. Independent review is `REVIEW_PENDING`;
+  device keyboard/accessibility checks are `NOT_RUN`. See the
+  [task-date evidence](revision/evidence/TASK-DUE-DATE-2026-10-07.md).
+- Goals now complete automatically inside the same local SQLite transaction
+  when verified session activity reaches the target. Focus-time counts actual
+  focused seconds from completed/cancelled sessions; session-count counts
+  completed sessions only. Completion records the first qualifying event time,
+  is duplicate-safe and rolls back with a failed session write. Target edits and
+  preserved local JSON imports also reconcile. Elapsed bounded goals become
+  expired; verified late events still reconcile by their event time. No XP/reward
+  grant was added.
+  Independent storage/security review is `REVIEW_PENDING`; Android/device checks
+  are `NOT_RUN`. See the
+  [goal-completion evidence](revision/evidence/GOAL-AUTO-COMPLETION-2026-10-07.md).
+- The combined domain, component, navigation and web regression suite now passes
+  112/112 after these additions; root TypeScript check, changed-file ESLint and
+  documentation checker also pass. This does not clear independent review or
+  Android/iOS device gates.
+- After goal lifecycle and task deadline additions, the combined regression
+  suite passes 135/135. Root typecheck, affected-file ESLint, documentation
+  checker, and diff check pass. Independent review and Android/device checks
+  remain pending.
+- Re-ran official npm 11.6.2 full and `--omit=dev` audits on the current tree:
+  32 records (12 moderate, 20 high, 0 critical) in both reports. Triage did not
+  establish compatible safe fixes, so no package/lockfile changes were made;
+  SDK check remains clean. Reachability and release impact are recorded in the
+  [dependency audit evidence](revision/evidence/Dependency-Audit-2026-10-06.md).
 
 ## Audit fixes — 2026-10-07
 
@@ -12,6 +1698,22 @@
   Added regressions for all eight audit findings; combined suite passed 64/64.
 - Independent/native/browser verification remains pending; no production-ready
   claim. Details: [audit-fix evidence](revision/evidence/AUDIT-FIXES-2026-10-06.md).
+- Goals now distinguishes a failed local goals/session-history read from a real
+  empty result, preserves existing data, and offers retry. Added route and domain
+  failure/recovery tests. Save now prevents duplicate in-flight submissions,
+  disables editing/cancel while pending, and preserves the draft on failure.
+  Combined suite passes 71/71, root typecheck and focused ESLint pass. Native
+  screen-reader/device behavior remains pending; see
+  [Goals read-failure evidence](revision/evidence/GOAL-READ-FAILURE-2026-10-07.md).
+- Task detail now loads only a persisted task by ID, reports recoverable read/save
+  failures, and changes completion UI only after a successful write. Route titles
+  are no longer passed or trusted; duplicate completion is guarded. Four focused
+  regression cases are included. Goal detail now distinguishes storage errors
+  from genuinely missing goals and offers retry. Session History list/detail also
+  recover from read failures instead of showing false empty/missing states. The
+  latest combined suite passes 82/82. Task lifecycle review and
+  native interaction remain `REVIEW_PENDING`; see
+  [Task detail evidence](revision/evidence/TASK-DETAIL-RECOVERY-2026-10-07.md).
 
 All notable changes to the Deep Focus project should be documented in this file.
 
@@ -935,3 +2637,81 @@ The changelog should remain concise, factual, maintainable, and synchronized wit
 As Deep Focus evolves, changelog practices may evolve with the release process while preserving the principles of accuracy, clarity, and meaningful historical documentation.
 
 ---
+## 2026-10-08
+
+- Connected the native Welcome, Sign In, Create Account and password-recovery
+  screens to the persisted English/Sinhala/Tamil locale-copy layer. Added copy
+  coverage for each approved locale. This does not claim full app-wide
+  translation or accessibility/device acceptance.
+- Added a local account-portal password-reset request flow using the public
+  Supabase client. Responses do not reveal whether an account exists; private
+  app-data sync and provider/runtime review remain pending.
+- Connected the native Home screen's greeting, focus hero, paused-session
+  recovery, progress labels and quick actions to the approved locale-copy
+  layer. Timer and progress calculations remain unchanged.
+
+## 2026-10-09
+
+- Completed the remaining Progress route locale wiring for the weekly focus
+  chart, goals heading and session units. Calculations and stored data remain
+  unchanged; human translation, accessibility and Android device review are
+  still pending.
+- Connected the native Goal detail route's states and actions to the approved
+  English/Sinhala/Tamil copy layer without changing goal storage, calculations,
+  stale-write protection or delete confirmation behavior.
+- Connected the native interrupted-session recovery screen to the approved
+  English/Sinhala/Tamil copy layer without changing recovery reads or routing.
+- Connected Plan My Day confirmed-plan saved and save-failure messages to the
+  approved English/Sinhala/Tamil copy layer without changing planning or local
+  persistence behavior.
+- Added a local Sri Lankan education-metadata validator for bounded O/L, A/L
+  and higher-stage context. It does not enable classroom sharing or supply
+  teaching materials; those contracts remain review-pending.
+- Added a policy-gated local classroom boundary helper: explicit learner
+  confirmation creates a private task, while selected progress shares exclude
+  focus history, private notes and resources. Server authorization and review
+  gates remain pending.
+- Added revision-bound, teacher-role-only feedback preparation to the same local
+  classroom boundary; it is not server authorization or a release gate.
+- Connected the native True Zen Break screen to the approved
+  English/Sinhala/Tamil copy layer without changing timing or saved settings.
+- Connected the Focus summary's return-home action to the shared locale copy
+  without changing session calculations or navigation behavior.
+- Connected the active focus-session state and action copy to the approved
+  English/Sinhala/Tamil locale layer without changing timer or persistence logic.
+### 2026-10-09
+
+- Localized the native authentication callback loading/error state for the
+  supported Sinhala, Tamil and English app locales. Provider verification and
+  account/backend acceptance remain separate pending gates.
+- Added a central age-sensitive access decision: ages 15–17 remain available
+  for development, while real-minor classroom pilot/release access requires
+  explicit legal review and pilot enablement. Unknown and under-15 states fail
+  closed.
+- Added a portal-visible account summary download that contains only provider-
+  visible status; private app data is excluded while sync is disabled, and
+  account deletion remains clearly unavailable until the reviewed server flow
+  exists.
+- Made the local Plan My Day model label configurable through a bounded build
+  setting, with the local mock remaining the default. No OpenAI request,
+  credential or paid allowance is enabled by this change.
+- Added an isolated OpenAI planning-provider boundary with strict structured
+  proposal validation and the same explicit-confirmation requirement. It has no
+  network transport, credentials, task mutation or paid usage enabled.
+### Backend candidate — owner-bound profile update
+
+- Added a local `patchMe` PostgreSQL candidate with active-account and optimistic-version checks, plus gateway registry wiring and regression coverage. This remains a local `REVIEW_PENDING` candidate; no remote database was changed.
+
+### Backend candidate — authenticated gateway boundary
+
+- Added a local gateway wrapper that verifies the provider token, rechecks the app-session registry, and only then binds the verified owner to gateway admission. Invalid or revoked sessions fail closed without touching owner storage.
+
+### Backend candidate — PostgreSQL sync pull adapter
+
+- Added an owner-bound, bounded and snapshot-transactional `sync_changes` read adapter with signed high-water continuation support and fail-closed row validation. It remains local and `REVIEW_PENDING`.
+- Wired the implemented PostgreSQL domain mutation store to append complete owner-bound entity snapshots and advance the owner sequence in the same transaction before writing the mutation receipt.
+- Added a versioned local `change_hash` migration and PostgreSQL sync transaction adapter for exact replay, duplicate prevention and changed-replay conflict handling.
+- Added a local PostgreSQL usage reservation adapter with locked allowances, replay-safe receipts, consume/release settlement and non-fabricating replay metadata migration.
+- Added a local PostgreSQL app-session registry and revocation-outbox adapter with owner/session locking and idempotent outbox enqueue.
+- Added a generic server-authoritative entitlement schema and owner-bound reader for AI/cloud capability admission; provider and pricing integration remain isolated and pending.
+- Added local PostgreSQL sync gateway handlers that compose signed pull and owner-bound ordered commit adapters.

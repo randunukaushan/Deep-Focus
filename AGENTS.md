@@ -4,6 +4,14 @@ These rules apply repository-wide. Deep Focus protects attention, sustainable
 work/recovery, privacy and user control. Keep the experience calm and accessible;
 no manipulative engagement, gambling, cash rewards or unnecessary pressure.
 
+## User communication
+
+- The owner communicates in Sinhala. Write every user-facing response in Sinhala
+  using Sinhala script. Do not switch to Mongolian or another language, even
+  when quoting or translating prior messages. Keep technical names in Latin
+  script only when needed, and explain them in Sinhala. Before sending, check
+  that the response contains no accidental non-Sinhala prose.
+
 ## Before editing
 
 1. Read [AI rules](docs/AI_RULES.md) completely, then the execution policy and

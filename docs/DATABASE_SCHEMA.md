@@ -22,6 +22,15 @@ Platform selection update (2026-09-14): the owner selected Supabase managed Post
 
 Resource schema boundary: local resources/associations remain outside the generic cloud mirror. Optional paid cloud requires separate ownership, object-version and quota-reservation contracts before SQL/buckets are created. Local default and paid-cloud direction do not constitute an approved migration. See [12](revision/12-LOCAL-RESOURCES-AND-WORK-PLANNING.md).
 
+Local confirmed-plan boundary: SQLite schema version `8` adds owner-scoped
+`saved_plans`, `saved_plan_items` and `teacher_assignment_drafts`. A confirmed
+local proposal stores its provider/model metadata, confirmation timestamp and
+ordered task blocks. A teacher draft stores only bounded assignment content,
+education metadata and a revision; it does not create classes or invites. Only
+one plan per owner can be active; replacing it retires the previous plan.
+Tasks are referenced by composite owner keys, and the plan is local-only until
+the reviewed remote sync contract exists.
+
 The [extension migration sequence](revision/16-BACKEND-EXTENSIONS-AND-OPERATIONS.md)
 adds proposed settings/session registry, break/reminder intent, snapshot/change
 retention, immutable progress ledgers, durable jobs/deletion journal and later
@@ -119,6 +128,33 @@ Supporting tables may be introduced where required for:
 - Database-provider requirements
 
 Supporting tables should only be introduced when they solve a concrete implementation requirement.
+
+### Local outbox foundation (implemented candidate)
+
+The Android SQLite store now contains an owner-scoped `local_outbox` table for
+durable terminal-session mutations. A terminal history record and its
+`session.terminal` mutation are inserted in the same transaction. Mutation
+payloads use schema version `1`, are protected by a SHA-256 payload digest, and
+remain pending until a future reviewed server acknowledgement deletes them.
+Retries update attempt metadata without creating a second mutation. This is a
+local persistence foundation only: no server sync, Supabase RPC, cursor,
+tombstone reconciliation, or production migration is implemented by this
+slice. The candidate remains `REVIEW_PENDING` until the BE-02/BE-06 security
+and protocol gates are independently reviewed.
+
+### Local resource/reference foundation (implemented candidate)
+
+The Android SQLite store now uses schema version `6` for two owner-scoped
+tables: `local_resources` stores explicit user-entered references or HTTPS
+links with a positive revision and retained `active`/`missing` lifecycle; and
+`task_resource_links` associates a task with a resource revision, optional work
+slice and ordering position. Composite owner keys prevent cross-account reads
+or associations, task deletion cascades only its links, and marking a resource
+missing retains its history. This is a local reference foundation only:
+file import, fetch/proxy, cloud upload, paid storage and AI context remain
+unimplemented. The native local Resources UI and task association are
+implemented; the exact resource schema remains `REVIEW_PENDING` pending the
+independent resource-contract review.
 
 ---
 
@@ -1568,7 +1604,11 @@ a historical timezone/end or silently expire a user's existing goal.
 `focused_duration_seconds` and `paused_duration_seconds`, required `started_at`,
 nullable `completed_at`, `cancelled_at`, `last_paused_at`, `last_resumed_at`,
 `created_at`, `updated_at`, and nullable `legacy_extra_json`. `user_settings`
-stores one `default_break_duration_minutes` (5, 10 or 15) per owner. Derived
+stores one `default_focus_duration_minutes` (25, 45 or 60) and one
+`default_break_duration_minutes` (5, 10 or 15), and one `ui_locale` (`en`,
+`si`, or `ta`) per owner. Existing rows default to `en` during the additive
+schema-v5 migration; this stores the preference but does not claim that every
+surface has completed translation or accessibility review. Derived
 goal progress is queried from source rows, not stored as authority.
 
 Use `PRIMARY KEY(owner_id,id)` for owner-scoped entities. Use composite foreign
@@ -1681,8 +1721,12 @@ CREATE TABLE active_focus_sessions (
 
 CREATE TABLE user_settings (
   owner_id TEXT PRIMARY KEY NOT NULL REFERENCES local_owners(id),
+  default_focus_duration_minutes INTEGER NOT NULL DEFAULT 25
+    CHECK (default_focus_duration_minutes IN (25, 45, 60)),
   default_break_duration_minutes INTEGER NOT NULL
     CHECK (default_break_duration_minutes IN (5, 10, 15)),
+  ui_locale TEXT NOT NULL DEFAULT 'en'
+    CHECK (ui_locale IN ('en', 'si', 'ta')),
   legacy_extra_json TEXT
 );
 

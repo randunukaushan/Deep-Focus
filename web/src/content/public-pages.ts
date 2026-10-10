@@ -3,7 +3,19 @@ export type PublicPage = {
   title: string;
   description: string;
   reviewPending?: boolean;
+  featureStatuses?: FeatureStatus[];
   sections: { kicker: string; heading: string; body: string; items?: string[] }[];
+};
+
+export type FeatureStatus = {
+  featureId: string;
+  name: string;
+  status: 'in_development' | 'prototype' | 'planned';
+  surfaces: string[];
+  releaseVersion: string | null;
+  publicCopy: string;
+  statusAsOf: string;
+  evidenceRef: string;
 };
 
 export const publicPages = {
@@ -11,6 +23,13 @@ export const publicPages = {
     eyebrow: 'WHAT WE ARE BUILDING',
     title: 'A useful rhythm, not another feed.',
     description: 'Deep Focus brings task planning, focus sessions, recovery and progress into one calm experience. The product is still in development; this is not a list of released or device-verified features.',
+    reviewPending: true,
+    featureStatuses: [
+      { featureId: 'focus.core', name: 'Focus sessions and recovery', status: 'in_development', surfaces: ['Android app', 'iOS app'], releaseVersion: null, publicCopy: 'Timer, local history and interruption recovery are still being implemented and validated. Installed-device verification is not complete.', statusAsOf: '2026-10-07', evidenceRef: 'docs/revision/evidence/ANDROID-PREVIEW-REBUILD-2026-10-07.md' },
+      { featureId: 'organise.personal', name: 'Tasks, goals and local progress', status: 'in_development', surfaces: ['Android app', 'iOS app'], releaseVersion: null, publicCopy: 'Local workflows are present in the development app; data integrity, accessibility and independent review are still being checked.', statusAsOf: '2026-10-07', evidenceRef: 'docs/CHANGELOG.md' },
+      { featureId: 'planning.day', name: 'Plan My Day', status: 'prototype', surfaces: ['Android app', 'iOS app'], releaseVersion: null, publicCopy: 'The current local proposal uses a simple heuristic. It is not connected to OpenAI and does not save tasks or schedules.', statusAsOf: '2026-10-07', evidenceRef: 'docs/revision/evidence/PLAN-MY-DAY-PROPOSAL-ORDER-2026-10-07.md' },
+      { featureId: 'account.portal', name: 'Account Portal and secure sync', status: 'planned', surfaces: ['Public website', 'Account Portal'], releaseVersion: null, publicCopy: 'The account portal and provider-backed secure sync are not available from this preview.', statusAsOf: '2026-10-07', evidenceRef: 'docs/revision/17-WEBSITE-PORTAL-AND-RELEASE-RUNBOOK.md' },
+    ],
     sections: [
       { kicker: 'THE CORE', heading: 'Plan, focus, return', body: 'The V1 direction is a dependable focus timer, personal tasks and goals, and a clear history. Core focus is designed to work without AI or a network connection.' },
       { kicker: 'YOUR CONTROL', heading: 'A session can change with your day', body: 'Pause, resume or end a session using the choices presented in the app. Deep Focus does not use missed-work XP penalties or claim to diagnose health or attention.' },
