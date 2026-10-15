@@ -170,6 +170,12 @@ security, privacy, accessibility, and jurisdiction review before release.
 The canonical architectural direction for this expansion is defined in
 `GLOBAL_EDUCATION_COUNTRY_PACK_ARCHITECTURE.md`.
 
+The proposed **Today → Focus → Done** screen flow, Sri Lanka learner features,
+and educator dashboard/workflows are recorded as **unapproved design and feature
+candidates** in `PROPOSED_PRODUCT_FLOWS_AND_EDUCATION_FEATURES.md`. This backlog
+preserves the ideas for owner review; it does not modify the V1 scope or promise
+implementation.
+
 ---
 
 ## 8. Promotion Rules
