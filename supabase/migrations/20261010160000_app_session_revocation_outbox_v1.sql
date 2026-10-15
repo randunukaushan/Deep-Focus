@@ -14,7 +14,9 @@ create table df_private.app_session_revocation_outbox (
   provider_error_code text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (owner_id, session_id)
+  unique (owner_id, session_id),
+  foreign key (owner_id, session_id)
+    references df_private.app_sessions(owner_id, session_id) on delete restrict
 );
 
 create index app_session_revocation_due

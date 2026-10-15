@@ -136,9 +136,9 @@ export function createAuthService(dependencies: AuthServiceDependencies) {
         const browserResult = await dependencies.openAuthSession(data.url, redirectUrl);
         if (browserResult.type !== 'success') return { status: 'cancelled' };
         if (!browserResult.url) return { status: 'error', message: 'The sign-in response was incomplete. Please try again.' };
-        const code = new URL(browserResult.url).searchParams.get('code');
-        if (!code) return { status: 'error', message: 'The sign-in response was incomplete. Please try again.' };
-        const exchanged = await exchangeAuthCodeOnce(client, code);
+        const callback = authRedirectCode(browserResult.url, redirectUrl);
+        if (!callback || callback.error || !callback.code) return { status: 'error', message: 'The sign-in response was incomplete. Please try again.' };
+        const exchanged = await exchangeAuthCodeOnce(client, callback.code);
         if (exchanged.error) return resultFor(exchanged.error);
         return exchanged.data.session ? { status: 'signed_in' } : { status: 'error', message: 'Sign-in did not create a session. Try again.' };
       } catch (error) { return resultFor(error); }

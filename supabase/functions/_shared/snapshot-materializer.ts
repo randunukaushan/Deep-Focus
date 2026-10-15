@@ -1,6 +1,8 @@
 /** Pure snapshot materialization boundary; digest and cursor policy stay injected. */
 
 import type { SnapshotEntity, SnapshotPage } from '../../../src/features/sync/snapshot-mirror.ts';
+// @ts-expect-error The Edge runtime and domain test loader resolve TypeScript modules directly.
+import { boundedSnapshotPagePayloadJson } from './snapshot-payload-boundary.ts';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DECIMAL = /^(?:0|[1-9][0-9]*)$/;
@@ -32,11 +34,15 @@ export type SnapshotMaterializationResult = {
 
 function invalid(code: string): never { throw new Error(code); }
 
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID.test(value);
+}
+
 function validEntity(value: unknown): value is SnapshotEntity {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const entity = value as Partial<SnapshotEntity>;
   return ['task', 'goal', 'session', 'break', 'settings', 'reminder'].includes(entity.entity ?? '')
-    && typeof entity.entityId === 'string' && UUID.test(entity.entityId)
+    && typeof entity.entityId === 'string' && isUuid(entity.entityId)
     && typeof entity.version === 'number' && Number.isSafeInteger(entity.version) && entity.version > 0
     && (entity.operation === 'delete'
       ? entity.payload === null
@@ -49,7 +55,8 @@ function compareEntities(left: SnapshotEntity, right: SnapshotEntity): number {
 }
 
 function validateInput(input: SnapshotMaterializationInput): void {
-  if (!UUID.test(input.snapshotId) || !DECIMAL.test(input.highWater) || !Array.isArray(input.records)
+  if (!input || typeof input !== 'object' || Array.isArray(input)) invalid('SNAPSHOT_MATERIALIZATION_INVALID');
+  if (!isUuid(input.snapshotId) || typeof input.highWater !== 'string' || !DECIMAL.test(input.highWater) || !Array.isArray(input.records)
     || typeof input.digestPage !== 'function' || typeof input.digestManifest !== 'function'
     || typeof input.nextCursor !== 'function') invalid('SNAPSHOT_MATERIALIZATION_INVALID');
   const identities = new Set<string>();
@@ -82,6 +89,7 @@ export async function materializeSnapshot(input: SnapshotMaterializationInput): 
   const pages: SnapshotPage[] = [];
   for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
     const data = records.slice(pageIndex * PAGE_LIMIT, (pageIndex + 1) * PAGE_LIMIT);
+    if (boundedSnapshotPagePayloadJson({ data }) === null) invalid('SNAPSHOT_PAGE_PAYLOAD_INVALID');
     const pageDigest = validateDigest(await input.digestPage({ snapshotId: input.snapshotId, pageIndex, highWater: input.highWater, data }), 'SNAPSHOT_PAGE_DIGEST_INVALID');
     const nextCursor = validateCursor(await input.nextCursor(pageIndex, pageCount), pageIndex === pageCount - 1);
     pages.push({ snapshotId: input.snapshotId, pageIndex, pageCount, highWater: input.highWater, data, pageDigest, nextCursor });

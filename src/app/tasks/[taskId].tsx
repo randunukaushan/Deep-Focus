@@ -10,7 +10,7 @@ import { loadGoals } from '@/features/goals/goal-storage';
 import type { Goal } from '@/features/goals/goal-types';
 import { linkResourceToTask, loadResources, loadTaskResourceLinks, unlinkResourceFromTask } from '@/features/resources/resource-storage';
 import type { LocalResource, TaskResourceLink } from '@/features/resources/resource-types';
-import { deleteTask, loadTasks, saveTasks, updateTaskArchive, updateTaskDetails } from '@/features/tasks/task-storage';
+import { completeTask, deleteTask, loadTasks, updateTaskArchive, updateTaskDetails } from '@/features/tasks/task-storage';
 import { formatTaskDueDate, parseTaskDueDate } from '@/features/tasks/task-date';
 import type { Task, TaskPriority } from '@/features/tasks/task-types';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -106,19 +106,16 @@ export default function TaskDetailRoute() {
 
   async function complete() {
     if (!task || savingRef.current) return;
-    const now = new Date().toISOString();
-    const next = { ...task, status: 'completed' as const, completedAt: now, updatedAt: now };
     savingRef.current = true;
     setSaving(true);
     setSaveError(false);
     try {
-      const tasks = await loadTasks();
-      if (!tasks.some((item) => item.id === next.id)) {
-        setTask(null);
+      const result = await completeTask(task.id, task.updatedAt);
+      if (!result) {
+        setSaveError(true);
         return;
       }
-      await saveTasks(tasks.map((item) => item.id === next.id ? next : item));
-      setTask(next);
+      setTask(result.task);
     } catch {
       setSaveError(true);
     } finally {

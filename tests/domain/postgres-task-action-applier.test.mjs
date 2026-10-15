@@ -57,3 +57,18 @@ test('task action rejects foreign returned update ownership metadata', async () 
   } };
   await assert.rejects(applyTaskAction(client, { actorId: OWNER, operation: 'applyTaskAction', mutationId: MUTATION, resourceId: TASK, requestSha256: HASH, body: BODY }), /DEPENDENCY_UNAVAILABLE/);
 });
+
+test('task action rejects malformed client, actor and resource before storage', async () => {
+  await assert.rejects(() => applyTaskAction({ query: null }, { actorId: OWNER, operation: 'applyTaskAction', mutationId: MUTATION, resourceId: TASK, requestSha256: HASH, body: BODY }), /DEPENDENCY_UNAVAILABLE/);
+  let opened = false;
+  const client = { query: async () => { opened = true; return { rows: [] }; } };
+  await assert.rejects(() => applyTaskAction(client, { actorId: Symbol('actor'), operation: 'applyTaskAction', mutationId: MUTATION, resourceId: TASK, requestSha256: HASH, body: BODY }), /VALIDATION_FAILED/);
+  await assert.rejects(() => applyTaskAction(client, { actorId: OWNER, operation: 'applyTaskAction', mutationId: MUTATION, resourceId: Symbol('resource'), requestSha256: HASH, body: BODY }), /VALIDATION_FAILED/);
+  assert.equal(opened, false);
+});
+
+test('task action fails closed on malformed or ambiguous database results', async () => {
+  await assert.rejects(() => applyTaskAction({ query: async () => ({ rows: null }) }, { actorId: OWNER, operation: 'applyTaskAction', mutationId: MUTATION, resourceId: TASK, requestSha256: HASH, body: BODY }), /DEPENDENCY_UNAVAILABLE/);
+  const duplicate = { query: async (sql) => sql.trimStart().startsWith('select') ? { rows: [{ id: TASK, owner_id: OWNER, status: 'in_progress', version: 2, deleted_at: null }, { id: TASK, owner_id: OWNER, status: 'in_progress', version: 2, deleted_at: null }] } : { rows: [] } };
+  await assert.rejects(() => applyTaskAction(duplicate, { actorId: OWNER, operation: 'applyTaskAction', mutationId: MUTATION, resourceId: TASK, requestSha256: HASH, body: BODY }), /DEPENDENCY_UNAVAILABLE/);
+});

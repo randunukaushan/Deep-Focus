@@ -3,9 +3,22 @@
 const HEX = /^[a-f0-9]{64}$/;
 
 function canonical(value: unknown): string {
-  if (value === null || typeof value === 'string' || typeof value === 'boolean' || typeof value === 'number') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new Error('MUTATION_UNHASHABLE');
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    const keys = Object.keys(value);
+    if (Object.getOwnPropertySymbols(value).length > 0
+      || keys.length !== value.length
+      || keys.some((key) => !/^(?:0|[1-9][0-9]*)$/.test(key) || Number(key) >= value.length)) throw new Error('MUTATION_UNHASHABLE');
+    return `[${value.map(canonical).join(',')}]`;
+  }
   if (!value || typeof value !== 'object') throw new Error('MUTATION_UNHASHABLE');
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) throw new Error('MUTATION_UNHASHABLE');
+  if (Object.getOwnPropertySymbols(value).length > 0) throw new Error('MUTATION_UNHASHABLE');
   return `{${Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)).map(([key, child]) => `${JSON.stringify(key)}:${canonical(child)}`).join(',')}}`;
 }
 

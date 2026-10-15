@@ -64,3 +64,32 @@ test('concurrent counter calls preserve a monotonic atomic result in the adapter
   assert.equal(new Set(seen).size, 1);
   assert.deepEqual(results.map((result) => result.allowed), Array.from({ length: 25 }, () => true));
 });
+
+test('rate-limit counter rejects runtime key types and malformed or ambiguous results', async () => {
+  let calls = 0;
+  const malformed = createPostgresRateLimitCounter({ runner: { withTransaction: async (run) => run({ query: async () => { calls += 1; return { rows: null }; } }) } });
+  await assert.rejects(() => malformed.consume(Symbol('key'), 60_000, 2, NOW), /VALIDATION_FAILED/);
+  await assert.rejects(() => malformed.consume(KEY, 60_000, 2, NOW), /DEPENDENCY_UNAVAILABLE/);
+  const duplicate = createPostgresRateLimitCounter({ runner: { withTransaction: async (run) => run({ query: async () => ({ rows: [{ request_count: 1 }, { request_count: 2 }] }) }) } });
+  await assert.rejects(() => duplicate.consume(KEY, 60_000, 2, NOW), /DEPENDENCY_UNAVAILABLE/);
+  assert.equal(calls, 1);
+});
+
+test('rate-limit counter rejects malformed runner configuration before serving requests', () => {
+  assert.throws(() => createPostgresRateLimitCounter(null), /VALIDATION_FAILED/);
+  assert.throws(() => createPostgresRateLimitCounter({ runner: { withTransaction: 'not-a-function' } }), /VALIDATION_FAILED/);
+});
+
+test('rate-limit counter fails closed before querying with a malformed transaction client', async () => {
+  const counter = createPostgresRateLimitCounter({
+    runner: { withTransaction: async (run) => run({ query: 'not-a-function' }) },
+  });
+  await assert.rejects(() => counter.consume(KEY, 60_000, 2, NOW), /DEPENDENCY_UNAVAILABLE/);
+});
+
+test('rate-limit counter fails closed on sparse counter rows before admission', async () => {
+  const sparse = [];
+  sparse[1] = { request_count: 1 };
+  const counter = createPostgresRateLimitCounter({ runner: { withTransaction: async (run) => run({ query: async () => ({ rows: sparse }) }) } });
+  await assert.rejects(() => counter.consume(KEY, 60_000, 2, NOW), /DEPENDENCY_UNAVAILABLE/);
+});

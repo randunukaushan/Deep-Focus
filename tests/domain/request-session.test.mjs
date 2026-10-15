@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 const { authorizeRequestSession } = await import('../../supabase/functions/_shared/request-session.ts');
+const { createSupabaseProviderSessionVerifier } = await import('../../supabase/functions/_shared/supabase-provider-session-verifier.ts');
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const SESSION = '22222222-2222-4222-8222-222222222222';
@@ -38,6 +39,21 @@ test('missing, guest-shaped and malformed authorization never reach the provider
   assert.equal(calls, 0);
 });
 
+test('malformed runtime headers fail closed without reaching the provider verifier', async () => {
+  let calls = 0;
+  const verify = async () => { calls += 1; return claims; };
+  for (const headers of [null, [], 42, 'Bearer provider-token']) {
+    const result = await authorizeRequestSession(input({ headers, verifyProviderToken: verify }));
+    assert.deepEqual(result, { allowed: false, reason: 'missing_token' });
+  }
+  assert.equal(calls, 0);
+});
+
+test('malformed request-session input fails closed before property access', async () => {
+  assert.deepEqual(await authorizeRequestSession(null), { allowed: false, reason: 'invalid_token' });
+  assert.deepEqual(await authorizeRequestSession([]), { allowed: false, reason: 'invalid_token' });
+});
+
 test('provider verification failure is safe and does not consult the registry', async () => {
   let reads = 0;
   const result = await authorizeRequestSession(input({ verifyProviderToken: async () => { throw new Error('raw provider secret detail'); }, loadSession: async () => { reads += 1; return record; } }));
@@ -56,4 +72,20 @@ test('provider verifier receives only the bearer token, never an owner or secret
   let received;
   await authorizeRequestSession(input({ verifyProviderToken: async (token) => { received = token; return claims; } }));
   assert.equal(received, 'provider-token');
+});
+
+test('request session composes the provider claims adapter with app-session checks', async () => {
+  const verifyProviderToken = createSupabaseProviderSessionVerifier({
+    auth: { getClaims: async (token) => ({ data: { claims: { sub: OWNER, session_id: SESSION, exp: claims.exp, iss: ISSUER, aud: AUDIENCE, raw_token: token } }, error: null }) },
+  });
+  assert.deepEqual(await authorizeRequestSession(input({ verifyProviderToken })), { allowed: true, ownerId: OWNER, sessionId: SESSION });
+});
+
+test('account switching cannot reuse the previous account session row', async () => {
+  const otherOwner = '33333333-3333-4333-8333-333333333333';
+  const result = await authorizeRequestSession(input({
+    verifyProviderToken: async () => ({ ...claims, sub: otherOwner }),
+    loadSession: async () => record,
+  }));
+  assert.deepEqual(result, { allowed: false, reason: 'owner_mismatch' });
 });

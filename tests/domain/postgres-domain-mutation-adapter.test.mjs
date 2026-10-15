@@ -10,7 +10,7 @@ const HASH = 'a'.repeat(64);
 const BODY = { id: '33333333-3333-4333-8333-333333333333', title: 'Read' };
 const SESSION = '66666666-6666-4666-8666-666666666666';
 
-function harness({ receiptRows = [], receiptInsertRows = [{ owner_id: OWNER, operation: 'createTask', mutation_id: MUTATION }], headRows = [{ owner_id: OWNER }], profileRows = [{ owner_id: OWNER, account_state: 'active' }], sessionRows = [{ owner_id: OWNER, session_id: SESSION, status: 'active', expires_at: '2026-10-10T01:00:00.000Z', revoked_at: null }], applyMutation = async () => ({ responseBody: { id: BODY.id }, responseStatus: 201 }), writeSyncChange } = {}) {
+function harness({ receiptRows = [], receiptInsertRows = null, headRows = [{ owner_id: OWNER }], profileRows = [{ owner_id: OWNER, account_state: 'active' }], sessionRows = [{ owner_id: OWNER, session_id: SESSION, status: 'active', expires_at: '2026-10-10T01:00:00.000Z', revoked_at: null }], applyMutation = async () => ({ responseBody: { id: BODY.id }, responseStatus: 201 }), writeSyncChange } = {}) {
   const calls = [];
   let committed = false;
   const client = {
@@ -20,7 +20,7 @@ function harness({ receiptRows = [], receiptInsertRows = [{ owner_id: OWNER, ope
       if (sql.includes('from df_private.app_sessions')) return { rows: sessionRows };
       if (sql.includes('sync_heads')) return { rows: headRows };
       if (sql.includes('mutation_receipts') && sql.trimStart().startsWith('select')) return { rows: receiptRows };
-      if (sql.includes('mutation_receipts') && sql.trimStart().startsWith('insert')) return { rows: receiptInsertRows };
+      if (sql.includes('mutation_receipts') && sql.trimStart().startsWith('insert')) return { rows: receiptInsertRows ?? [{ owner_id: params[0], operation: params[1], mutation_id: params[2], request_sha256: params[3], response_body: JSON.parse(params[4]), response_status: params[5] }] };
       if (sql.trimStart().startsWith('insert')) return { rows: [] };
       throw new Error('unexpected query');
     },
@@ -96,13 +96,38 @@ test('foreign receipt identity fails closed even when its payload is otherwise v
   await assert.rejects(executeDomainMutation({ actorId: OWNER, operation: 'createTask', mutationId: MUTATION, requestSha256: HASH, body: BODY, store: h.store }), /DEPENDENCY_UNAVAILABLE/);
 });
 
+test('malformed receipt hash or status fails closed before replay', async () => {
+  for (const row of [
+    { owner_id: OWNER, operation: 'createTask', mutation_id: MUTATION, request_sha256: 'not-a-hash', response_body: { id: BODY.id }, response_status: 201 },
+    { owner_id: OWNER, operation: 'createTask', mutation_id: MUTATION, request_sha256: HASH, response_body: { id: BODY.id }, response_status: 500 },
+  ]) {
+    const h = harness({ receiptRows: [row] });
+    await assert.rejects(executeDomainMutation({ actorId: OWNER, operation: 'createTask', mutationId: MUTATION, requestSha256: HASH, body: BODY, store: h.store }), /DEPENDENCY_UNAVAILABLE/);
+  }
+});
+
+test('oversized legacy receipt payload fails closed before replay', async () => {
+  const h = harness({ receiptRows: [{ owner_id: OWNER, operation: 'createTask', mutation_id: MUTATION, request_sha256: HASH, response_body: { payload: 'x'.repeat(262145) }, response_status: 201 }] });
+  await assert.rejects(executeDomainMutation({ actorId: OWNER, operation: 'createTask', mutationId: MUTATION, requestSha256: HASH, body: BODY, store: h.store }), /DEPENDENCY_UNAVAILABLE/);
+});
+
+test('coercion-prone legacy receipt payload fails closed before replay', async () => {
+  const h = harness({ receiptRows: [{ owner_id: OWNER, operation: 'createTask', mutation_id: MUTATION, request_sha256: HASH, response_body: { missing: undefined }, response_status: 201 }] });
+  await assert.rejects(executeDomainMutation({ actorId: OWNER, operation: 'createTask', mutationId: MUTATION, requestSha256: HASH, body: BODY, store: h.store }), /DEPENDENCY_UNAVAILABLE/);
+});
+
 test('receipt write fails closed when the database returns no inserted row', async () => {
   const h = harness({ receiptInsertRows: [] });
   await assert.rejects(executeDomainMutation({ actorId: OWNER, operation: 'createTask', mutationId: MUTATION, requestSha256: HASH, body: BODY, store: h.store }), /DEPENDENCY_UNAVAILABLE/);
 });
 
 test('receipt write fails closed when the inserted row has foreign identity metadata', async () => {
-  const h = harness({ receiptInsertRows: [{ owner_id: '44444444-4444-4444-8444-444444444444', operation: 'createTask', mutation_id: MUTATION }] });
+  const h = harness({ receiptInsertRows: [{ owner_id: '44444444-4444-4444-8444-444444444444', operation: 'createTask', mutation_id: MUTATION, request_sha256: HASH, response_body: { id: BODY.id }, response_status: 201 }] });
+  await assert.rejects(executeDomainMutation({ actorId: OWNER, operation: 'createTask', mutationId: MUTATION, requestSha256: HASH, body: BODY, store: h.store }), /DEPENDENCY_UNAVAILABLE/);
+});
+
+test('receipt write fails closed when returned payload metadata is altered', async () => {
+  const h = harness({ receiptInsertRows: [{ owner_id: OWNER, operation: 'createTask', mutation_id: MUTATION, request_sha256: 'b'.repeat(64), response_body: { id: 'altered' }, response_status: 201 }] });
   await assert.rejects(executeDomainMutation({ actorId: OWNER, operation: 'createTask', mutationId: MUTATION, requestSha256: HASH, body: BODY, store: h.store }), /DEPENDENCY_UNAVAILABLE/);
 });
 
@@ -115,4 +140,42 @@ test('sync sequence can finalize a response before the durable receipt is writte
   assert.deepEqual(result.receipt.responseBody, { committedThrough: '42' });
   const receiptInsert = h.calls.find((call) => call.sql.startsWith('insert into df_private.mutation_receipts'));
   assert.deepEqual(JSON.parse(receiptInsert.params[4]), { committedThrough: '42' });
+});
+
+test('Postgres mutation adapter fails closed on malformed results and sync sequence types', async () => {
+  const malformed = harness();
+  const base = malformed.store;
+  const runner = { withTransaction: async (run) => run({ query: async (sql, params) => {
+    if (sql.includes('from df_private.profiles')) return { rows: null };
+    return malformed.calls.length ? { rows: [] } : base;
+  } }) };
+  const store = createPostgresDomainMutationStore({ runner, applyMutation: async () => ({ responseBody: {}, responseStatus: 200 }) });
+  await assert.rejects(() => executeDomainMutation({ actorId: OWNER, operation: 'createTask', mutationId: MUTATION, requestSha256: HASH, body: BODY, store }), /DEPENDENCY_UNAVAILABLE/);
+
+  const h = harness({ writeSyncChange: async () => Symbol('sequence') });
+  await assert.rejects(() => executeDomainMutation({ actorId: OWNER, operation: 'createTask', mutationId: MUTATION, requestSha256: HASH, body: BODY, store: h.store }), /DEPENDENCY_UNAVAILABLE/);
+});
+
+test('Postgres mutation adapter rejects malformed factory dependencies before opening writes', () => {
+  assert.throws(() => createPostgresDomainMutationStore(null), /VALIDATION_FAILED/);
+  assert.throws(() => createPostgresDomainMutationStore({ runner: null, applyMutation: async () => ({ responseBody: {}, responseStatus: 200 }) }), /VALIDATION_FAILED/);
+  assert.throws(() => createPostgresDomainMutationStore({ runner: { withTransaction: async () => {} }, applyMutation: 'not-a-function' }), /VALIDATION_FAILED/);
+  assert.throws(() => createPostgresDomainMutationStore({ runner: { withTransaction: async () => {} }, applyMutation: async () => ({ responseBody: {}, responseStatus: 200 }), writeSyncChange: 42 }), /VALIDATION_FAILED/);
+});
+
+test('Postgres mutation adapter fails closed on sparse profile rows before locking the owner head', async () => {
+  const sparse = [];
+  sparse[1] = { owner_id: OWNER, account_state: 'active' };
+  let writes = 0;
+  const client = { query: async (sql) => {
+    if (sql.includes('from df_private.profiles')) return { rows: sparse };
+    writes += 1;
+    return { rows: [] };
+  } };
+  const store = createPostgresDomainMutationStore({
+    runner: { withTransaction: async (run) => run(client) },
+    applyMutation: async () => ({ responseBody: {}, responseStatus: 200 }),
+  });
+  await assert.rejects(() => executeDomainMutation({ actorId: OWNER, operation: 'createTask', mutationId: MUTATION, requestSha256: HASH, body: BODY, store }), /DEPENDENCY_UNAVAILABLE/);
+  assert.equal(writes, 0);
 });

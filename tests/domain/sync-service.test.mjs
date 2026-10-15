@@ -47,6 +47,19 @@ test('future retries are deferred and never sent early', async () => {
   assert.deepEqual(result, { attempted: 0, acknowledged: 0, deferred: 1, failed: 0 });
 });
 
+test('quarantined rejected mutations are never sent automatically', async () => {
+  const current = store([mutation('rejected', { state: 'rejected', lastErrorCode: 'VERSION_CONFLICT' })]);
+  let pushed = false;
+  const result = await syncPendingOutbox({
+    store: current, now: () => NOW,
+    push: async () => { pushed = true; return { acceptedMutationIds: ['rejected'] }; },
+  });
+  assert.equal(pushed, false);
+  assert.deepEqual(result, { attempted: 0, acknowledged: 0, deferred: 1, failed: 0 });
+  assert.deepEqual(current.acknowledged, []);
+  assert.deepEqual(current.attempts, []);
+});
+
 test('transport failure records a retry and preserves every mutation', async () => {
   const current = store([mutation('a'), mutation('b')]);
   const result = await syncPendingOutbox({ store: current, now: () => NOW, retryDelaySeconds: 60, push: async () => { throw Object.assign(new Error('offline'), { code: 'NETWORK_UNAVAILABLE' }); } });
@@ -98,6 +111,16 @@ test('malformed server acknowledgement fails closed without deleting local mutat
   assert.deepEqual(current.acknowledged, []);
   assert.deepEqual(current.attempts, [{ id: 'a', nextAttemptAt: '2026-10-09T04:00:30.000Z', errorCode: 'SYNC_RESPONSE_INVALID' }]);
   assert.equal(result.failed, 1);
+});
+
+test('malformed local outbox rows fail before remote push and remain untouched', async () => {
+  const current = store([mutation('bad', { payload: null })]);
+  let pushed = false;
+  await assert.rejects(() => syncPendingOutbox({ store: current, now: () => NOW, push: async () => { pushed = true; return { acceptedMutationIds: ['bad'] }; } }), /SYNC_OUTBOX_INVALID/);
+  assert.equal(pushed, false);
+  assert.deepEqual(current.acknowledged, []);
+  assert.deepEqual(current.rejected, []);
+  assert.deepEqual(current.attempts, []);
 });
 
 test('ambiguous accepted and rejected mutation IDs fail closed', async () => {
@@ -160,4 +183,63 @@ test('a failed outbox load does not poison the next retry or create an unhandled
   const second = await syncPendingOutbox({ store: current, now: () => NOW, push: async () => ({ acceptedMutationIds: ['retry-after-load'] }) });
   assert.deepEqual(second, { attempted: 1, acknowledged: 1, deferred: 0, failed: 0 });
   assert.deepEqual(current.acknowledged, ['retry-after-load']);
+});
+
+test('account switching before push leaves the old account outbox untouched', async () => {
+  const current = store([mutation('old-account')]);
+  let owner = '10000000-0000-4000-8000-000000000001';
+  let pushed = false;
+  const load = current.loadPendingOutbox;
+  current.loadPendingOutbox = async () => {
+    const pending = await load();
+    owner = '20000000-0000-4000-8000-000000000002';
+    return pending;
+  };
+  const switched = await syncPendingOutbox({
+    store: current, getOwnerId: () => owner, now: () => NOW,
+    push: async () => { pushed = true; return { acceptedMutationIds: ['old-account'] }; },
+  });
+  assert.equal(switched.attempted, 0);
+  assert.equal(pushed, false);
+  assert.deepEqual(current.acknowledged, []);
+  assert.deepEqual(current.attempts, []);
+});
+
+test('account switching while the remote push is pending does not apply its response locally', async () => {
+  const current = store([mutation('in-flight')]);
+  let owner = '10000000-0000-4000-8000-000000000001';
+  let release;
+  const resultPromise = syncPendingOutbox({
+    store: current, getOwnerId: () => owner, now: () => NOW,
+    push: async () => new Promise((resolve) => { release = () => resolve({ acceptedMutationIds: ['in-flight'] }); }),
+  });
+  await new Promise(setImmediate);
+  owner = '20000000-0000-4000-8000-000000000002';
+  release();
+  assert.deepEqual(await resultPromise, { attempted: 1, acknowledged: 0, deferred: 0, failed: 1 });
+  assert.deepEqual(current.acknowledged, []);
+  assert.deepEqual(current.rejected, []);
+  assert.deepEqual(current.attempts, []);
+});
+
+test('sync rejects a runtime-confused owner before reading the outbox', async () => {
+  let loaded = false;
+  await assert.rejects(() => syncPendingOutbox({
+    store: {
+      loadPendingOutbox: async () => { loaded = true; return []; },
+      acknowledgeOutbox: async () => {}, rejectOutbox: async () => {}, recordOutboxAttempt: async () => {},
+    },
+    push: async () => ({ acceptedMutationIds: [] }),
+    getOwnerId: () => Symbol('owner'),
+  }), (error) => error?.code === 'SYNC_OWNER_INVALID');
+  assert.equal(loaded, false);
+});
+
+test('sync orchestration rejects malformed dependencies before touching the outbox', async () => {
+  await assert.rejects(syncPendingOutbox(null), /SYNC_DEPENDENCY_INVALID/);
+  await assert.rejects(syncPendingOutbox([]), /SYNC_DEPENDENCY_INVALID/);
+  await assert.rejects(syncPendingOutbox({ store: {}, push: async () => ({ acceptedMutationIds: [] }) }), /SYNC_DEPENDENCY_INVALID/);
+  await assert.rejects(syncPendingOutbox({ store: {}, push: null }), /SYNC_DEPENDENCY_INVALID/);
+  await assert.rejects(syncPendingOutbox({ store: {}, push: async () => ({ acceptedMutationIds: [] }), getOwnerId: Symbol('owner') }), /SYNC_DEPENDENCY_INVALID/);
+  await assert.rejects(syncPendingOutbox({ store: {}, push: async () => ({ acceptedMutationIds: [] }), now: Symbol('clock') }), /SYNC_DEPENDENCY_INVALID/);
 });

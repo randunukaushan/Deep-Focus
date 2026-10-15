@@ -53,3 +53,11 @@ test('outbox failure prevents reporting a committed revocation', async () => {
   } }), /outbox unavailable/);
   assert.equal(revoked, false);
 });
+
+test('malformed revoke identity and clock do not open the transaction', async () => {
+  let transactions = 0;
+  const store = { withTransaction: async () => { transactions += 1; throw new Error('must not run'); } };
+  assert.deepEqual(await revokeAndQueueProviderRevocation({ verifiedOwnerId: Symbol('owner'), sessionId, revocationId, now: '2026-10-10T00:00:00.000Z', store }), { ok: false, reason: 'invalid_input', outbox: 'not_queued' });
+  assert.deepEqual(await revokeAndQueueProviderRevocation({ verifiedOwnerId: ownerId, sessionId, revocationId, now: Symbol('clock'), store }), { ok: false, reason: 'invalid_input', outbox: 'not_queued' });
+  assert.equal(transactions, 0);
+});

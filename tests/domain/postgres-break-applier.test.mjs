@@ -25,6 +25,37 @@ test('recordBreak derives actualMs and binds the record to an owned terminal ses
   assert.deepEqual(calls[2].params, [BREAK, OWNER, SESSION, body.startedAt, body.endedAt, 300000, 300000, 'completed']);
 });
 
+test('recordBreak normalizes PostgreSQL bigint strings returned by the insert', async () => {
+  const client = { query: async (sql) => {
+    if (sql.includes('from df_private.focus_sessions')) return { rows: [{ owner_id: OWNER, id: SESSION, status: 'completed', ended_at: body.startedAt }] };
+    if (sql.includes('select id from df_private.break_records')) return { rows: [] };
+    return { rows: [{ id: BREAK, owner_id: OWNER, focus_session_id: SESSION, started_at: body.startedAt, ended_at: body.endedAt, planned_ms: '300000', actual_ms: '300000', outcome: 'completed', version: 1, verification_state: 'pending' }] };
+  } };
+  const result = await applyRecordBreak(client, input);
+  assert.equal(result.responseBody.plannedMs, 300000);
+  assert.equal(result.responseBody.actualMs, 300000);
+});
+
+test('recordBreak fails closed when the database returns a different duration', async () => {
+  const client = { query: async (sql) => {
+    if (sql.includes('from df_private.focus_sessions')) return { rows: [{ owner_id: OWNER, id: SESSION, status: 'completed', ended_at: body.startedAt }] };
+    if (sql.includes('select id from df_private.break_records')) return { rows: [] };
+    return { rows: [{ id: BREAK, owner_id: OWNER, focus_session_id: SESSION, started_at: body.startedAt, ended_at: body.endedAt, planned_ms: '1', actual_ms: '300000', outcome: 'completed', version: 1, verification_state: 'pending' }] };
+  } };
+  await assert.rejects(applyRecordBreak(client, input), /DEPENDENCY_UNAVAILABLE/);
+});
+
+test('recordBreak fails closed when returned timestamps or result containers are ambiguous', async () => {
+  const altered = { query: async (sql) => {
+    if (sql.includes('from df_private.focus_sessions')) return { rows: [{ owner_id: OWNER, id: SESSION, status: 'completed', ended_at: body.startedAt }] };
+    if (sql.includes('select id from df_private.break_records')) return { rows: [] };
+    return { rows: [{ id: BREAK, owner_id: OWNER, focus_session_id: SESSION, started_at: '2026-10-10T01:26:00.000Z', ended_at: body.endedAt, planned_ms: 300000, actual_ms: 300000, outcome: 'completed', version: 1, verification_state: 'pending' }] };
+  } };
+  await assert.rejects(() => applyRecordBreak(altered, input), /DEPENDENCY_UNAVAILABLE/);
+  const malformed = { query: async () => ({ rows: null }) };
+  await assert.rejects(() => applyRecordBreak(malformed, input), /DEPENDENCY_UNAVAILABLE/);
+});
+
 test('recordBreak rejects foreign, active and duplicate records before insert', async () => {
   let insertCalled = false;
   const client = { query: async (sql) => {
@@ -50,4 +81,23 @@ test('recordBreak rejects reversed, inconsistent and unsafe input without SQL', 
   await assert.rejects(applyRecordBreak(client, { ...input, body: { ...body, outcome: 'ended_early' } }), /VALIDATION_FAILED/);
   await assert.rejects(applyRecordBreak(client, { ...input, body: { ...body, ownerId: OWNER } }), /VALIDATION_FAILED/);
   assert.equal(calls, 0);
+});
+
+test('recordBreak rejects malformed outer input and client before storage access', async () => {
+  await assert.rejects(() => applyRecordBreak(null, input), /DEPENDENCY_UNAVAILABLE/);
+  await assert.rejects(() => applyRecordBreak({ query: async () => ({ rows: [] }) }, null), /VALIDATION_FAILED/);
+  await assert.rejects(() => applyRecordBreak({ query: async () => ({ rows: [] }) }, { ...input, actorId: Symbol('owner') }), /VALIDATION_FAILED/);
+});
+
+test('recordBreak fails closed on sparse session result rows before break writes', async () => {
+  const sparse = [];
+  sparse[1] = { owner_id: OWNER, id: SESSION, status: 'completed', ended_at: body.startedAt };
+  let breakWrite = false;
+  const client = { query: async (sql) => {
+    if (sql.includes('from df_private.focus_sessions')) return { rows: sparse };
+    breakWrite = true;
+    return { rows: [] };
+  } };
+  await assert.rejects(() => applyRecordBreak(client, input), /DEPENDENCY_UNAVAILABLE/);
+  assert.equal(breakWrite, false);
 });

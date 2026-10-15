@@ -3,6 +3,7 @@ import {
   appendSessionHistory as appendLocalSessionHistory,
   clearActiveSession as clearLocalActiveSession,
   loadActiveSession as loadLocalActiveSession,
+  loadFinalizedSession as loadLocalFinalizedSession,
   loadTasks as loadLocalTasks,
   loadSessionHistory as loadLocalSessionHistory,
   persistTerminalSession as persistLocalTerminalSession,
@@ -29,6 +30,13 @@ export async function loadFocusableTask(taskId: string) {
   if (!taskId.trim()) throw new RangeError('INVALID_TASK_ID');
   const tasks = await loadLocalTasks();
   return tasks.find((task) => task.id === taskId && task.status !== 'completed' && task.status !== 'cancelled') ?? null;
+}
+
+/** Reads only a durable terminal session in the current owner namespace. */
+export async function loadFinalizedSession(sessionId: string) {
+  if (Platform.OS === 'web') throw new Error('Session history storage is unavailable on web');
+  if (!sessionId.trim()) throw new RangeError('INVALID_SESSION_ID');
+  return loadLocalFinalizedSession(sessionId);
 }
 
 export async function clearActiveSession() {

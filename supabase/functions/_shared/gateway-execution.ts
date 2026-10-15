@@ -4,6 +4,8 @@
 import { publicBoundaryError, safeBoundaryLog, SafeBoundaryError } from './server-boundary.ts';
 // @ts-expect-error The Edge runtime and domain test loader resolve TypeScript modules directly.
 import { hashGatewayMutation } from './gateway-mutation-hash.ts';
+// @ts-expect-error The Edge runtime and domain test loader resolve TypeScript modules directly.
+import { isBoundedJsonResponse } from './json-response-boundary.ts';
 import type { GatewayOperation } from './gateway-router.ts';
 import type { AdmittedGatewayOperation } from './gateway-operation.ts';
 
@@ -16,32 +18,27 @@ export type GatewayHandlerContext = {
   requestId?: string;
   requestSha256: string;
   body: Record<string, unknown> | null;
+  query?: { cursor?: string; limit?: number; start?: string; end?: string; timeZone?: string };
 };
 
-export type GatewayHandlerResult = { status: 200 | 201; body: Record<string, unknown> };
+export type GatewayHandlerResult = { status: 200 | 201 | 202; body: Record<string, unknown> };
 export type GatewayHandler = (context: GatewayHandlerContext) => Promise<GatewayHandlerResult>;
 export type GatewayResponse = GatewayHandlerResult | { status: number; body: { error: { code: string; retryable: boolean } } };
 
-const CREATED = new Set<GatewayOperation>(['createTask', 'createGoal', 'startSession', 'recordBreak']);
-const MAX_RESPONSE_BYTES = 256 * 1024;
+const CREATED = new Set<GatewayOperation>(['createTask', 'createGoal', 'startSession', 'recordBreak', 'createReminder']);
+const ACCEPTED = new Set<GatewayOperation>(['createPrivacyExport', 'createSyncSnapshot']);
 
-function hasUndefined(value: unknown): boolean {
-  if (value === undefined) return true;
-  if (!value || typeof value !== 'object') return false;
-  if (Array.isArray(value)) return value.some(hasUndefined);
-  return Object.entries(value).some(([key, entry]) => key.length === 0 || hasUndefined(entry));
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 function validateHandlerResult(operation: GatewayOperation, result: unknown): asserts result is GatewayHandlerResult {
   if (!result || typeof result !== 'object' || Array.isArray(result)) throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE');
   const candidate = result as { status?: unknown; body?: unknown };
-  const expectedStatus = CREATED.has(operation) ? 201 : 200;
-  if (candidate.status !== expectedStatus || !candidate.body || typeof candidate.body !== 'object' || Array.isArray(candidate.body) || hasUndefined(candidate.body)) {
+  const expectedStatus = ACCEPTED.has(operation) ? 202 : CREATED.has(operation) ? 201 : 200;
+  if (candidate.status !== expectedStatus || !isBoundedJsonResponse(candidate.body)) {
     throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE');
   }
-  try {
-    if (new TextEncoder().encode(JSON.stringify(candidate.body)).length > MAX_RESPONSE_BYTES) throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE');
-  } catch { throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE'); }
 }
 
 export async function executeGatewayOperation(input: {
@@ -51,7 +48,14 @@ export async function executeGatewayOperation(input: {
   sessionId?: string;
   logger?: (record: ReturnType<typeof safeBoundaryLog>) => void;
 }): Promise<GatewayResponse> {
+  if (!isRecord(input) || !isRecord(input.admitted) || !isRecord(input.admitted.route)
+    || !isRecord(input.admitted.request) || !isRecord(input.handlers)
+    || typeof input.authorize !== 'function'
+    || (input.logger !== undefined && typeof input.logger !== 'function')) {
+    return publicBoundaryError(new SafeBoundaryError(400, 'VALIDATION_FAILED'));
+  }
   const operation = input.admitted.route.operation;
+  if (typeof operation !== 'string') return publicBoundaryError(new SafeBoundaryError(400, 'VALIDATION_FAILED'));
   const handler = input.handlers[operation];
   const request = input.admitted.request;
   try {
@@ -71,6 +75,7 @@ export async function executeGatewayOperation(input: {
       ...(request.requestId ? { requestId: request.requestId } : {}),
       requestSha256,
       body: request.body,
+      ...(request.query && Object.keys(request.query).length > 0 ? { query: request.query } : {}),
     });
     validateHandlerResult(operation, result);
     return result;

@@ -20,4 +20,16 @@ test('hash input rejects unsafe operation/path and cannot serialize unsupported 
   await assert.rejects(hashGatewayMutation({ operation: 'bad operation', path: '/v1/tasks', body: {} }), /MUTATION_INPUT_INVALID/);
   await assert.rejects(hashGatewayMutation({ operation: 'task.create', path: '/private', body: {} }), /MUTATION_INPUT_INVALID/);
   await assert.rejects(hashGatewayMutation({ operation: 'task.create', path: '/v1/tasks', body: { value: BigInt(1) } }), /MUTATION_UNHASHABLE/);
+  await assert.rejects(hashGatewayMutation({ operation: 'task.create', path: '/v1/tasks', body: { nested: { value: Number.NaN } } }), /MUTATION_UNHASHABLE/);
+  await assert.rejects(hashGatewayMutation({ operation: 'task.create', path: '/v1/tasks', body: { nested: { value: Number.POSITIVE_INFINITY } } }), /MUTATION_UNHASHABLE/);
+});
+
+test('hash input rejects sparse, symbol-bearing, extra-property, and custom-prototype values', async () => {
+  const sparse = []; sparse[1] = 'gap';
+  const symbolBearing = []; symbolBearing.push('value'); symbolBearing[Symbol('metadata')] = 'hidden';
+  const extra = []; extra.push('value'); extra.note = 'hidden';
+  class CustomValue { constructor() { this.value = 'hidden-shape'; } }
+  for (const value of [{ values: sparse }, { values: symbolBearing }, { values: extra }, { value: new CustomValue() }]) {
+    await assert.rejects(hashGatewayMutation({ operation: 'task.create', path: '/v1/tasks', body: value }), /MUTATION_UNHASHABLE/);
+  }
 });

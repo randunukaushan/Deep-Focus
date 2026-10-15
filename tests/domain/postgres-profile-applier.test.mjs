@@ -34,3 +34,17 @@ test('profile update does not accept blank or oversized names', async () => {
   await assert.rejects(() => applyPatchMe(h.client, { actorId: OWNER, operation: 'patchMe', mutationId: OWNER, requestSha256: HASH, body: { expectedVersion: 1, displayName: '   ' } }), /VALIDATION_FAILED/);
   await assert.rejects(() => applyPatchMe(h.client, { actorId: OWNER, operation: 'patchMe', mutationId: OWNER, requestSha256: HASH, body: { expectedVersion: 1, displayName: 'x'.repeat(101) } }), /VALIDATION_FAILED/);
 });
+
+test('profile update rejects malformed client, actor and result containers safely', async () => {
+  await assert.rejects(() => applyPatchMe({ query: null }, { actorId: OWNER, operation: 'patchMe', mutationId: OWNER, requestSha256: HASH, body: { expectedVersion: 1, displayName: 'Name' } }), /DEPENDENCY_UNAVAILABLE/);
+  await assert.rejects(() => applyPatchMe(clientHarness([]).client, { actorId: Symbol('actor'), operation: 'patchMe', mutationId: OWNER, requestSha256: HASH, body: { expectedVersion: 1, displayName: 'Name' } }), /VALIDATION_FAILED/);
+  await assert.rejects(() => applyPatchMe(clientHarness([]).client, { actorId: OWNER, operation: 'patchMe', mutationId: OWNER, requestSha256: HASH, body: 'not-an-object' }), /VALIDATION_FAILED/);
+  await assert.rejects(() => applyPatchMe({ query: async () => ({ rows: null }) }, { actorId: OWNER, operation: 'patchMe', mutationId: OWNER, requestSha256: HASH, body: { expectedVersion: 1, displayName: 'Name' } }), /DEPENDENCY_UNAVAILABLE/);
+  await assert.rejects(() => applyPatchMe(clientHarness([{ owner_id: OWNER, display_name: 'A', account_state: 'active', version: 2 }, { owner_id: OWNER, display_name: 'B', account_state: 'active', version: 2 }]).client, { actorId: OWNER, operation: 'patchMe', mutationId: OWNER, requestSha256: HASH, body: { expectedVersion: 1, displayName: 'Name' } }), /DEPENDENCY_UNAVAILABLE/);
+});
+
+test('profile update fails closed on sparse returned rows', async () => {
+  const sparse = [];
+  sparse[1] = { owner_id: OWNER, display_name: 'Name', account_state: 'active', version: 2 };
+  await assert.rejects(() => applyPatchMe(clientHarness(sparse).client, { actorId: OWNER, operation: 'patchMe', mutationId: OWNER, requestSha256: HASH, body: { expectedVersion: 1, displayName: 'Name' } }), /DEPENDENCY_UNAVAILABLE/);
+});

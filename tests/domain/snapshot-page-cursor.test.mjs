@@ -41,3 +41,12 @@ test('snapshot cursor rejects malformed token and invalid verification context',
   await assert.rejects(() => verifySnapshotPageCursor('bad-token', SECRET, { ownerId: OWNER, snapshotId: SNAPSHOT, now: NOW }), /SNAPSHOT_CURSOR_INVALID/);
   await assert.rejects(() => verifySnapshotPageCursor('a.b', SECRET, { ownerId: 'bad', snapshotId: SNAPSHOT, now: NOW }), /SNAPSHOT_CURSOR_INVALID/);
 });
+
+test('snapshot cursor rejects unsafe verification context types before HMAC verification', async () => {
+  const token = await signSnapshotPageCursor(payload, SECRET);
+  await assert.rejects(() => verifySnapshotPageCursor(token, SECRET, { ownerId: Symbol('owner'), snapshotId: SNAPSHOT, now: NOW }), /SNAPSHOT_CURSOR_INVALID/);
+  await assert.rejects(() => verifySnapshotPageCursor(token, SECRET, { ownerId: OWNER, snapshotId: Symbol('snapshot'), now: NOW }), /SNAPSHOT_CURSOR_INVALID/);
+  await assert.rejects(() => verifySnapshotPageCursor(token, SECRET, { ownerId: OWNER, snapshotId: SNAPSHOT, now: Symbol('clock') }), /SNAPSHOT_CURSOR_INVALID/);
+  await assert.rejects(() => verifySnapshotPageCursor(token, SECRET, null), /SNAPSHOT_CURSOR_INVALID/);
+  await assert.rejects(() => verifySnapshotPageCursor(token, SECRET, []), /SNAPSHOT_CURSOR_INVALID/);
+});

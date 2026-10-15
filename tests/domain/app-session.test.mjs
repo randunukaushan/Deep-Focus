@@ -33,6 +33,15 @@ test('malformed or expired provider claims never use the registry as offline pro
   assert.equal(reads, 0);
 });
 
+test('malformed session clock input fails closed without consulting the registry', async () => {
+  let reads = 0;
+  for (const now of [null, 123, {}]) {
+    const result = await authorizeAppSession({ claims, expectedIssuer: claims.iss, expectedAudience: claims.aud, now, loadSession: async () => { reads += 1; return record; } });
+    assert.deepEqual(result, { allowed: false, reason: 'invalid_claims' });
+  }
+  assert.equal(reads, 0);
+});
+
 test('malformed registry rows fail closed instead of authorizing or mutating a session', async () => {
   assert.equal((await check({}, { ...record, expiresAt: 'not-a-time' })).reason, 'session_not_found');
   assert.equal(revokeAppSession({ verifiedOwnerId: OWNER, record: { ...record, revokedAt: NOW }, now: NOW }).reason, 'invalid_input');
@@ -42,6 +51,25 @@ test('session issue creates only a bounded active owner record', () => {
   assert.deepEqual(issueAppSession({ ownerId: OWNER, sessionId: SESSION, issuedAt: NOW, expiresAt: '2026-10-10T01:00:00.000Z' }), { ok: true, record });
   assert.equal(issueAppSession({ ownerId: 'not-an-owner', sessionId: SESSION, issuedAt: NOW, expiresAt: '2026-10-10T01:00:00.000Z' }).reason, 'invalid_input');
   assert.equal(issueAppSession({ ownerId: OWNER, sessionId: SESSION, issuedAt: NOW, expiresAt: NOW }).reason, 'invalid_input');
+});
+
+test('session issue and revoke reject runtime type confusion without throwing', async () => {
+  assert.deepEqual(issueAppSession({ ownerId: Symbol('owner'), sessionId: SESSION, issuedAt: NOW, expiresAt: '2026-10-10T01:00:00.000Z' }), { ok: false, reason: 'invalid_input' });
+  assert.deepEqual(issueAppSession({ ownerId: OWNER, sessionId: SESSION, issuedAt: Symbol('issued'), expiresAt: '2026-10-10T01:00:00.000Z' }), { ok: false, reason: 'invalid_input' });
+  assert.deepEqual(revokeAppSession({ verifiedOwnerId: Symbol('owner'), record, now: NOW }), { ok: false, reason: 'invalid_input' });
+  assert.deepEqual(revokeAppSession({ verifiedOwnerId: OWNER, record, now: Symbol('clock') }), { ok: false, reason: 'invalid_input' });
+  assert.deepEqual(await revokeAppSessionAtomically({ verifiedOwnerId: OWNER, sessionId: Symbol('session'), now: NOW, store: { loadSession: async () => record, revokeSession: async () => {} } }), { ok: false, reason: 'invalid_input' });
+});
+
+test('session boundaries reject null and array inputs without touching storage', async () => {
+  let reads = 0;
+  assert.deepEqual(await authorizeAppSession(null), { allowed: false, reason: 'invalid_claims' });
+  assert.deepEqual(await authorizeAppSession([]), { allowed: false, reason: 'invalid_claims' });
+  assert.deepEqual(issueAppSession(null), { ok: false, reason: 'invalid_input' });
+  assert.deepEqual(revokeAppSession(null), { ok: false, reason: 'invalid_input' });
+  assert.deepEqual(await revokeAppSessionAtomically(null), { ok: false, reason: 'invalid_input' });
+  assert.deepEqual(await revokeAppSessionTransactionally(null), { ok: false, reason: 'invalid_input' });
+  assert.equal(reads, 0);
 });
 
 test('session revoke is owner-bound, expiry-aware and idempotency-safe', () => {
@@ -74,7 +102,7 @@ test('session issue and revoke transaction helpers keep registry read and write 
       transactions += 1;
       return operation({
         async insertSession(value) { stored = value; },
-        async loadSession() { return stored; },
+        async loadSession(ownerId, sessionId) { return stored.ownerId === ownerId && stored.sessionId === sessionId ? stored : null; },
         async revokeSession(value) { stored = { ...stored, status: 'revoked', revokedAt: value.revokedAt }; },
       });
     },
@@ -85,4 +113,40 @@ test('session issue and revoke transaction helpers keep registry read and write 
   assert.equal(revoked.ok, true);
   assert.equal(transactions, 2);
   assert.equal(stored.status, 'revoked');
+});
+
+test('session issue retries return the first active owner-bound registry record without another insert', async () => {
+  let inserts = 0;
+  let stored = null;
+  const store = {
+    async withTransaction(operation) {
+      return operation({
+        async loadSession(ownerId, sessionId) {
+          return stored?.ownerId === ownerId && stored?.sessionId === sessionId ? stored : null;
+        },
+        async insertSession(value) { inserts += 1; stored = value; },
+      });
+    },
+  };
+  const input = { ownerId: OWNER, sessionId: SESSION, issuedAt: NOW, expiresAt: '2026-10-10T01:00:00.000Z', store };
+  const first = await issueAppSessionTransactionally(input);
+  const retry = await issueAppSessionTransactionally({ ...input, issuedAt: '2026-10-10T00:05:00.000Z' });
+  assert.deepEqual(first, { ok: true, record });
+  assert.deepEqual(retry, { ok: true, record });
+  assert.equal(inserts, 1);
+});
+
+test('session issue never revives a revoked or expired registry row on a retry', async () => {
+  for (const stored of [
+    { ...record, status: 'revoked', revokedAt: NOW },
+    { ...record, issuedAt: '2026-10-09T00:00:00.000Z', expiresAt: '2026-10-09T01:00:00.000Z' },
+  ]) {
+    let inserts = 0;
+    const result = await issueAppSessionTransactionally({
+      ownerId: OWNER, sessionId: SESSION, issuedAt: NOW, expiresAt: '2026-10-10T01:00:00.000Z',
+      store: { withTransaction: async (operation) => operation({ loadSession: async () => stored, insertSession: async () => { inserts += 1; } }) },
+    });
+    assert.equal(result.ok, false);
+    assert.equal(inserts, 0);
+  }
 });

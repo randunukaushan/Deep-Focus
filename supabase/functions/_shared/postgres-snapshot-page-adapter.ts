@@ -6,11 +6,19 @@ import type { PostgresTransactionClient, PostgresTransactionRunner } from './pos
 import type { SnapshotPage } from '../../../src/features/sync/snapshot-mirror.ts';
 // @ts-expect-error The Edge runtime and domain test loader resolve TypeScript modules directly.
 import { recheckPostgresAppSession } from './postgres-session-guard.ts';
+// @ts-expect-error The Edge runtime and domain test loader resolve TypeScript modules directly.
+import { boundedSnapshotPagePayloadJson } from './snapshot-payload-boundary.ts';
+// @ts-expect-error The Edge runtime and domain test loader resolve TypeScript modules directly.
+import { isPlainJsonValueForBoundary } from './json-response-boundary.ts';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DECIMAL = /^(?:0|[1-9][0-9]*)$/;
 const DIGEST = /^[a-f0-9]{64}$/;
 const CURSOR = /^(?=.{1,2048}$)[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?$/;
+
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID.test(value);
+}
 
 function invalid(): never { throw new SafeBoundaryError(422, 'VALIDATION_FAILED'); }
 function unavailable(): never { throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE'); }
@@ -41,6 +49,7 @@ function pageFromRow(row: Record<string, unknown>, expected: { ownerId: string; 
     || !row.payload || typeof row.payload !== 'object' || Array.isArray(row.payload)
     || !Array.isArray((row.payload as Record<string, unknown>).data)
     || ((row.payload as Record<string, unknown>).data as unknown[]).length > 100
+    || boundedSnapshotPagePayloadJson(row.payload) === null
     || !((row.payload as Record<string, unknown>).data as unknown[]).every(validEntity)
     || (row.next_cursor !== null && (typeof row.next_cursor !== 'string' || !CURSOR.test(row.next_cursor)))) unavailable();
   const payload = row.payload as Record<string, unknown>;
@@ -62,8 +71,8 @@ export async function readReadySnapshotPage(client: PostgresTransactionClient, i
   now: string;
   sessionId: string;
 }): Promise<SnapshotPage | null> {
-  if (!UUID.test(input.ownerId) || !UUID.test(input.snapshotId) || !Number.isInteger(input.pageIndex)
-    || input.pageIndex < 0 || input.pageIndex > 100 || !Number.isFinite(Date.parse(input.now))) invalid();
+  if (!isUuid(input.ownerId) || !isUuid(input.snapshotId) || !isUuid(input.sessionId) || !Number.isInteger(input.pageIndex)
+    || input.pageIndex < 0 || input.pageIndex > 100 || typeof input.now !== 'string' || !Number.isFinite(Date.parse(input.now))) invalid();
   await recheckPostgresAppSession(client, input.ownerId, input.sessionId);
   const result = await client.query(
     `select p.owner_id, p.snapshot_id, p.page_index, p.page_count, p.high_water, p.page_digest, p.payload, p.next_cursor,
@@ -75,7 +84,10 @@ export async function readReadySnapshotPage(client: PostgresTransactionClient, i
        and s.status = 'ready' and s.expires_at > $4::timestamptz`,
     [input.ownerId, input.snapshotId, input.pageIndex, input.now],
   );
-  return result.rows.length === 0 ? null : pageFromRow(result.rows[0], input);
+  if (!result || !Array.isArray(result.rows) || !isPlainJsonValueForBoundary(result.rows)) unavailable();
+  if (result.rows.length === 0) return null;
+  if (result.rows.length !== 1) unavailable();
+  return pageFromRow(result.rows[0], input);
 }
 
 export function createPostgresSnapshotPageReader(input: { runner: PostgresTransactionRunner }): {

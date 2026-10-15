@@ -86,3 +86,34 @@ test('createTask applier rejects foreign returned task metadata', async () => {
   } };
   await assert.rejects(applyCreateTask(client, { actorId: OWNER, operation: 'createTask', mutationId: '44444444-4444-4444-8444-444444444444', requestSha256: HASH, body: { id: TASK, workspaceId: WORKSPACE, title: 'Read' } }), /DEPENDENCY_UNAVAILABLE/);
 });
+
+test('createTask applier rejects malformed client, actor and body before storage', async () => {
+  await assert.rejects(() => applyCreateTask({ query: null }, { actorId: OWNER, operation: 'createTask', mutationId: TASK, requestSha256: HASH, body: { id: TASK, workspaceId: WORKSPACE, title: 'Read' } }), /DEPENDENCY_UNAVAILABLE/);
+  let opened = false;
+  const client = { query: async () => { opened = true; return { rows: [] }; } };
+  await assert.rejects(() => applyCreateTask(client, { actorId: Symbol('actor'), operation: 'createTask', mutationId: TASK, requestSha256: HASH, body: { id: TASK, workspaceId: WORKSPACE, title: 'Read' } }), /VALIDATION_FAILED/);
+  await assert.rejects(() => applyCreateTask(client, { actorId: OWNER, operation: 'createTask', mutationId: TASK, requestSha256: HASH, body: 'not-an-object' }), /VALIDATION_FAILED/);
+  assert.equal(opened, false);
+});
+
+test('createTask applier fails closed on malformed or ambiguous database results', async () => {
+  const malformed = { query: async (sql) => sql.includes('from df_private.workspaces') ? { rows: null } : { rows: [] } };
+  await assert.rejects(() => applyCreateTask(malformed, { actorId: OWNER, operation: 'createTask', mutationId: TASK, requestSha256: HASH, body: { id: TASK, workspaceId: WORKSPACE, title: 'Read' } }), /DEPENDENCY_UNAVAILABLE/);
+  const duplicate = { query: async (sql) => sql.includes('from df_private.workspaces') ? { rows: [{ owner_id: OWNER, id: WORKSPACE }] } : { rows: [{ id: TASK, owner_id: OWNER, workspace_id: WORKSPACE, version: 1, status: 'pending' }, { id: TASK, owner_id: OWNER, workspace_id: WORKSPACE, version: 1, status: 'pending' }] } };
+  await assert.rejects(() => applyCreateTask(duplicate, { actorId: OWNER, operation: 'createTask', mutationId: TASK, requestSha256: HASH, body: { id: TASK, workspaceId: WORKSPACE, title: 'Read' } }), /DEPENDENCY_UNAVAILABLE/);
+});
+
+test('createTask applier fails closed on sparse workspace result rows before task writes', async () => {
+  const sparse = [];
+  sparse[1] = { owner_id: OWNER, id: WORKSPACE };
+  let taskWrite = false;
+  const client = { query: async (sql) => {
+    if (sql.includes('from df_private.workspaces')) return { rows: sparse };
+    taskWrite = true;
+    return { rows: [] };
+  } };
+  await assert.rejects(() => applyCreateTask(client, { actorId: OWNER, operation: 'createTask', mutationId: TASK, requestSha256: HASH, body: {
+    id: TASK, workspaceId: WORKSPACE, title: 'Read',
+  } }), /DEPENDENCY_UNAVAILABLE/);
+  assert.equal(taskWrite, false);
+});

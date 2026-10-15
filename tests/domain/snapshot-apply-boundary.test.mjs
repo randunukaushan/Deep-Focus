@@ -25,3 +25,17 @@ test('invalid snapshots never reach the mirror transaction callback', async () =
 test('mirror transaction failure is propagated without claiming installation', async () => {
   await assert.rejects(() => applyValidatedSnapshotAtomically({ ownerId: OWNER, snapshotId: SNAPSHOT, highWater: '20', pages, resumeCursor: 'cursor-20', digestPage: async () => DIGEST, store: { applySnapshotAtomically: async () => { throw new Error('MIRROR_ROLLBACK'); } } }), /MIRROR_ROLLBACK/);
 });
+
+test('restore forwards deletion tombstones without resurrecting a remote entity', async () => {
+  let received;
+  const deleted = [{
+    ...pages[0],
+    data: [{ entity: 'task', entityId: ENTITY, version: 4, operation: 'delete', payload: null }],
+  }];
+  await applyValidatedSnapshotAtomically({
+    ownerId: OWNER, snapshotId: SNAPSHOT, highWater: '20', pages: deleted, resumeCursor: 'cursor-20',
+    digestPage: async () => DIGEST,
+    store: { applySnapshotAtomically: async (value) => { received = value; } },
+  });
+  assert.deepEqual(received.entities, [{ entity: 'task', entityId: ENTITY, version: 4, operation: 'delete', payload: null }]);
+});

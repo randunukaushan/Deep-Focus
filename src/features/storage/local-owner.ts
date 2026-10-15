@@ -1,7 +1,7 @@
 const AUTH_USER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function accountOwnerId(authenticatedUserId: string): string {
-  if (!AUTH_USER_ID.test(authenticatedUserId)) {
+  if (typeof authenticatedUserId !== 'string' || !AUTH_USER_ID.test(authenticatedUserId)) {
     throw new RangeError('INVALID_AUTH_ID: a verified account UUID is required');
   }
   return `account:${authenticatedUserId.toLowerCase()}`;

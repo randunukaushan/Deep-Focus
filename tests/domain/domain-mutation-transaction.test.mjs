@@ -97,3 +97,48 @@ test('session-bound mutation fails closed when the store cannot recheck the sess
   await assert.rejects(executeDomainMutation({ actorId: actorA, sessionId: '66666666-6666-4666-8666-666666666666', operation: 'task.create', mutationId, requestSha256: hashA, body, store }), /DEPENDENCY_UNAVAILABLE/);
   assert.equal(locked, false);
 });
+
+test('invalid response bodies fail before receipt write so the transaction can roll back', async () => {
+  const order = [];
+  const store = { withTransaction: async (operation) => operation({
+    lockOwnerHead: async () => order.push('lock'), readReceipt: async () => { order.push('read'); return null; },
+    apply: async () => { order.push('apply'); return { responseBody: ['not-an-object'], responseStatus: 201 }; },
+    writeReceipt: async () => order.push('write'),
+  }) };
+  await assert.rejects(executeDomainMutation({ actorId: actorA, operation: 'task.create', mutationId, requestSha256: hashA, body, store }), /DEPENDENCY_UNAVAILABLE/);
+  assert.deepEqual(order, ['lock', 'read', 'apply']);
+});
+
+test('coercion-prone response bodies fail before receipt write', async () => {
+  class CustomValue { constructor() { this.ok = true; } }
+  for (const responseBody of [{ at: new Date('2026-10-10T00:00:00.000Z') }, { missing: undefined }, { value: new CustomValue() }]) {
+    let wrote = false;
+    const store = { withTransaction: async (operation) => operation({
+      lockOwnerHead: async () => {}, readReceipt: async () => null,
+      apply: async () => ({ responseBody, responseStatus: 201 }),
+      writeReceipt: async () => { wrote = true; },
+    }) };
+    await assert.rejects(executeDomainMutation({ actorId: actorA, operation: 'task.create', mutationId, requestSha256: hashA, body, store }), /DEPENDENCY_UNAVAILABLE/);
+    assert.equal(wrote, false);
+  }
+});
+
+test('oversized response bodies fail closed before receipt persistence', async () => {
+  let wrote = false;
+  const store = { withTransaction: async (operation) => operation({
+    lockOwnerHead: async () => {}, readReceipt: async () => null,
+    apply: async () => ({ responseBody: { payload: 'x'.repeat(262145) }, responseStatus: 201 }),
+    writeReceipt: async () => { wrote = true; },
+  }) };
+  await assert.rejects(executeDomainMutation({ actorId: actorA, operation: 'task.create', mutationId, requestSha256: hashA, body, store }), /DEPENDENCY_UNAVAILABLE/);
+  assert.equal(wrote, false);
+});
+
+test('domain mutation rejects unsafe runtime identity values before opening a transaction', async () => {
+  let opened = false;
+  const store = { withTransaction: async () => { opened = true; return null; } };
+  await assert.rejects(executeDomainMutation({ actorId: Symbol('actor'), operation: 'task.create', mutationId, requestSha256: hashA, body, store }), /VALIDATION_FAILED/);
+  await assert.rejects(executeDomainMutation({ actorId: actorA, operation: Symbol('operation'), mutationId, requestSha256: hashA, body, store }), /VALIDATION_FAILED/);
+  await assert.rejects(executeDomainMutation({ actorId: actorA, operation: 'task.create', mutationId: Symbol('mutation'), requestSha256: hashA, body, store }), /VALIDATION_FAILED/);
+  assert.equal(opened, false);
+});

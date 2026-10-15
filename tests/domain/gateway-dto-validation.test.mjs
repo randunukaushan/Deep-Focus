@@ -31,3 +31,23 @@ test('DTO validation rejects unsafe nested due values and oversized text', () =>
   assert.throws(() => validateGatewayOperationDto('createTask', { ...validTask, due: { kind: 'instant', at: 'not-an-instant' } }), /VALIDATION_FAILED/);
   assert.throws(() => validateGatewayOperationDto('createTask', { ...validTask, description: 'x'.repeat(4001) }), /VALIDATION_FAILED/);
 });
+
+test('DTO validation enforces sync sequence, entity and delete-payload rules', () => {
+  const valid = { cursorLastSequence: '0', nextCursor: 'opaque.cursor', changes: [{ sequence: '1', entityKind: 'task', entityId: id, operation: 'upsert', payload: { id, title: 'Read' } }] };
+  assert.doesNotThrow(() => validateGatewayOperationDto('pushSync', valid));
+  assert.throws(() => validateGatewayOperationDto('pushSync', { ...valid, changes: [{ ...valid.changes[0], operation: 'delete', payload: {} }] }), /VALIDATION_FAILED/);
+  assert.throws(() => validateGatewayOperationDto('pushSync', { ...valid, changes: [{ ...valid.changes[0], sequence: '01' }] }), /VALIDATION_FAILED/);
+  assert.throws(() => validateGatewayOperationDto('pushSync', { ...valid, changes: [{ ...valid.changes[0], entityKind: 'billing' }] }), /VALIDATION_FAILED/);
+});
+
+test('DTO validation rejects sparse operation and sync-change arrays', () => {
+  const sparse = [];
+  sparse.length = 1;
+  assert.throws(() => validateGatewayOperationDto('applyAiProposal', { expectedProposalVersion: 1, reviewDigest: 'a'.repeat(64), selectedOperationIds: sparse }), /VALIDATION_FAILED/);
+  assert.throws(() => validateGatewayOperationDto('pushSync', { cursorLastSequence: '0', nextCursor: 'opaque.cursor', changes: sparse }), /VALIDATION_FAILED/);
+});
+
+test('DTO validation requires an empty snapshot-create request', () => {
+  assert.doesNotThrow(() => validateGatewayOperationDto('createSyncSnapshot', {}));
+  assert.throws(() => validateGatewayOperationDto('createSyncSnapshot', { contractVersion: 1 }), /VALIDATION_FAILED/);
+});

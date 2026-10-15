@@ -52,6 +52,10 @@ export type UsageTransactionStore = {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID.test(value);
+}
+
 export function decideUsageReservation(input: {
   admission: CapabilityAdmission;
   allowance: UsageAllowance | null;
@@ -59,12 +63,16 @@ export function decideUsageReservation(input: {
   capability: ServerCapability;
   units: number;
 }): UsageReservationDecision {
+  if (input.capability !== 'ai' && input.capability !== 'cloud_resources') {
+    return { allowed: false, reason: 'invalid_request' };
+  }
   if (!input.admission.allowed) return { allowed: false, reason: 'capability_denied' };
   if (input.admission.ownerId !== input.verifiedActorId || input.admission.capability !== input.capability) {
     return { allowed: false, reason: 'owner_mismatch' };
   }
   if (!input.allowance || input.allowance.ownerId !== input.verifiedActorId || input.allowance.capability !== input.capability
     || !input.allowance.periodKey || !input.allowance.policyVersion
+    || input.allowance.policyVersion !== input.admission.policyVersion
     || !Number.isSafeInteger(input.allowance.limitUnits) || input.allowance.limitUnits < 0
     || !Number.isSafeInteger(input.allowance.consumedUnits) || input.allowance.consumedUnits < 0
     || !Number.isSafeInteger(input.allowance.reservedUnits) || input.allowance.reservedUnits < 0
@@ -96,7 +104,8 @@ export async function reserveUsageAtomically(input: {
   receiptId: string;
   store: UsageReservationStore;
 }): Promise<UsageReservationDecision & { replayed?: boolean }> {
-  if (!UUID.test(input.verifiedActorId) || !UUID.test(input.receiptId) || !input.periodKey.trim()) {
+  if (!isUuid(input.verifiedActorId) || !isUuid(input.receiptId)
+    || typeof input.periodKey !== 'string' || !input.periodKey.trim()) {
     return { allowed: false, reason: 'invalid_request' };
   }
   const previous = await input.store.readReceipt(input.verifiedActorId, input.receiptId);
@@ -145,7 +154,8 @@ export async function settleUsageReceipt(input: {
   action: 'consume' | 'release';
   store: Pick<UsageReservationStore, 'readReceipt' | 'commitSettlement'>;
 }): Promise<UsageSettlementDecision> {
-  if (!UUID.test(input.verifiedActorId) || !UUID.test(input.receiptId)) return { allowed: false, reason: 'invalid_request' };
+  if (!isUuid(input.verifiedActorId) || !isUuid(input.receiptId)) return { allowed: false, reason: 'invalid_request' };
+  if (input.action !== 'consume' && input.action !== 'release') return { allowed: false, reason: 'invalid_request' };
   const receipt = await input.store.readReceipt(input.verifiedActorId, input.receiptId);
   if (!receipt) return { allowed: false, reason: 'missing_receipt' };
   if (receipt.ownerId !== input.verifiedActorId || receipt.receiptId !== input.receiptId) {
@@ -170,7 +180,7 @@ export async function settleUsageTransactionally(input: {
 
 export type UsageExecutionResult<T> =
   | { allowed: true; receiptId: string; result: T; replayed?: boolean }
-  | { allowed: false; reason: 'reservation_denied' | 'provider_failed' | 'settlement_failed'; released?: boolean };
+  | { allowed: false; reason: 'reservation_denied' | 'reservation_in_progress' | 'provider_failed' | 'settlement_failed'; released?: boolean };
 
 /** Runs a provider call only while usage is reserved, then settles it exactly once. */
 export async function executeReservedUsage<T>(input: {
@@ -181,6 +191,10 @@ export async function executeReservedUsage<T>(input: {
 }): Promise<UsageExecutionResult<T>> {
   const reservation = await input.reserve();
   if (!reservation.allowed) return { allowed: false, reason: 'reservation_denied' };
+  // A replayed reserved receipt may represent an in-flight or unknown prior
+  // provider dispatch. Without a durable provider-status lookup, never spend
+  // again; the caller must reconcile the existing request first.
+  if (reservation.replayed) return { allowed: false, reason: 'reservation_in_progress' };
   try {
     const result = await input.execute();
     const settled = await input.settle('consume');

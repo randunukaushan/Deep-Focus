@@ -2,6 +2,8 @@
 
 const ERROR_CODE = /^[A-Z][A-Z0-9_]{0,79}$/;
 
+function isTimestamp(value: unknown): value is string { return typeof value === 'string' && Number.isFinite(Date.parse(value)); }
+
 export function nextRevocationRetry(input: {
   attemptCount: number;
   now: string;
@@ -13,7 +15,7 @@ export function nextRevocationRetry(input: {
   const max = input.maxDelayMs ?? 3_600_000;
   if (!Number.isSafeInteger(input.attemptCount) || input.attemptCount < 0 || input.attemptCount > 31
     || !Number.isSafeInteger(base) || base < 1000 || !Number.isSafeInteger(max) || max < base
-    || !Number.isFinite(Date.parse(input.now)) || !ERROR_CODE.test(input.errorCode)) throw new Error('REVOCATION_RETRY_INVALID');
+    || !isTimestamp(input.now) || typeof input.errorCode !== 'string' || !ERROR_CODE.test(input.errorCode)) throw new Error('REVOCATION_RETRY_INVALID');
   const delay = Math.min(max, base * (2 ** input.attemptCount));
   return { nextAttemptAt: new Date(Date.parse(input.now) + delay).toISOString(), errorCode: input.errorCode };
 }

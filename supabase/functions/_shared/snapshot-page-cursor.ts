@@ -13,6 +13,10 @@ export type SnapshotPageCursorPayload = {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TOKEN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID.test(value);
+}
+
 function bytes(value: string): Uint8Array { return new TextEncoder().encode(value); }
 function cryptoBytes(value: string): BufferSource { return Uint8Array.from(bytes(value)) as unknown as BufferSource; }
 
@@ -77,8 +81,9 @@ export async function verifySnapshotPageCursor(token: string, secret: string, ex
   now: string;
 }): Promise<SnapshotPageCursorPayload> {
   if (typeof token !== 'string' || !TOKEN.test(token)
-    || !UUID.test(expected.ownerId) || !UUID.test(expected.snapshotId)
-    || !Number.isFinite(Date.parse(expected.now))) throw new Error('SNAPSHOT_CURSOR_INVALID');
+    || !expected || typeof expected !== 'object' || Array.isArray(expected)
+    || !isUuid(expected.ownerId) || !isUuid(expected.snapshotId)
+    || typeof expected.now !== 'string' || !Number.isFinite(Date.parse(expected.now))) throw new Error('SNAPSHOT_CURSOR_INVALID');
   const [encoded, encodedSignature] = token.split('.');
   const key = await signingKey(secret, ['verify']);
   const valid = await crypto.subtle.verify('HMAC', key, fromBase64Url(encodedSignature) as unknown as BufferSource, cryptoBytes(encoded));

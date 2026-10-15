@@ -20,3 +20,8 @@ test('retry schedule rejects unsafe attempts, times and delay policy', () => {
     { attemptCount: 1, now: '2026-10-10T00:00:00.000Z', errorCode: 'TEMPORARY', baseDelayMs: 100, maxDelayMs: 1000 },
   ]) assert.throws(() => nextRevocationRetry(input), /REVOCATION_RETRY_INVALID/);
 });
+
+test('retry schedule rejects runtime type confusion without parsing or regex exceptions', () => {
+  assert.throws(() => nextRevocationRetry({ attemptCount: 1, now: Symbol('clock'), errorCode: 'TEMPORARY' }), /REVOCATION_RETRY_INVALID/);
+  assert.throws(() => nextRevocationRetry({ attemptCount: 1, now: '2026-10-10T00:00:00.000Z', errorCode: Symbol('code') }), /REVOCATION_RETRY_INVALID/);
+});

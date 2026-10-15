@@ -6,7 +6,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
-import { loadTasks, saveTasks } from '@/features/tasks/task-storage';
+import { completeTask, loadTasks, saveTasks } from '@/features/tasks/task-storage';
 import type { Task } from '@/features/tasks/task-types';
 import { createStableId } from '@/features/identity/stable-ids';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -85,10 +85,24 @@ export default function TasksRoute() {
     if (await persistTasks(next)) { setTitle(''); setShowComposer(false); }
   }
 
-  async function completeTask(task: Task) {
-    const now = new Date().toISOString();
-    const next = tasks.map((item) => item.id === task.id ? { ...item, status: 'completed' as const, completedAt: now, updatedAt: now } : item);
-    await persistTasks(next);
+  async function completeTaskItem(task: Task) {
+    if (writing.current || loading || loadError) return;
+    writing.current = true;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const result = await completeTask(task.id, task.updatedAt);
+      if (!result) {
+        setSaveError(text.saveError);
+        return;
+      }
+      setTasks((current) => current.map((item) => item.id === task.id ? result.task : item));
+    } catch {
+      setSaveError(text.saveError);
+    } finally {
+      writing.current = false;
+      setSaving(false);
+    }
   }
 
   const activeTasks = tasks.filter((task) => !task.archivedAt);
@@ -105,8 +119,8 @@ export default function TasksRoute() {
     <View style={styles.header}><ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">{text.eyebrow}</ThemedText><ThemedText accessibilityRole="header" type="title" style={styles.title}>{text.title}</ThemedText><ThemedText themeColor="textSecondary">{text.subtitle}</ThemedText></View>
     {saving ? <ThemedText accessibilityLiveRegion="polite">{text.saving}</ThemedText> : null}
     {saveError ? <ThemedText accessibilityRole="alert">{saveError}</ThemedText> : null}
-    {!showComposer ? <Button accentColor={action} fullWidth label={text.add} onPress={() => setShowComposer(true)} style={{ backgroundColor: action, borderColor: action }} /> : <ThemedView style={[styles.composer, { backgroundColor: surface, borderColor: border }]}><ThemedText type="smallBold">{text.newTask}</ThemedText><TextInput accessibilityLabel={text.titleLabel} editable={!saving} autoFocus onChangeText={setTitle} onSubmitEditing={() => void addTask()} placeholder={text.placeholder} placeholderTextColor={theme.textMuted} returnKeyType="done" style={[styles.input, { color: theme.text, borderColor: border }]} value={title} /><View style={styles.composerActions}><Button accentColor={action} label={text.save} loading={saving} onPress={() => void addTask()} style={{ backgroundColor: action, borderColor: action }} /><Button label={text.cancel} disabled={saving} onPress={() => { setTitle(''); setShowComposer(false); }} variant="ghost" /></View></ThemedView>}
-    <View style={styles.section}><ThemedText style={[styles.sectionLabel, { color: action }]} type="smallBold">{text.upNext}</ThemedText>{pending.length === 0 ? <EmptyState border={border} icon="checkmark-circle-outline" text={activeTasks.length === 0 ? text.noActive : text.cleared} /> : pending.map((task) => <TaskRow action={action} border={border} disabled={saving} key={task.id} task={task} text={text} onComplete={() => void completeTask(task)} onOpen={() => router.push({ pathname: '/tasks/[taskId]', params: { taskId: task.id } })} />)}</View>
+    {!showComposer ? <Button accentColor={action} fullWidth label={text.add} onPress={() => setShowComposer(true)} style={{ backgroundColor: action, borderColor: action }} /> : <ThemedView style={[styles.composer, { backgroundColor: surface, borderColor: border }]}><ThemedText type="smallBold">{text.newTask}</ThemedText><TextInput accessibilityLabel={text.titleLabel} editable={!saving} autoFocus maxLength={120} onChangeText={setTitle} onSubmitEditing={() => void addTask()} placeholder={text.placeholder} placeholderTextColor={theme.textMuted} returnKeyType="done" style={[styles.input, { color: theme.text, borderColor: border }]} value={title} /><View style={styles.composerActions}><Button accentColor={action} label={text.save} loading={saving} onPress={() => void addTask()} style={{ backgroundColor: action, borderColor: action }} /><Button label={text.cancel} disabled={saving} onPress={() => { setTitle(''); setShowComposer(false); }} variant="ghost" /></View></ThemedView>}
+    <View style={styles.section}><ThemedText style={[styles.sectionLabel, { color: action }]} type="smallBold">{text.upNext}</ThemedText>{pending.length === 0 ? <EmptyState border={border} icon="checkmark-circle-outline" text={activeTasks.length === 0 ? text.noActive : text.cleared} /> : pending.map((task) => <TaskRow action={action} border={border} disabled={saving} key={task.id} task={task} text={text} onComplete={() => void completeTaskItem(task)} onOpen={() => router.push({ pathname: '/tasks/[taskId]', params: { taskId: task.id } })} />)}</View>
     {completed.length > 0 ? <View style={styles.section}><ThemedText style={[styles.sectionLabel, { color: action }]} type="smallBold">{text.completed}</ThemedText>{completed.map((task) => <TaskRow action={action} border={border} text={text} key={task.id} task={task} onOpen={() => router.push({ pathname: '/tasks/[taskId]', params: { taskId: task.id } })} />)}</View> : null}
     {archived.length > 0 ? <><Button accentColor={action} label={`${showArchived ? text.hideArchived : text.showArchived} (${archived.length})`} onPress={() => setShowArchived((current) => !current)} variant="secondary" />{showArchived ? <View style={styles.section}><ThemedText accessibilityRole="header" style={[styles.sectionLabel, { color: action }]} type="smallBold">{text.archived}</ThemedText>{archived.map((task) => <TaskRow action={action} border={border} text={text} key={task.id} task={task} onOpen={() => router.push({ pathname: '/tasks/[taskId]', params: { taskId: task.id } })} />)}</View> : null}</> : null}
   </View></ScrollView></ThemedView>;

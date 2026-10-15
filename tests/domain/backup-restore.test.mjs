@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-const { computeBackupPayloadSha256, createBackupArtifact, decideBackupRestore, restoreBackupAtomically, validateBackupManifest } = await import('../../supabase/functions/_shared/backup-restore.ts');
+const { MAX_BACKUP_PAYLOAD_BYTES, computeBackupPayloadSha256, createBackupArtifact, decideBackupRestore, restoreBackupAtomically, validateBackupManifest } = await import('../../supabase/functions/_shared/backup-restore.ts');
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const SHA = 'a'.repeat(64);
@@ -30,6 +30,18 @@ test('restore rejects foreign, future, mismatched and non-empty targets', () => 
   assert.equal(decideBackupRestore({ manifest: { ...manifest, schemaVersion: 4 }, verifiedOwnerId: OWNER, currentSchemaVersion: 3, computedPayloadSha256: SHA, targetHasData: false }).reason, 'future_schema');
   assert.equal(decideBackupRestore({ manifest, verifiedOwnerId: OWNER, currentSchemaVersion: 3, computedPayloadSha256: 'b'.repeat(64), targetHasData: false }).reason, 'payload_mismatch');
   assert.equal(decideBackupRestore({ manifest, verifiedOwnerId: OWNER, currentSchemaVersion: 3, computedPayloadSha256: SHA, targetHasData: true }).reason, 'overwrite_requires_confirmation');
+});
+
+test('backup boundaries reject runtime identity and digest type confusion', async () => {
+  assert.deepEqual(decideBackupRestore({ manifest, verifiedOwnerId: Symbol('owner'), currentSchemaVersion: 3, computedPayloadSha256: SHA, targetHasData: false }), { allowed: false, reason: 'invalid_manifest' });
+  await assert.rejects(() => createBackupArtifact({ verifiedOwnerId: Symbol('owner'), schemaVersion: 3, createdAt: '2026-10-10T00:00:00.000Z', source: { async readRecords() { return []; } } }), /BACKUP_EXPORT_INVALID/);
+});
+
+test('backup and restore boundaries reject malformed outer inputs and non-boolean overwrite state', async () => {
+  assert.deepEqual(decideBackupRestore(null), { allowed: false, reason: 'invalid_manifest' });
+  assert.deepEqual(decideBackupRestore({ manifest, verifiedOwnerId: OWNER, currentSchemaVersion: 3, computedPayloadSha256: SHA, targetHasData: undefined }), { allowed: false, reason: 'invalid_manifest' });
+  await assert.rejects(() => createBackupArtifact(null), /BACKUP_EXPORT_INVALID/);
+  await assert.rejects(() => restoreBackupAtomically(null), /BACKUP_PAYLOAD_INVALID/);
 });
 
 test('restore admission never performs destructive work', () => {
@@ -106,6 +118,16 @@ test('atomic restore recomputes the payload digest instead of trusting caller me
   assert.equal(calls, 0);
 });
 
+test('atomic restore rejects a manifest record-count mismatch before opening the transaction', async () => {
+  let calls = 0;
+  await assert.rejects(() => restoreBackupAtomically({
+    manifest: { ...recordsManifest, recordCount: records.length + 1 }, verifiedOwnerId: OWNER, currentSchemaVersion: 3, targetHasData: false,
+    payload: records, computedPayloadSha256: recordsSha,
+    transaction: async () => { calls += 1; },
+  }), /BACKUP_PAYLOAD_INVALID/);
+  assert.equal(calls, 0);
+});
+
 test('backup payload digest is canonical and changes when payload data changes', async () => {
   const first = await computeBackupPayloadSha256([{ b: 2, a: 1 }, { nested: { z: true, y: false } }]);
   const reordered = await computeBackupPayloadSha256([{ a: 1, b: 2 }, { nested: { y: false, z: true } }]);
@@ -113,6 +135,42 @@ test('backup payload digest is canonical and changes when payload data changes',
   assert.equal(first, reordered);
   assert.notEqual(first, changed);
   assert.match(first, /^[a-f0-9]{64}$/);
+});
+
+test('backup digest rejects values that cannot be represented safely as JSON', async () => {
+  for (const value of [undefined, Number.NaN, Number.POSITIVE_INFINITY, 1n, new Date('2026-10-10T00:00:00.000Z')]) {
+    await assert.rejects(() => computeBackupPayloadSha256([{ value }]), /BACKUP_PAYLOAD_INVALID/);
+  }
+});
+
+test('backup digest rejects sparse, symbol-bearing, and extra-property arrays', async () => {
+  const sparse = []; sparse[1] = 'gap';
+  const symbolBearing = []; symbolBearing.push('value'); symbolBearing[Symbol('metadata')] = 'hidden';
+  const extra = []; extra.push('value'); extra.note = 'hidden';
+  for (const value of [sparse, symbolBearing, extra]) {
+    await assert.rejects(() => computeBackupPayloadSha256([{ values: value }]), /BACKUP_PAYLOAD_INVALID/);
+  }
+});
+
+test('backup digest rejects an oversized payload before hashing or restore', async () => {
+  await assert.rejects(() => computeBackupPayloadSha256([{ value: 'x'.repeat(MAX_BACKUP_PAYLOAD_BYTES) }]), /BACKUP_PAYLOAD_TOO_LARGE/);
+  let writes = 0;
+  const payload = [{ ...records[0], data: { value: 'x'.repeat(MAX_BACKUP_PAYLOAD_BYTES) } }];
+  await assert.rejects(() => restoreBackupAtomically({
+    manifest: { ...recordsManifest, recordCount: 1 }, verifiedOwnerId: OWNER, currentSchemaVersion: 3, targetHasData: false,
+    payload, computedPayloadSha256: SHA, transaction: async () => { writes += 1; },
+  }), /BACKUP_PAYLOAD_TOO_LARGE/);
+  assert.equal(writes, 0);
+});
+
+test('restore rejects an over-count payload before digesting or writing', async () => {
+  let writes = 0;
+  const payload = Array.from({ length: 10001 }, () => records[0]);
+  await assert.rejects(() => restoreBackupAtomically({
+    manifest: recordsManifest, verifiedOwnerId: OWNER, currentSchemaVersion: 3, targetHasData: false,
+    payload, computedPayloadSha256: SHA, transaction: async () => { writes += 1; },
+  }), /BACKUP_PAYLOAD_INVALID/);
+  assert.equal(writes, 0);
 });
 
 test('backup export reads only the verified owner and binds manifest to the returned payload', async () => {

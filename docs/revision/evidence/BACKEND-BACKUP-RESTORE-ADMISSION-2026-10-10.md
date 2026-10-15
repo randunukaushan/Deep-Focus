@@ -18,6 +18,11 @@ backup scope සහ production restore policy කිසිවක් මෙයි
   පමණක් යවයි; callback failure caller වෙත propagate වේ.
 - Canonical JSON SHA-256 helper එක key-order වෙනසෙන් independent ලෙස payload
   digest ගණනය කරයි; data වෙනස් වුණොත් digest එක වෙනස් වේ.
+- Canonical digest input එක JSON-safe primitive, array සහ plain object values
+  වලට පමණක් සීමා කරයි; `undefined`, non-finite numbers, `bigint` සහ custom
+  objects fail-closed වේ.
+- The canonical UTF-8 payload is bounded to 8 MiB before hashing, so the
+  record-count limit cannot be bypassed with a few oversized record fields.
 - Atomic restore path එක caller-supplied digest එක පමණක් විශ්වාස නොකර payload
   එකම නැවත hash කර manifest සහ computed digest දෙකම ගැළපෙන බව පරීක්ෂා කරයි.
 - Backup export candidate එක verified owner එකට පමණක් source read කර record
@@ -30,16 +35,10 @@ backup scope සහ production restore policy කිසිවක් මෙයි
 ## Actual checks
 
 - `node --experimental-strip-types --test tests/domain/backup-restore.test.mjs` —
-  **11/11 PASS**.
+  **18/18 PASS**.
 - TypeScript — **PASS**.
 - Affected-file ESLint — **PASS**.
-- Full bundled-runtime repository suite after subsequent slices — **344/344 PASS**.
-
-## Retry coverage follow-up — 2026-10-10
-
-- Backup/restore focused checks — **12/12 PASS**.
-- Full bundled-runtime repository suite — **650/650 PASS**.
-- TypeScript and affected ESLint — **PASS**.
+- Latest full bundled-runtime repository suite — **1454 tests: 1448 PASS, 0 FAIL, 6 SKIPPED** across **258** test files. The six skipped cases are PGlite-backed PostgreSQL integration tests.
 
 ## Remaining gates
 

@@ -12,6 +12,8 @@ import type { DomainMutationStore, DomainMutationTransaction } from './domain-mu
 import type { MutationReceipt } from './mutation-guard.ts';
 // @ts-expect-error The Edge runtime and domain test loader resolve TypeScript modules directly.
 import { recheckPostgresAppSession } from './postgres-session-guard.ts';
+// @ts-expect-error The Edge runtime and domain test loader resolve TypeScript modules directly.
+import { isBoundedJsonResponse, isPlainJsonValueForBoundary, stringifyBoundedJsonResponse } from './json-response-boundary.ts';
 
 export type PostgresQueryResult<Row extends Record<string, unknown> = Record<string, unknown>> = { rows: Row[] };
 
@@ -55,12 +57,20 @@ type ReceiptRow = {
   response_status: number;
 };
 
+const SHA256 = /^[a-f0-9]{64}$/;
+function validRunner(value: unknown): value is PostgresTransactionRunner {
+  return Boolean(value) && typeof value === 'object' && typeof (value as PostgresTransactionRunner).withTransaction === 'function';
+}
+
 function asReceipt(row: ReceiptRow, expected: { ownerId: string; operation: string; mutationId: string }): MutationReceipt {
-  if (!row || row.owner_id !== expected.ownerId || row.operation !== expected.operation || row.mutation_id !== expected.mutationId
+  if (!isRecord(row) || row.owner_id !== expected.ownerId || row.operation !== expected.operation || row.mutation_id !== expected.mutationId
     || typeof row.owner_id !== 'string' || typeof row.operation !== 'string'
-    || typeof row.mutation_id !== 'string' || typeof row.request_sha256 !== 'string'
-    || !row.response_body || typeof row.response_body !== 'object' || Array.isArray(row.response_body)
-    || !Number.isInteger(row.response_status)) {
+    || typeof row.mutation_id !== 'string' || typeof row.request_sha256 !== 'string' || !SHA256.test(row.request_sha256)
+    || !isBoundedJsonResponse(row.response_body)
+    || !Number.isInteger(row.response_status) || row.response_status < 200 || row.response_status > 299) {
+    throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE');
+  }
+  if (stringifyBoundedJsonResponse(row.response_body) === null) {
     throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE');
   }
   return {
@@ -73,11 +83,22 @@ function asReceipt(row: ReceiptRow, expected: { ownerId: string; operation: stri
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> { return Boolean(value) && typeof value === 'object' && !Array.isArray(value); }
+function resultRows(result: unknown): unknown[] {
+  if (!isRecord(result) || !Array.isArray(result.rows) || !isPlainJsonValueForBoundary(result.rows)) throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE');
+  return result.rows;
+}
+
 export function createPostgresDomainMutationStore(input: {
   runner: PostgresTransactionRunner;
   applyMutation: PostgresMutationApplier;
   writeSyncChange?: PostgresSyncChangeWriter;
 }): DomainMutationStore {
+  if (!input || typeof input !== 'object' || !validRunner(input.runner)
+    || typeof input.applyMutation !== 'function'
+    || (input.writeSyncChange !== undefined && typeof input.writeSyncChange !== 'function')) {
+    throw new SafeBoundaryError(422, 'VALIDATION_FAILED');
+  }
   return {
     withTransaction: async <T>(operation: (transaction: DomainMutationTransaction) => Promise<T>) => input.runner.withTransaction(async (client) => {
       const transaction: DomainMutationTransaction = {
@@ -92,14 +113,16 @@ export function createPostgresDomainMutationStore(input: {
              for update`,
             [actorId],
           );
-          if (profile.rows.length !== 1 || profile.rows[0]?.owner_id !== actorId || profile.rows[0]?.account_state !== 'active') {
+          const profileRows = resultRows(profile);
+          if (profileRows.length !== 1 || !isRecord(profileRows[0]) || profileRows[0].owner_id !== actorId || profileRows[0].account_state !== 'active') {
             throw new SafeBoundaryError(403, 'ACCESS_DENIED');
           }
           const result = await client.query<{ owner_id: string }>(
             'select owner_id from df_private.sync_heads where owner_id = $1 for update',
             [actorId],
           );
-          if (result.rows.length !== 1 || result.rows[0]?.owner_id !== actorId) {
+          const headRows = resultRows(result);
+          if (headRows.length !== 1 || !isRecord(headRows[0]) || headRows[0].owner_id !== actorId) {
             throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE');
           }
         },
@@ -110,29 +133,37 @@ export function createPostgresDomainMutationStore(input: {
              where owner_id = $1 and operation = $2 and mutation_id = $3`,
             [actorId, operationName, mutationId],
           );
-          return result.rows.length === 0 ? null : asReceipt(result.rows[0], { ownerId: actorId, operation: operationName, mutationId });
+          const rows = resultRows(result);
+          if (rows.length === 0) return null;
+          if (rows.length !== 1) throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE');
+          return asReceipt(rows[0] as ReceiptRow, { ownerId: actorId, operation: operationName, mutationId });
         },
         apply: async (mutation) => {
           const applied = await input.applyMutation(client, mutation);
           let responseBody = applied.responseBody;
           if (input.writeSyncChange) {
             const committedThrough = await input.writeSyncChange(client, mutation, applied);
-            if (!/^\d+$/.test(committedThrough)) throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE');
+            if (typeof committedThrough !== 'string' || !/^\d+$/.test(committedThrough)) throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE');
             if (applied.finalizeResponse) responseBody = applied.finalizeResponse(committedThrough);
           }
           return { ...applied, responseBody };
         },
         writeReceipt: async (receipt) => {
-          const inserted = await client.query<{ owner_id: string; operation: string; mutation_id: string }>(
+          const inserted = await client.query(
             `insert into df_private.mutation_receipts
              (owner_id, operation, mutation_id, request_sha256, response_body, response_status)
              values ($1, $2, $3, $4, $5::jsonb, $6)
-             returning owner_id, operation, mutation_id`,
+             returning owner_id, operation, mutation_id, request_sha256, response_body, response_status`,
             [receipt.ownerId, receipt.operation, receipt.mutationId, receipt.requestSha256, JSON.stringify(receipt.responseBody), receipt.responseStatus],
           );
-          if (inserted.rows.length !== 1 || inserted.rows[0]?.owner_id !== receipt.ownerId || inserted.rows[0]?.operation !== receipt.operation || inserted.rows[0]?.mutation_id !== receipt.mutationId) {
+          const insertedRows = resultRows(inserted);
+          if (insertedRows.length !== 1) {
             throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE');
           }
+          const stored = asReceipt(insertedRows[0] as ReceiptRow, { ownerId: receipt.ownerId, operation: receipt.operation, mutationId: receipt.mutationId });
+          if (stored.requestSha256 !== receipt.requestSha256
+            || JSON.stringify(stored.responseBody) !== JSON.stringify(receipt.responseBody)
+            || stored.responseStatus !== receipt.responseStatus) throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE');
         },
       };
       return operation(transaction);

@@ -2,6 +2,11 @@
 
 const CONTROL = /[\u0000-\u001f\u007f]/;
 const SAFE_CODE = /^[A-Z][A-Z0-9_]{0,79}$/;
+const SAFE_STATUSES = new Set([400, 401, 403, 404, 409, 410, 422, 429, 503]);
+
+function isSafeCode(value: unknown): value is string {
+  return typeof value === 'string' && SAFE_CODE.test(value);
+}
 
 export class SafeBoundaryError extends Error {
   readonly code: string;
@@ -9,10 +14,10 @@ export class SafeBoundaryError extends Error {
   readonly retryAfterSeconds?: number;
 
   constructor(status: SafeBoundaryError['status'], code: string, options?: { retryAfterSeconds?: number }) {
-    super(code);
+    super(typeof code === 'string' ? code : 'DEPENDENCY_UNAVAILABLE');
     this.name = 'SafeBoundaryError';
-    this.status = status;
-    this.code = SAFE_CODE.test(code) ? code : 'DEPENDENCY_UNAVAILABLE';
+    this.status = SAFE_STATUSES.has(status as number) ? status : 503;
+    this.code = isSafeCode(code) ? code : 'DEPENDENCY_UNAVAILABLE';
     if (options?.retryAfterSeconds !== undefined && Number.isSafeInteger(options.retryAfterSeconds)
       && options.retryAfterSeconds >= 0 && options.retryAfterSeconds <= 86_400) {
       this.retryAfterSeconds = options.retryAfterSeconds;
@@ -21,7 +26,7 @@ export class SafeBoundaryError extends Error {
 }
 
 export function requireServerSecret(env: Record<string, string | undefined>, name: string): string {
-  if (!/^[A-Z][A-Z0-9_]*$/.test(name) || name.startsWith('EXPO_PUBLIC_') || name.startsWith('NEXT_PUBLIC_')) {
+  if (typeof name !== 'string' || !/^[A-Z][A-Z0-9_]*$/.test(name) || name.startsWith('EXPO_PUBLIC_') || name.startsWith('NEXT_PUBLIC_')) {
     throw new Error('SERVER_SECRET_NAME_INVALID');
   }
   const value = env[name];
@@ -55,8 +60,9 @@ export function safeBoundaryLog(input: {
   error: unknown;
   requestId?: string;
 }): { event: string; status: number; code: string; retryable: boolean; requestId?: string } {
-  if (!/^[a-z][a-z0-9_.-]{0,63}$/.test(input.event)) throw new RangeError('LOG_EVENT_INVALID');
-  if (input.requestId !== undefined && (!/^[A-Za-z0-9_-]{1,128}$/.test(input.requestId))) throw new RangeError('LOG_REQUEST_ID_INVALID');
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new RangeError('LOG_INPUT_INVALID');
+  if (typeof input.event !== 'string' || !/^[a-z][a-z0-9_.-]{0,63}$/.test(input.event)) throw new RangeError('LOG_EVENT_INVALID');
+  if (input.requestId !== undefined && (typeof input.requestId !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(input.requestId))) throw new RangeError('LOG_REQUEST_ID_INVALID');
   const mapped = publicBoundaryError(input.error);
   return {
     event: input.event,

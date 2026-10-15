@@ -4,6 +4,8 @@ import { createRequire } from 'node:module';
 import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 
+import * as breakEngine from '../../src/features/focus/break-engine.ts';
+
 const ts = createRequire(import.meta.url)('typescript');
 const source = readFileSync(new URL('../../src/app/focus/break.tsx', import.meta.url), 'utf8');
 const { outputText } = ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } });
@@ -20,9 +22,10 @@ function fixture({ failure = false, duration = 10, retryFailure = false } = {}) 
     'react/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
     'expo-router': { useRouter: () => ({ back() {}, replace(value) { replaced = value; } }) },
     '@expo/vector-icons': { Ionicons: 'Icon' },
-    'react-native': { Pressable: 'Pressable', ScrollView: 'ScrollView', StyleSheet: { create: value => value }, View: 'View' },
+    'react-native': { AppState: { addEventListener: () => ({ remove() {} }) }, Pressable: 'Pressable', ScrollView: 'ScrollView', StyleSheet: { create: value => value }, View: 'View' },
     '@/components/themed-text': { ThemedText: 'Text' }, '@/components/themed-view': { ThemedView: 'View' }, '@/components/ui/button': { Button: 'Button' },
     '@/features/settings/settings-storage': { async loadSettings() { reads++; if (failure || (retryFailure && reads > 1)) throw Error('private settings details'); return { defaultFocusDurationMinutes: 25, defaultBreakDurationMinutes: duration }; } },
+    '@/features/focus/break-engine': breakEngine,
     '@/features/localization/break-copy': { getBreakCopy: () => ({ back: 'Back to focus session', title: 'Make room to recover.', subtitle: 'A break is part of the work. Step away, breathe, and return when your attention feels ready.', eyebrow: 'OPTIONAL BREAK', choose: 'Choose a gentle pause.', loading: 'Loading your saved break choice…', error: 'Your saved break choice couldn’t be read. Try again, or choose a length below; choosing here won’t overwrite your saved preference.', retry: 'Retry saved choice', complete: 'Break complete.', settle: 'Let your attention settle.', durationLabel: 'Choose a break duration', minuteUnit: 'minute break', water: 'Drink some water', move: 'Move away from the screen', rest: 'Let your eyes rest', resume: 'Resume Focus', start: 'Start', skip: 'Skip Break', note: 'Your focus session remains paused until you choose to resume.' }) },
     '@/features/localization/app-locale-context': { useAppLocale: () => ({ locale: 'en' }) },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },

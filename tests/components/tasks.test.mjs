@@ -10,7 +10,7 @@ const { outputText } = ts.transpileModule(readFileSync(new URL('../../src/app/ta
 });
 
 // Actual route handlers with a bounded hook/JSX model; not a native renderer.
-function fixture({ tasks = [], loadFailures = 0, saveFailures = 0, save } = {}) {
+function fixture({ tasks = [], loadFailures = 0, saveFailures = 0, completionFailures = 0, save } = {}) {
   const slots = [];
   let cursor = 0, effect, mounted = false, tree, writes = 0;
   const dependencies = {
@@ -34,6 +34,16 @@ function fixture({ tasks = [], loadFailures = 0, saveFailures = 0, save } = {}) 
     '@/features/tasks/task-storage': {
       async loadTasks() { if (loadFailures-- > 0) throw Error('read failed'); return tasks; },
       async saveTasks(next) { writes++; if (saveFailures-- > 0) throw Error('write failed'); if (save) await save(); tasks = next; },
+      async completeTask(id, expectedUpdatedAt) {
+        writes++;
+        if (completionFailures-- > 0) throw Error('completion failed');
+        const existing = tasks.find(task => task.id === id);
+        if (!existing || (existing.status !== 'completed' && existing.updatedAt !== expectedUpdatedAt)) return null;
+        if (existing.status === 'completed') return { task: existing, outcome: 'already_completed' };
+        const task = { ...existing, status: 'completed', completedAt: '2026-10-07T01:00:00.000Z', updatedAt: '2026-10-07T01:00:00.000Z' };
+        tasks = tasks.map(current => current.id === id ? task : current);
+        return { task, outcome: 'completed' };
+      },
     },
   };
   const exports = {};
@@ -71,7 +81,7 @@ test('Tasks keeps draft and list unchanged after failed add, then explicit retry
 });
 
 test('Tasks failed completion does not show a completed task', async () => {
-  const app = fixture({ tasks: [{ id: 'a', title: 'Existing', status: 'pending' }], saveFailures: 1 });
+  const app = fixture({ tasks: [{ id: 'a', title: 'Existing', status: 'pending' }], completionFailures: 1 });
   app.render(); await app.settle();
   app.find('Complete Existing').props.onPress(); await app.settle();
   assert.ok(app.find('Existing, ready for focus'));

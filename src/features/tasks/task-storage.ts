@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 
 import type { Task } from './task-types';
-import { deleteTask as deleteLocalTask, loadTasks as loadLocalTasks, saveTasks as saveLocalTasks, updateTaskArchive as updateLocalTaskArchive, updateTaskDetails as updateLocalTaskDetails, updateTaskTitle as updateLocalTaskTitle } from '@/features/storage/local-database';
+import { completeTask as completeLocalTask, deleteTask as deleteLocalTask, loadTasks as loadLocalTasks, saveTasks as saveLocalTasks, updateTaskArchive as updateLocalTaskArchive, updateTaskDetails as updateLocalTaskDetails, updateTaskTitle as updateLocalTaskTitle } from '@/features/storage/local-database';
 
 export async function loadTasks(): Promise<Task[]> {
   if (Platform.OS === 'web') return [];
@@ -16,6 +16,11 @@ export async function saveTasks(tasks: Task[]) {
 export async function updateTaskTitle(taskId: string, expectedUpdatedAt: string, title: string): Promise<string | null> {
   if (Platform.OS === 'web') return null;
   return updateLocalTaskTitle(taskId, expectedUpdatedAt, title);
+}
+
+export async function completeTask(taskId: string, expectedUpdatedAt: string): Promise<{ task: Task; outcome: 'completed' | 'already_completed' } | null> {
+  if (Platform.OS === 'web') return null;
+  return completeLocalTask(taskId, expectedUpdatedAt);
 }
 
 export async function updateTaskDetails(taskId: string, expectedUpdatedAt: string, title: string, description: string, priority: Task['priority'], goalId?: string | null, dueAt?: string | null): Promise<string | null> {

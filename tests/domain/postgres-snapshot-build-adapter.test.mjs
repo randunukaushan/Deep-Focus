@@ -66,6 +66,11 @@ test('builder validates cursor configuration before opening a staging transactio
   assert.equal(h.calls.length, 0);
 });
 
+test('builder rejects an invalid transaction runner at construction', () => {
+  assert.throws(() => createPostgresSnapshotBuilder({ runner: null }), /VALIDATION_FAILED/);
+  assert.throws(() => createPostgresSnapshotBuilder({ runner: { withTransaction: 'not-callable' } }), /VALIDATION_FAILED/);
+});
+
 test('builder propagates staging failures and never reports a ready result', async () => {
   const h = runnerHarness();
   const failingRunner = { withTransaction: async () => { throw new Error('STAGE_FAILED'); } };

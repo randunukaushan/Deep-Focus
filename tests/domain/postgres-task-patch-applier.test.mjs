@@ -80,3 +80,20 @@ test('patchTask rejects foreign returned update ownership metadata', async () =>
     body: { expectedVersion: 2, title: 'New title' },
   }), /DEPENDENCY_UNAVAILABLE/);
 });
+
+test('patchTask rejects malformed client, actor and resource before storage', async () => {
+  const body = { expectedVersion: 2, title: 'New title' };
+  await assert.rejects(() => applyPatchTask({ query: null }, { actorId: OWNER, operation: 'patchTask', mutationId: MUTATION, resourceId: TASK, requestSha256: HASH, body }), /DEPENDENCY_UNAVAILABLE/);
+  let opened = false;
+  const client = { query: async () => { opened = true; return { rows: [] }; } };
+  await assert.rejects(() => applyPatchTask(client, { actorId: Symbol('actor'), operation: 'patchTask', mutationId: MUTATION, resourceId: TASK, requestSha256: HASH, body }), /VALIDATION_FAILED/);
+  await assert.rejects(() => applyPatchTask(client, { actorId: OWNER, operation: 'patchTask', mutationId: MUTATION, resourceId: Symbol('resource'), requestSha256: HASH, body }), /VALIDATION_FAILED/);
+  assert.equal(opened, false);
+});
+
+test('patchTask fails closed on malformed or ambiguous database results', async () => {
+  const malformed = { query: async () => ({ rows: null }) };
+  await assert.rejects(() => applyPatchTask(malformed, { actorId: OWNER, operation: 'patchTask', mutationId: MUTATION, resourceId: TASK, requestSha256: HASH, body: { expectedVersion: 2, title: 'New' } }), /DEPENDENCY_UNAVAILABLE/);
+  const duplicate = { query: async () => ({ rows: [{ id: TASK, owner_id: OWNER, version: 3, status: 'pending' }, { id: TASK, owner_id: OWNER, version: 3, status: 'pending' }] }) };
+  await assert.rejects(() => applyPatchTask(duplicate, { actorId: OWNER, operation: 'patchTask', mutationId: MUTATION, resourceId: TASK, requestSha256: HASH, body: { expectedVersion: 2, title: 'New' } }), /DEPENDENCY_UNAVAILABLE/);
+});

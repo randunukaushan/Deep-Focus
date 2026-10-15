@@ -31,6 +31,38 @@ test('malformed allowance and unsafe unit requests never produce a grant', () =>
   assert.equal(decideUsageReservation({ admission, allowance, verifiedActorId: OWNER, capability: 'ai', units: 1001 }).reason, 'invalid_request');
 });
 
+test('usage reservation rejects an allowance from a different entitlement policy version', () => {
+  const result = decideUsageReservation({
+    admission,
+    allowance: { ...allowance, policyVersion: 'stale-policy' },
+    verifiedActorId: OWNER,
+    capability: 'ai',
+    units: 1,
+  });
+  assert.deepEqual(result, { allowed: false, reason: 'invalid_allowance' });
+});
+
+test('usage reservation rejects an untrusted runtime capability before granting units', () => {
+  const result = decideUsageReservation({
+    admission: { allowed: true, ownerId: OWNER, capability: 'ai', policyVersion: 'v1' },
+    allowance, verifiedActorId: OWNER, capability: 'billing', units: 1,
+  });
+  assert.deepEqual(result, { allowed: false, reason: 'invalid_request' });
+});
+
+test('usage reservation and settlement safely reject unsafe runtime identity types', async () => {
+  const receiptId = '66666666-6666-4666-8666-666666666666';
+  const store = {
+    async readReceipt() { assert.fail('unsafe identity must stop before receipt reads'); },
+    async readAllowance() { assert.fail('unsafe identity must stop before allowance reads'); },
+    async commitReservation() { assert.fail('unsafe identity must not write'); },
+    async commitSettlement() { assert.fail('unsafe identity must not write'); },
+  };
+  assert.deepEqual(await reserveUsageAtomically({ admission, verifiedActorId: Symbol('owner'), capability: 'ai', periodKey: '2026-10', units: 1, receiptId, store }), { allowed: false, reason: 'invalid_request' });
+  assert.deepEqual(await settleUsageReceipt({ verifiedActorId: OWNER, receiptId: Symbol('receipt'), action: 'consume', store }), { allowed: false, reason: 'invalid_request' });
+  assert.deepEqual(await reserveUsageAtomically({ admission, verifiedActorId: OWNER, capability: 'ai', periodKey: Symbol('period'), units: 1, receiptId, store }), { allowed: false, reason: 'invalid_request' });
+});
+
 test('usage decision exposes no prices, providers or client-controlled counters', () => {
   const result = decideUsageReservation({ admission, allowance, verifiedActorId: OWNER, capability: 'ai', units: 1 });
   assert.deepEqual(Object.keys(result).sort(), ['allowed', 'capability', 'ownerId', 'periodKey', 'policyVersion', 'remainingUnits', 'units']);
@@ -76,6 +108,16 @@ test('reserved usage can be consumed or released once, with safe replay and tran
   assert.equal(commits, 1);
 });
 
+test('settlement rejects an unknown action before reading or writing a receipt', async () => {
+  let reads = 0;
+  const store = {
+    async readReceipt() { reads += 1; return null; },
+    async commitSettlement() { assert.fail('invalid action must not write'); },
+  };
+  assert.deepEqual(await settleUsageReceipt({ verifiedActorId: OWNER, receiptId: '88888888-8888-4888-8888-888888888888', action: 'unknown', store }), { allowed: false, reason: 'invalid_request' });
+  assert.equal(reads, 0);
+});
+
 test('settled reservation replay cannot call the provider again', async () => {
   const receiptId = '99999999-9999-4999-8999-999999999999';
   let providerCalls = 0;
@@ -83,6 +125,20 @@ test('settled reservation replay cannot call the provider again', async () => {
   const result = await executeReservedUsage({ receiptId, reserve, execute: async () => { providerCalls += 1; return 'should-not-run'; }, settle: async () => ({ allowed: true, receiptId, ownerId: OWNER, status: 'consumed' }) });
   assert.deepEqual(result, { allowed: false, reason: 'reservation_denied' });
   assert.equal(providerCalls, 0);
+});
+
+test('reserved reservation replay does not make a second provider call', async () => {
+  let providerCalls = 0;
+  let settlementCalls = 0;
+  const result = await executeReservedUsage({
+    receiptId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    reserve: async () => ({ allowed: true, replayed: true, ownerId: OWNER, capability: 'ai', periodKey: '2026-10', units: 1, remainingUnits: 1, policyVersion: 'v1' }),
+    execute: async () => { providerCalls += 1; return 'must-not-run'; },
+    settle: async () => { settlementCalls += 1; return { allowed: true, receiptId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', ownerId: OWNER, status: 'released' }; },
+  });
+  assert.deepEqual(result, { allowed: false, reason: 'reservation_in_progress' });
+  assert.equal(providerCalls, 0);
+  assert.equal(settlementCalls, 0);
 });
 
 test('reserved provider success consumes usage, while provider failure releases it', async () => {

@@ -39,7 +39,7 @@ test('SQLite v8 persists assignment drafts and rejects stale revisions', async (
   const db = makeDatabaseAdapter(); t.after(() => db.close());
   const store = createAccountLocalDatabaseStore(USER_A, dependencies(db));
   assert.equal(await store.saveTeacherAssignmentDraft(draft()), true);
-  assert.equal(db.database.prepare('PRAGMA user_version').get().user_version, 12);
+  assert.equal(db.database.prepare('PRAGMA user_version').get().user_version, 14);
   assert.equal(await store.saveTeacherAssignmentDraft(draft()), false);
   assert.equal(await store.saveTeacherAssignmentDraft({ ...draft(2), title: 'Algebra revision' }), true);
   assert.deepEqual(await store.loadTeacherAssignmentDrafts(), [{ ...draft(2), title: 'Algebra revision' }]);

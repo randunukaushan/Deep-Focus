@@ -105,13 +105,19 @@ export default function ProgressRoute() {
             <>
               <ThemedText accessibilityLiveRegion="polite" themeColor="textSecondary" type="small">{text.calendar.replace('{zone}', Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC')}</ThemedText>
               <View accessibilityRole="tablist" accessibilityLabel={text.title} style={styles.filters}>
-                {(['week', 'month', 'all'] as const).map((option) => <Pressable key={option} accessibilityRole="tab" accessibilityState={{ selected: window === option }} onPress={() => setWindow(option)} style={[styles.filter, { borderColor: action, backgroundColor: window === option ? action : 'transparent' }]}><ThemedText type="smallBold" style={{ color: window === option ? Palette.deepNavy : action }}>{option === 'week' ? text.week : option === 'month' ? text.month : text.allTime}</ThemedText></Pressable>)}
+                {(['today', 'week', 'month', 'all'] as const).map((option) => <Pressable key={option} accessibilityRole="tab" accessibilityState={{ selected: window === option }} onPress={() => setWindow(option)} style={[styles.filter, { borderColor: action, backgroundColor: window === option ? action : 'transparent' }]}><ThemedText type="smallBold" style={{ color: window === option ? Palette.deepNavy : action }}>{option === 'today' ? text.today : option === 'week' ? text.week : option === 'month' ? text.month : text.allTime}</ThemedText></Pressable>)}
               </View>
               <View style={styles.metrics}>
                 <Metric action={action} border={border} icon="time-outline" label={text.focusTime} value={formatSessionDuration(summary.focusedSeconds)} />
                 <Metric action={action} border={border} icon="checkmark-circle-outline" label={text.sessions} value={String(summary.completedSessions)} />
                 <Metric action={action} border={border} icon="checkbox-outline" label={text.tasksDone} value={String(summary.completedTasks)} />
               </View>
+              <View style={styles.metrics}>
+                <Metric action={action} border={border} icon="speedometer-outline" label={text.average} value={formatSessionDuration(summary.averageCompletedFocusSeconds)} />
+                <Metric action={action} border={border} icon="git-compare-outline" label={text.focusPlan} value={summary.focusPlanRatio === null ? '—' : `${Math.round(summary.focusPlanRatio * 100)}%`} />
+                <Metric action={action} border={border} icon="stats-chart-outline" label={text.taskRate} value={summary.totalTasks ? `${Math.round(summary.taskCompletionRate * 100)}%` : '—'} />
+              </View>
+              <ThemedView accessibilityLabel={`${text.streak}: ${summary.streak.currentStreakDays}; ${text.longestStreak}: ${summary.streak.longestStreakDays}`} style={[styles.insightCard, { backgroundColor: surface, borderColor: border }]}><Ionicons color={action} name="flame-outline" size={25} /><ThemedText type="smallBold">{text.streak}: {summary.streak.currentStreakDays}</ThemedText><ThemedText themeColor="textSecondary">{text.longestStreak}: {summary.streak.longestStreakDays}</ThemedText></ThemedView>
               <ThemedView accessibilityLabel={`${summary.completedSessions} ${text.sessionsWord}; ${formatSessionDuration(summary.focusedSeconds)} ${text.focusTime}`} style={[styles.insightCard, { backgroundColor: surface, borderColor: border }]}>
                 <View style={[styles.largeIcon, { backgroundColor: softAction }]}><Ionicons color={action} name="leaf-outline" size={25} /></View>
                 <View style={styles.insightCopy}><ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">{text.insightEyebrow}</ThemedText><ThemedText type="subtitle" style={styles.cardTitle}>{summary.completedSessions === 1 ? text.oneBlock : `${summary.completedSessions} ${text.blocks}`}</ThemedText><ThemedText themeColor="textSecondary">{text.insightDetail}</ThemedText></View>

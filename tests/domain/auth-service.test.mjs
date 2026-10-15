@@ -65,6 +65,13 @@ test('Google OAuth uses PKCE redirect and rejects cancellation or missing exchan
   assert.equal(missingSession.calls.filter((call) => call.name === 'exchangeCodeForSession').length, 1);
 });
 
+test('Google OAuth rejects a callback code from an unexpected origin before exchange', async () => {
+  const client = makeClient();
+  const result = await createAuthService({ client: client.client, redirectUrl, openAuthSession: async () => ({ type: 'success', url: 'https://attacker.example/auth/callback?code=stolen' }) }).signInWithGoogle();
+  assert.equal(result.status, 'error');
+  assert.equal(client.calls.filter((call) => call.name === 'exchangeCodeForSession').length, 0);
+});
+
 test('Apple exchanges a hashed nonce credential with the original raw nonce', async () => {
   const { client, calls } = makeClient();
   const service = createAuthService({

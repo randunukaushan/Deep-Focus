@@ -3,6 +3,8 @@
 // @ts-expect-error The Edge runtime and domain test loader resolve TypeScript modules directly.
 import { SafeBoundaryError } from './server-boundary.ts';
 import type { PostgresMutationApplyInput, PostgresTransactionClient } from './postgres-domain-mutation-adapter.ts';
+// @ts-expect-error The Edge runtime and domain test loader resolve TypeScript modules directly.
+import { isPlainJsonValueForBoundary } from './json-response-boundary.ts';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PRIORITIES = new Set([null, 'low', 'medium', 'high']);
@@ -13,6 +15,18 @@ const ACTIONS = new Set(['begin', 'complete', 'cancel', 'archive']);
 const ACTION_FIELDS = new Set(['id', 'expectedVersion', 'action', 'occurredAt']);
 
 function invalid(): never { throw new SafeBoundaryError(422, 'VALIDATION_FAILED'); }
+function unavailable(): never { throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE'); }
+function isRecord(value: unknown): value is Record<string, unknown> { return Boolean(value) && typeof value === 'object' && !Array.isArray(value); }
+function queryRows<T = Record<string, unknown>>(result: unknown): T[] {
+  if (!isRecord(result) || !Array.isArray(result.rows) || !isPlainJsonValueForBoundary(result.rows)) unavailable();
+  return result.rows as T[];
+}
+function isUuid(value: unknown): value is string { return typeof value === 'string' && UUID.test(value); }
+function validateTaskMutationBoundary(client: unknown, input: unknown, operation: string, requiresResource = true): asserts input is PostgresMutationApplyInput {
+  if (!isRecord(client) || typeof client.query !== 'function') unavailable();
+  if (!isRecord(input) || input.operation !== operation || !isRecord(input.body) || !isUuid(input.actorId)
+    || (requiresResource && !isUuid(input.resourceId))) invalid();
+}
 function text(value: unknown, max: number, required = false): string | null {
   if (value === null || value === undefined) { if (required) invalid(); return null; }
   if (typeof value !== 'string' || value.length > max || (required && (!value.length || !/\S/.test(value)))) invalid();
@@ -44,7 +58,8 @@ function due(value: unknown): { kind: 'none' | 'date' | 'instant'; date: string 
 }
 
 export async function applyCreateTask(client: PostgresTransactionClient, input: PostgresMutationApplyInput): Promise<{ responseBody: Record<string, unknown>; responseStatus: 201 }> {
-  if (input.operation !== 'createTask' || !input.body || Array.isArray(input.body)) invalid();
+  if (!isRecord(client) || typeof client.query !== 'function') unavailable();
+  if (!isRecord(input) || input.operation !== 'createTask' || !isRecord(input.body) || !isUuid(input.actorId)) invalid();
   const body = input.body as Record<string, unknown>;
   if (Object.keys(body).some((key) => !ALLOWED_FIELDS.has(key))) invalid();
   const id = uuid(body.id);
@@ -59,14 +74,16 @@ export async function applyCreateTask(client: PostgresTransactionClient, input: 
     `select owner_id, id from df_private.workspaces where id = $1 and owner_id = $2`,
     [workspaceId, input.actorId],
   );
-  if (workspace.rows.length !== 1 || workspace.rows[0]?.owner_id !== input.actorId || workspace.rows[0]?.id !== workspaceId) throw new SafeBoundaryError(404, 'NOT_FOUND');
+  const workspaceRows = queryRows(workspace);
+  if (workspaceRows.length !== 1 || !isRecord(workspaceRows[0]) || workspaceRows[0].owner_id !== input.actorId || workspaceRows[0].id !== workspaceId) throw new SafeBoundaryError(404, 'NOT_FOUND');
   if (goalId !== null) {
     const goal = await client.query<{ owner_id: string; workspace_id: string; id: string }>(
       `select owner_id, workspace_id, id from df_private.goals
        where id = $1 and owner_id = $2 and workspace_id = $3 and deleted_at is null`,
       [goalId, input.actorId, workspaceId],
     );
-    if (goal.rows.length !== 1 || goal.rows[0]?.owner_id !== input.actorId || goal.rows[0]?.workspace_id !== workspaceId || goal.rows[0]?.id !== goalId) throw new SafeBoundaryError(404, 'NOT_FOUND');
+    const goalRows = queryRows(goal);
+    if (goalRows.length !== 1 || !isRecord(goalRows[0]) || goalRows[0].owner_id !== input.actorId || goalRows[0].workspace_id !== workspaceId || goalRows[0].id !== goalId) throw new SafeBoundaryError(404, 'NOT_FOUND');
   }
   const result = await client.query<{ id: string; owner_id: string; workspace_id: string; version: number; status: string }>(
     `insert into df_private.tasks
@@ -75,15 +92,16 @@ export async function applyCreateTask(client: PostgresTransactionClient, input: 
      returning id, owner_id, workspace_id, version, status`,
     [id, input.actorId, workspaceId, goalId, title, description, priority, deadline.kind, deadline.date, deadline.at],
   );
-  const row = result.rows[0];
-  if (!row || row.id !== id || row.owner_id !== input.actorId || row.workspace_id !== workspaceId || !Number.isInteger(row.version) || row.version < 1 || typeof row.status !== 'string' || !STATUSES.has(row.status)) {
+  const resultRows = queryRows(result);
+  const row = resultRows[0];
+  if (resultRows.length !== 1 || !isRecord(row) || row.id !== id || row.owner_id !== input.actorId || row.workspace_id !== workspaceId || typeof row.version !== 'number' || !Number.isInteger(row.version) || row.version < 1 || typeof row.status !== 'string' || !STATUSES.has(row.status)) {
     throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE');
   }
   return { responseBody: { id: row.id, version: row.version, status: row.status }, responseStatus: 201 };
 }
 
 export async function applyPatchTask(client: PostgresTransactionClient, input: PostgresMutationApplyInput): Promise<{ responseBody: Record<string, unknown>; responseStatus: 200 }> {
-  if (input.operation !== 'patchTask' || !input.body || Array.isArray(input.body)) invalid();
+  validateTaskMutationBoundary(client, input, 'patchTask');
   const body = input.body as Record<string, unknown>;
   if (Object.keys(body).some((key) => !PATCH_FIELDS.has(key)) || !Object.prototype.hasOwnProperty.call(body, 'expectedVersion')) invalid();
   const expectedVersion = version(body.expectedVersion);
@@ -125,9 +143,10 @@ export async function applyPatchTask(client: PostgresTransactionClient, input: P
        for update`,
       [params[0], params[1], requestedGoalId],
     );
-    const linkedRow = linked.rows[0];
+    const linkedRows = queryRows<{ task_id: string; owner_id: string; workspace_id: string; goal_owner_id: string | null; goal_workspace_id: string | null; goal_id: string | null }>(linked);
+    const linkedRow = linkedRows[0];
     if (
-      linked.rows.length !== 1
+      linkedRows.length !== 1
       || linkedRow?.task_id !== params[0]
       || linkedRow?.owner_id !== input.actorId
       || linkedRow?.goal_owner_id !== input.actorId
@@ -142,7 +161,9 @@ export async function applyPatchTask(client: PostgresTransactionClient, input: P
      returning id, owner_id, version, status`,
     params,
   );
-  const row = result.rows[0];
+  const resultRows = queryRows<{ id: string; owner_id: string; version: number; status: string }>(result);
+  if (resultRows.length > 1) unavailable();
+  const row = resultRows[0];
   if (!row) throw new SafeBoundaryError(409, 'VERSION_CONFLICT');
   if (row.id !== params[0] || row.owner_id !== input.actorId || !Number.isInteger(row.version) || row.version < 1 || typeof row.status !== 'string' || !STATUSES.has(row.status)) {
     throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE');
@@ -151,7 +172,7 @@ export async function applyPatchTask(client: PostgresTransactionClient, input: P
 }
 
 export async function applyDeleteTask(client: PostgresTransactionClient, input: PostgresMutationApplyInput): Promise<{ responseBody: Record<string, unknown>; responseStatus: 200; finalizeResponse: (committedThrough: string) => Record<string, unknown> }> {
-  if (input.operation !== 'deleteTask' || !input.body || Array.isArray(input.body) || !input.resourceId) invalid();
+  validateTaskMutationBoundary(client, input, 'deleteTask');
   const body = input.body as Record<string, unknown>;
   if (Object.keys(body).length !== 1 || !Object.prototype.hasOwnProperty.call(body, 'expectedVersion')) invalid();
   const expectedVersion = version(body.expectedVersion);
@@ -161,7 +182,9 @@ export async function applyDeleteTask(client: PostgresTransactionClient, input: 
      returning id, owner_id, version, status, deleted_at`,
     [uuid(input.resourceId), input.actorId, expectedVersion],
   );
-  const row = result.rows[0];
+  const resultRows = queryRows<{ id: string; owner_id: string; version: number; status: string; deleted_at: string }>(result);
+  if (resultRows.length > 1) unavailable();
+  const row = resultRows[0];
   if (!row) throw new SafeBoundaryError(409, 'VERSION_CONFLICT');
   if (row.id !== input.resourceId || row.owner_id !== input.actorId || !Number.isInteger(row.version) || row.version < 1 || typeof row.status !== 'string' || !STATUSES.has(row.status)
     || typeof row.deleted_at !== 'string' || Number.isNaN(Date.parse(row.deleted_at))) throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE');
@@ -178,7 +201,7 @@ export async function applyDeleteTask(client: PostgresTransactionClient, input: 
 }
 
 export async function applyTaskAction(client: PostgresTransactionClient, input: PostgresMutationApplyInput): Promise<{ responseBody: Record<string, unknown>; responseStatus: 200 }> {
-  if (input.operation !== 'applyTaskAction' || !input.body || Array.isArray(input.body) || !input.resourceId) invalid();
+  validateTaskMutationBoundary(client, input, 'applyTaskAction');
   const body = input.body as Record<string, unknown>;
   if (Object.keys(body).some((key) => !ACTION_FIELDS.has(key)) || body.id !== input.resourceId) invalid();
   const expectedVersion = version(body.expectedVersion);
@@ -190,7 +213,9 @@ export async function applyTaskAction(client: PostgresTransactionClient, input: 
      where id = $1 and owner_id = $2 for update`,
     [input.resourceId, input.actorId],
   );
-  const task = current.rows[0];
+  const currentRows = queryRows<{ id: string; owner_id: string; status: string; version: number; deleted_at: string | null }>(current);
+  if (currentRows.length > 1) unavailable();
+  const task = currentRows[0];
   if (!task || task.id !== input.resourceId || task.owner_id !== input.actorId || task.deleted_at !== null) throw new SafeBoundaryError(404, 'NOT_FOUND');
   if (task.version !== expectedVersion) throw new SafeBoundaryError(409, 'VERSION_CONFLICT');
   if (!STATUSES.has(task.status) || (action === 'begin' && task.status !== 'pending') || (['complete', 'cancel'].includes(action) && !['pending', 'in_progress'].includes(task.status))) {
@@ -207,7 +232,9 @@ export async function applyTaskAction(client: PostgresTransactionClient, input: 
      returning id, owner_id, version, status`,
     update.params,
   );
-  const row = result.rows[0];
+  const resultRows = queryRows<{ id: string; owner_id: string; version: number; status: string }>(result);
+  if (resultRows.length > 1) unavailable();
+  const row = resultRows[0];
   if (!row || row.id !== input.resourceId || row.owner_id !== input.actorId || !Number.isInteger(row.version) || row.version < 1 || !STATUSES.has(row.status)) throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE');
   return { responseBody: { id: row.id, version: row.version, status: row.status }, responseStatus: 200 };
 }

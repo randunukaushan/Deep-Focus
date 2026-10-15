@@ -66,9 +66,39 @@ test('execution rejects wrong success status, arrays and undefined response fiel
   assert.deepEqual(wrongStatus, { status: 503, body: { error: { code: 'DEPENDENCY_UNAVAILABLE', retryable: true } } });
 });
 
+test('execution rejects response values that JSON.stringify would coerce', async () => {
+  class CustomValue { constructor() { this.ok = true; } }
+  for (const body of [{ at: new Date('2026-10-10T00:00:00.000Z') }, { value: new CustomValue() }]) {
+    const result = await executeGatewayOperation({ admitted, authorize: async () => {}, handlers: {
+      createTask: async () => ({ status: 201, body }),
+    } });
+    assert.deepEqual(result, { status: 503, body: { error: { code: 'DEPENDENCY_UNAVAILABLE', retryable: true } } });
+  }
+});
+
+test('execution rejects sparse and extra-property arrays before response serialization', async () => {
+  const sparse = []; sparse[1] = 'gap';
+  const extra = []; extra.push('value'); extra.note = 'hidden';
+  const symbolBearing = []; symbolBearing.push('value'); symbolBearing[Symbol('metadata')] = 'hidden';
+  for (const body of [{ values: sparse }, { values: extra }, { values: symbolBearing }]) {
+    const result = await executeGatewayOperation({ admitted, authorize: async () => {}, handlers: {
+      createTask: async () => ({ status: 201, body }),
+    } });
+    assert.deepEqual(result, { status: 503, body: { error: { code: 'DEPENDENCY_UNAVAILABLE', retryable: true } } });
+  }
+});
+
 test('execution rejects an oversized success body before it leaves the boundary', async () => {
   const result = await executeGatewayOperation({ admitted, authorize: async () => {}, handlers: {
     createTask: async () => ({ status: 201, body: { value: 'x'.repeat(256 * 1024) } }),
   } });
   assert.deepEqual(result, { status: 503, body: { error: { code: 'DEPENDENCY_UNAVAILABLE', retryable: true } } });
+});
+
+test('malformed execution input returns a safe validation envelope before property access', async () => {
+  for (const input of [null, [], { admitted: null, authorize: async () => {}, handlers: {} }, { admitted, authorize: null, handlers: {} }]) {
+    assert.deepEqual(await executeGatewayOperation(input), {
+      status: 400, body: { error: { code: 'VALIDATION_FAILED', retryable: false } },
+    });
+  }
 });

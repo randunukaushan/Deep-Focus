@@ -88,3 +88,15 @@ export function getGoalPeriodRange(period: GoalPeriod, now = Date.now(), timeZon
   if (startsAt >= endsAt) throw new RangeError('INVALID_TIME_ZONE_BOUNDARY: period end must follow its start');
   return { startsAt: new Date(startsAt).toISOString(), endsAt: new Date(endsAt).toISOString(), periodTimeZone: timeZone };
 }
+
+/** Builds the half-open range for one user-local calendar day. */
+export function getLocalDayRange(now = Date.now(), timeZone = getDeviceTimeZone()) {
+  if (!Number.isFinite(now) || !Number.isFinite(new Date(now).getTime())) {
+    throw new RangeError('INVALID_TIME: expected a valid period reference instant');
+  }
+  const current = partsAt(now, timeZone);
+  const startsAt = startOfLocalDate(current, timeZone);
+  const next = new Date(Date.UTC(current.year, current.month - 1, current.day + 1));
+  const endsAt = startOfLocalDate({ year: next.getUTCFullYear(), month: next.getUTCMonth() + 1, day: next.getUTCDate() }, timeZone);
+  return { startsAt: new Date(startsAt).toISOString(), endsAt: new Date(endsAt).toISOString(), periodTimeZone: timeZone };
+}

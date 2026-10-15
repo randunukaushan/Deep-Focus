@@ -29,7 +29,7 @@ test('composed capability admission rejects an expired server entitlement', asyn
 
 test('composed capability admission rejects a malformed expiry without granting access', async () => {
   const h = harness([{ owner_id: OWNER, capability: 'ai', status: 'active', verified_by: 'server', policy_version: 'v2', expires_at: 'not-a-timestamp', offer_id: null }]);
-  assert.deepEqual(await createPostgresCapabilityAdmission(h).admit(OWNER, 'ai', NOW, SESSION), { allowed: false, reason: 'expired' });
+  await assert.rejects(() => createPostgresCapabilityAdmission(h).admit(OWNER, 'ai', NOW, SESSION), /DEPENDENCY_UNAVAILABLE/);
 });
 
 test('composed capability admission rejects a missing entitlement', async () => {

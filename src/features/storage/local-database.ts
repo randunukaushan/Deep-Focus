@@ -8,6 +8,7 @@ import type { Goal } from '@/features/goals/goal-types';
 import { getGoalCompletionAt } from '@/features/goals/goal-progress';
 import type { Task } from '@/features/tasks/task-types';
 import { validateFocusSession } from '@/features/focus/session-engine';
+import { createFinalizedSessionProcessing } from '@/features/focus/completion-processing';
 import type { FocusSession } from '@/features/focus/session-types';
 import type { SavedPlan } from '@/features/planning/plan-types';
 import {
@@ -24,7 +25,8 @@ import { createTeacherAssignmentDraft, type TeacherAssignmentDraft } from '@/fea
 
 const DATABASE_NAME = 'deep-focus-local.db';
 const LOCAL_OWNER_ID = 'local:device';
-const SCHEMA_VERSION = 12;
+const ACCOUNT_OWNER_ID = /^account:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const SCHEMA_VERSION = 14;
 const LEGACY_IMPORT_VERSION = 1;
 
 const SNAPSHOT_LOCAL_SCHEMA_SQL = `
@@ -101,7 +103,7 @@ CREATE TABLE IF NOT EXISTS sync_remote_change_receipts (
     AND (sequence = '0' OR sequence NOT LIKE '0%')
   ),
   change_hash TEXT NOT NULL CHECK (length(change_hash) = 64 AND change_hash NOT GLOB '*[^0-9a-f]*'),
-  entity_kind TEXT NOT NULL CHECK (entity_kind IN ('profile', 'goal', 'task', 'focus_session', 'settings')),
+  entity_kind TEXT NOT NULL CHECK (entity_kind IN ('profile', 'goal', 'task', 'focus_session', 'settings', 'break', 'reminder')),
   entity_id TEXT NOT NULL,
   operation TEXT NOT NULL CHECK (operation IN ('upsert', 'delete')),
   created_at TEXT NOT NULL,
@@ -149,7 +151,7 @@ CREATE TABLE sync_remote_change_receipts (
   owner_id TEXT NOT NULL REFERENCES local_owners(id),
   sequence TEXT NOT NULL CHECK (sequence GLOB '[0-9]*' AND sequence NOT GLOB '*[^0-9]*' AND (sequence = '0' OR sequence NOT LIKE '0%')),
   change_hash TEXT NOT NULL CHECK (length(change_hash) = 64 AND change_hash NOT GLOB '*[^0-9a-f]*'),
-  entity_kind TEXT NOT NULL CHECK (entity_kind IN ('profile', 'goal', 'task', 'focus_session', 'settings')),
+  entity_kind TEXT NOT NULL CHECK (entity_kind IN ('profile', 'goal', 'task', 'focus_session', 'settings', 'break', 'reminder')),
   entity_id TEXT NOT NULL,
   operation TEXT NOT NULL CHECK (operation IN ('upsert', 'delete')),
   created_at TEXT NOT NULL,
@@ -158,6 +160,85 @@ CREATE TABLE sync_remote_change_receipts (
 INSERT INTO sync_remote_change_receipts (owner_id,sequence,change_hash,entity_kind,entity_id,operation,created_at)
   SELECT owner_id,sequence,change_hash,entity_kind,entity_id,operation,created_at FROM sync_remote_change_receipts_v11;
 DROP TABLE sync_remote_change_receipts_v11;
+CREATE INDEX sync_remote_change_receipts_owner_entity
+  ON sync_remote_change_receipts(owner_id, entity_kind, entity_id, sequence);
+`;
+
+const BREAK_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS break_records (
+  owner_id TEXT NOT NULL REFERENCES local_owners(id),
+  id TEXT NOT NULL,
+  focus_session_id TEXT NOT NULL,
+  started_at TEXT NOT NULL,
+  ended_at TEXT NOT NULL,
+  planned_ms INTEGER NOT NULL CHECK (planned_ms BETWEEN 1 AND 86400000),
+  actual_ms INTEGER NOT NULL CHECK (actual_ms BETWEEN 0 AND 86400000),
+  outcome TEXT NOT NULL CHECK (outcome IN ('completed', 'ended_early')),
+  version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0),
+  verification_state TEXT NOT NULL DEFAULT 'pending' CHECK (verification_state IN ('pending', 'verified', 'needs_review')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (owner_id, id),
+  FOREIGN KEY (owner_id, focus_session_id) REFERENCES focus_sessions(owner_id, id),
+  UNIQUE (owner_id, focus_session_id),
+  CHECK (ended_at >= started_at)
+);
+CREATE INDEX IF NOT EXISTS break_records_owner_history ON break_records(owner_id, ended_at DESC, id DESC);
+`;
+
+const INCREMENTAL_SYNC_BREAK_KIND_MIGRATION_SQL = `
+ALTER TABLE sync_remote_change_receipts RENAME TO sync_remote_change_receipts_v12;
+CREATE TABLE sync_remote_change_receipts (
+  owner_id TEXT NOT NULL REFERENCES local_owners(id),
+  sequence TEXT NOT NULL CHECK (sequence GLOB '[0-9]*' AND sequence NOT GLOB '*[^0-9]*' AND (sequence = '0' OR sequence NOT LIKE '0%')),
+  change_hash TEXT NOT NULL CHECK (length(change_hash) = 64 AND change_hash NOT GLOB '*[^0-9a-f]*'),
+  entity_kind TEXT NOT NULL CHECK (entity_kind IN ('profile', 'goal', 'task', 'focus_session', 'settings', 'break')),
+  entity_id TEXT NOT NULL,
+  operation TEXT NOT NULL CHECK (operation IN ('upsert', 'delete')),
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (owner_id, sequence)
+);
+INSERT INTO sync_remote_change_receipts (owner_id,sequence,change_hash,entity_kind,entity_id,operation,created_at)
+  SELECT owner_id,sequence,change_hash,entity_kind,entity_id,operation,created_at FROM sync_remote_change_receipts_v12;
+DROP TABLE sync_remote_change_receipts_v12;
+CREATE INDEX sync_remote_change_receipts_owner_entity
+  ON sync_remote_change_receipts(owner_id, entity_kind, entity_id, sequence);
+`;
+
+const REMINDER_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS task_reminders (
+  owner_id TEXT NOT NULL REFERENCES local_owners(id),
+  id TEXT NOT NULL,
+  task_id TEXT NOT NULL,
+  scheduled_for TEXT NOT NULL,
+  time_zone TEXT NOT NULL CHECK (length(trim(time_zone)) BETWEEN 1 AND 100),
+  enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+  delivery TEXT NOT NULL DEFAULT 'local_device' CHECK (delivery = 'local_device'),
+  version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0),
+  deleted_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (owner_id, id),
+  FOREIGN KEY (owner_id, task_id) REFERENCES tasks(owner_id, id)
+);
+CREATE INDEX IF NOT EXISTS task_reminders_owner_schedule ON task_reminders(owner_id, scheduled_for, id);
+`;
+
+const INCREMENTAL_SYNC_REMINDER_KIND_MIGRATION_SQL = `
+ALTER TABLE sync_remote_change_receipts RENAME TO sync_remote_change_receipts_v13;
+CREATE TABLE sync_remote_change_receipts (
+  owner_id TEXT NOT NULL REFERENCES local_owners(id),
+  sequence TEXT NOT NULL CHECK (sequence GLOB '[0-9]*' AND sequence NOT GLOB '*[^0-9]*' AND (sequence = '0' OR sequence NOT LIKE '0%')),
+  change_hash TEXT NOT NULL CHECK (length(change_hash) = 64 AND change_hash NOT GLOB '*[^0-9a-f]*'),
+  entity_kind TEXT NOT NULL CHECK (entity_kind IN ('profile', 'goal', 'task', 'focus_session', 'settings', 'break', 'reminder')),
+  entity_id TEXT NOT NULL,
+  operation TEXT NOT NULL CHECK (operation IN ('upsert', 'delete')),
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (owner_id, sequence)
+);
+INSERT INTO sync_remote_change_receipts (owner_id,sequence,change_hash,entity_kind,entity_id,operation,created_at)
+  SELECT owner_id,sequence,change_hash,entity_kind,entity_id,operation,created_at FROM sync_remote_change_receipts_v13;
+DROP TABLE sync_remote_change_receipts_v13;
 CREATE INDEX sync_remote_change_receipts_owner_entity
   ON sync_remote_change_receipts(owner_id, entity_kind, entity_id, sequence);
 `;
@@ -241,6 +322,41 @@ CREATE TABLE IF NOT EXISTS active_focus_sessions (
   session_id TEXT NOT NULL,
   FOREIGN KEY (owner_id, session_id) REFERENCES focus_sessions(owner_id, id)
 );
+CREATE TABLE IF NOT EXISTS break_records (
+  owner_id TEXT NOT NULL REFERENCES local_owners(id),
+  id TEXT NOT NULL,
+  focus_session_id TEXT NOT NULL,
+  started_at TEXT NOT NULL,
+  ended_at TEXT NOT NULL,
+  planned_ms INTEGER NOT NULL CHECK (planned_ms BETWEEN 1 AND 86400000),
+  actual_ms INTEGER NOT NULL CHECK (actual_ms BETWEEN 0 AND 86400000),
+  outcome TEXT NOT NULL CHECK (outcome IN ('completed', 'ended_early')),
+  version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0),
+  verification_state TEXT NOT NULL DEFAULT 'pending' CHECK (verification_state IN ('pending', 'verified', 'needs_review')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (owner_id, id),
+  FOREIGN KEY (owner_id, focus_session_id) REFERENCES focus_sessions(owner_id, id),
+  UNIQUE (owner_id, focus_session_id),
+  CHECK (ended_at >= started_at)
+);
+CREATE INDEX IF NOT EXISTS break_records_owner_history ON break_records(owner_id, ended_at DESC, id DESC);
+CREATE TABLE IF NOT EXISTS task_reminders (
+  owner_id TEXT NOT NULL REFERENCES local_owners(id),
+  id TEXT NOT NULL,
+  task_id TEXT NOT NULL,
+  scheduled_for TEXT NOT NULL,
+  time_zone TEXT NOT NULL CHECK (length(trim(time_zone)) BETWEEN 1 AND 100),
+  enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+  delivery TEXT NOT NULL DEFAULT 'local_device' CHECK (delivery = 'local_device'),
+  version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0),
+  deleted_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (owner_id, id),
+  FOREIGN KEY (owner_id, task_id) REFERENCES tasks(owner_id, id)
+);
+CREATE INDEX IF NOT EXISTS task_reminders_owner_schedule ON task_reminders(owner_id, scheduled_for, id);
 CREATE TABLE IF NOT EXISTS user_settings (
   owner_id TEXT PRIMARY KEY NOT NULL REFERENCES local_owners(id),
   default_focus_duration_minutes INTEGER NOT NULL DEFAULT 25
@@ -487,6 +603,10 @@ type TaskRow = {
   legacy_extra_json: string | null;
 };
 
+type StoredTaskRow = TaskRow & {
+  goal_id: string | null; priority: string | null; due_at: string | null;
+};
+
 type ResourceRow = {
   id: string; kind: LocalResource['kind']; title: string; reference: string;
   revision: number; lifecycle: LocalResource['lifecycle']; created_at: string; updated_at: string;
@@ -596,7 +716,7 @@ export type LocalRemoteMirrorCursor = {
 
 export type LocalIncrementalSyncChange = {
   sequence: string;
-  entityKind: 'profile' | 'goal' | 'task' | 'focus_session' | 'settings';
+  entityKind: 'profile' | 'goal' | 'task' | 'focus_session' | 'settings' | 'break' | 'reminder';
   entityId: string;
   operation: 'upsert' | 'delete';
   payload: Record<string, unknown> | null;
@@ -637,8 +757,8 @@ function compareDecimal(left: string, right: string): number {
 }
 
 function validateIncrementalChange(input: LocalIncrementalSyncChange) {
-  if (!DECIMAL_COUNTER.test(input.sequence) || !SNAPSHOT_UUID.test(input.entityId)
-    || !['profile', 'goal', 'task', 'focus_session', 'settings'].includes(input.entityKind)
+  if (!DECIMAL_COUNTER.test(input.sequence) || input.sequence === '0' || !SNAPSHOT_UUID.test(input.entityId)
+    || !['profile', 'goal', 'task', 'focus_session', 'settings', 'break', 'reminder'].includes(input.entityKind)
     || !['upsert', 'delete'].includes(input.operation)
     || (input.operation === 'delete' ? input.payload !== null : !isObject(input.payload))) {
     throw new RangeError('SYNC_CHANGE_INVALID');
@@ -674,6 +794,75 @@ async function materializeRemoteSettings(db: SQLite.SQLiteDatabase, ownerId: str
        updated_at=excluded.updated_at
      WHERE user_settings.version < excluded.version`,
     ownerId, settings.focusMinutes, settings.breakMinutes, settings.uiLocale, settings.theme, settings.aiEnabled, settings.version, settings.updatedAt,
+  );
+}
+
+function validateRemoteBreak(payload: Record<string, unknown>): {
+  focusSessionId: string; startedAt: string; endedAt: string; plannedMs: number; actualMs: number;
+  outcome: 'completed' | 'ended_early'; version: number; verificationState: 'pending' | 'verified' | 'needs_review';
+} {
+  const focusSessionId = payload.focusSessionId;
+  const startedAt = payload.startedAt;
+  const endedAt = payload.endedAt;
+  const plannedMs = payload.plannedMs;
+  const actualMs = payload.actualMs;
+  const outcome = payload.outcome;
+  const version = payload.version;
+  const verificationState = payload.verificationState;
+  if (typeof focusSessionId !== 'string' || !SNAPSHOT_UUID.test(focusSessionId)
+    || typeof startedAt !== 'string' || !validTimestamp(startedAt)
+    || typeof endedAt !== 'string' || !validTimestamp(endedAt) || Date.parse(endedAt) < Date.parse(startedAt)
+    || !Number.isSafeInteger(plannedMs) || (plannedMs as number) < 1 || (plannedMs as number) > 86400000
+    || !Number.isSafeInteger(actualMs) || (actualMs as number) < 0 || (actualMs as number) > 86400000
+    || !['completed', 'ended_early'].includes(outcome as string)
+    || !Number.isSafeInteger(version) || (version as number) < 1
+    || !['pending', 'verified', 'needs_review'].includes(verificationState as string)
+    || (outcome === 'completed' && (actualMs as number) < (plannedMs as number))
+    || (outcome === 'ended_early' && (actualMs as number) >= (plannedMs as number))) throw new RangeError('SYNC_BREAK_INVALID');
+  return { focusSessionId, startedAt, endedAt, plannedMs: plannedMs as number, actualMs: actualMs as number, outcome: outcome as 'completed' | 'ended_early', version: version as number, verificationState: verificationState as 'pending' | 'verified' | 'needs_review' };
+}
+
+async function materializeRemoteBreak(db: SQLite.SQLiteDatabase, ownerId: string, entityId: string, payload: Record<string, unknown>, timestamp: string): Promise<void> {
+  if (typeof entityId !== 'string' || !SNAPSHOT_UUID.test(entityId) || payload.id !== entityId) throw new RangeError('SYNC_BREAK_INVALID');
+  const value = validateRemoteBreak(payload);
+  await db.runAsync(
+    `INSERT INTO break_records (owner_id,id,focus_session_id,started_at,ended_at,planned_ms,actual_ms,outcome,version,verification_state,created_at,updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+     ON CONFLICT(owner_id,id) DO UPDATE SET focus_session_id=excluded.focus_session_id,started_at=excluded.started_at,
+       ended_at=excluded.ended_at,planned_ms=excluded.planned_ms,actual_ms=excluded.actual_ms,outcome=excluded.outcome,
+       version=excluded.version,verification_state=excluded.verification_state,updated_at=excluded.updated_at
+     WHERE break_records.version < excluded.version`,
+    ownerId, entityId, value.focusSessionId, value.startedAt, value.endedAt, value.plannedMs, value.actualMs,
+    value.outcome, value.version, value.verificationState, timestamp, timestamp,
+  );
+}
+
+async function materializeRemoteReminder(db: SQLite.SQLiteDatabase, ownerId: string, entityId: string, payload: Record<string, unknown>, timestamp: string): Promise<void> {
+  const taskId = payload.taskId; const scheduledFor = payload.scheduledFor; const zone = payload.timeZone;
+  const enabled = payload.enabled; const delivery = payload.delivery; const version = payload.version; const updatedAt = payload.updatedAt;
+  if (typeof entityId !== 'string' || !SNAPSHOT_UUID.test(entityId) || payload.id !== entityId
+    || typeof taskId !== 'string' || !SNAPSHOT_UUID.test(taskId) || typeof scheduledFor !== 'string' || !validTimestamp(scheduledFor)
+    || typeof zone !== 'string' || zone.length < 1 || zone.length > 100 || typeof enabled !== 'boolean'
+    || delivery !== 'local_device' || !Number.isSafeInteger(version) || (version as number) < 1
+    || typeof updatedAt !== 'string' || !validTimestamp(updatedAt)) throw new RangeError('SYNC_REMINDER_INVALID');
+  const task = await db.getFirstAsync<{ id: string }>('SELECT id FROM tasks WHERE owner_id = ? AND id = ?', ownerId, taskId);
+  if (!task || task.id !== taskId) throw new RangeError('SYNC_REMINDER_INVALID');
+  await db.runAsync(
+    `INSERT INTO task_reminders (owner_id,id,task_id,scheduled_for,time_zone,enabled,delivery,version,created_at,updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?)
+     ON CONFLICT(owner_id,id) DO UPDATE SET task_id=excluded.task_id,scheduled_for=excluded.scheduled_for,
+       time_zone=excluded.time_zone,enabled=excluded.enabled,delivery=excluded.delivery,version=excluded.version,
+       updated_at=excluded.updated_at WHERE task_reminders.deleted_at IS NULL AND task_reminders.version < excluded.version`,
+    ownerId, entityId, taskId as string, scheduledFor as string, zone as string, (enabled as boolean) ? 1 : 0, delivery as string, version as number, timestamp, updatedAt as string,
+  );
+}
+
+async function materializeRemoteReminderDelete(db: SQLite.SQLiteDatabase, ownerId: string, entityId: string, timestamp: string): Promise<void> {
+  if (!SNAPSHOT_UUID.test(entityId)) throw new RangeError('SYNC_REMINDER_INVALID');
+  await db.runAsync(
+    `UPDATE task_reminders SET enabled = 0, deleted_at = ?, updated_at = ?
+     WHERE owner_id = ? AND id = ? AND deleted_at IS NULL`,
+    timestamp, timestamp, ownerId, entityId,
   );
 }
 
@@ -850,6 +1039,7 @@ function insertUniqueSession(sessions: Map<string, FocusSession>, session: Focus
 function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
   if (isObject(value)) return `{${Object.keys(value).filter((key) => value[key] !== undefined).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(',')}}`;
+  if (typeof value === 'number' && !Number.isFinite(value)) throw new RangeError('INVALID_JSON_VALUE');
   return JSON.stringify(value);
 }
 
@@ -871,16 +1061,19 @@ const SESSION_KEYS = ['id', 'status', 'taskId', 'taskName', 'plannedDurationSeco
 const TASK_KEYS = ['id', 'goalId', 'title', 'description', 'status', 'priority', 'dueAt', 'createdAt', 'updatedAt', 'completedAt'];
 const GOAL_KEYS = ['id', 'title', 'description', 'type', 'period', 'status', 'targetValue', 'createdAt', 'updatedAt', 'completedAt', 'startsAt', 'endsAt', 'periodTimeZone', 'legacyOpenPeriod'];
 
-function sessionValues(session: FocusSession, now: string, ownerId = LOCAL_OWNER_ID) {
-  return [ownerId, session.id, (session as FocusSession & { taskId?: string }).taskId ?? null,
+function sessionValues(session: FocusSession, now: string, ownerId = LOCAL_OWNER_ID, taskColumnId = session.taskId ?? null) {
+  const extra = taskColumnId === null && session.taskId
+    ? extraJson({ ...session, historicalTaskId: session.taskId }, SESSION_KEYS)
+    : extraJson(session as unknown as Record<string, unknown>, SESSION_KEYS);
+  return [ownerId, session.id, taskColumnId,
     session.taskName ?? null, session.status, session.plannedDurationSeconds,
     session.focusedDurationSeconds, session.pausedDurationSeconds, session.startedAt,
     session.completedAt ?? null, session.cancelledAt ?? null, session.lastPausedAt ?? null,
-    session.lastResumedAt ?? null, session.createdAt, now, extraJson(session as unknown as Record<string, unknown>, SESSION_KEYS)];
+    session.lastResumedAt ?? null, session.createdAt, now, extra];
 }
 
-function sessionUpdateValues(session: FocusSession, now: string, ownerId = LOCAL_OWNER_ID) {
-  const values = sessionValues(session, now, ownerId);
+function sessionUpdateValues(session: FocusSession, now: string, ownerId = LOCAL_OWNER_ID, taskColumnId = session.taskId ?? null) {
+  const values = sessionValues(session, now, ownerId, taskColumnId);
   return [...values.slice(2, 13), values[14], values[15]];
 }
 
@@ -899,7 +1092,7 @@ function goalValues(goal: Goal, ownerId = LOCAL_OWNER_ID) {
 }
 
 function sessionFromRow(row: SessionRow, taskId?: string | null): FocusSession {
-  return mergeExtra({
+  const value = mergeExtra({
     id: row.id, status: row.status, ...(taskId ? { taskId } : {}),
     ...(row.task_name !== null ? { taskName: row.task_name } : {}),
     plannedDurationSeconds: row.planned_duration_seconds,
@@ -910,7 +1103,11 @@ function sessionFromRow(row: SessionRow, taskId?: string | null): FocusSession {
     ...(row.cancelled_at !== null ? { cancelledAt: row.cancelled_at } : {}),
     ...(row.last_paused_at !== null ? { lastPausedAt: row.last_paused_at } : {}),
     ...(row.last_resumed_at !== null ? { lastResumedAt: row.last_resumed_at } : {}),
-  }, row.legacy_extra_json) as unknown as FocusSession;
+  }, row.legacy_extra_json) as Record<string, unknown>;
+  const historicalTaskId = typeof value.historicalTaskId === 'string' ? value.historicalTaskId : undefined;
+  delete value.historicalTaskId;
+  if (!value.taskId && historicalTaskId) value.taskId = historicalTaskId;
+  return value as FocusSession;
 }
 
 function outboxFromRow(row: {
@@ -943,16 +1140,48 @@ function goalFromRow(row: GoalRow): Goal {
   }, row.legacy_extra_json) as Goal;
 }
 
+function taskFromRow(row: StoredTaskRow): Task {
+  const task = mergeExtra({
+    id: row.id, title: row.title, status: row.status, createdAt: row.created_at,
+    updatedAt: row.updated_at, ...(row.description !== null ? { description: row.description } : {}),
+    ...(row.completed_at !== null ? { completedAt: row.completed_at } : {}),
+    ...(row.goal_id ? { goalId: row.goal_id } : {}), ...(row.priority ? { priority: row.priority } : {}),
+    ...(row.due_at ? { dueAt: row.due_at } : {}),
+  }, row.legacy_extra_json) as Task & Record<string, unknown>;
+  // Typed SQLite columns are canonical; never resurrect cleared values from older duplicate JSON fields.
+  if (row.goal_id === null) delete task.goalId;
+  else task.goalId = row.goal_id;
+  if (row.priority === null) delete task.priority;
+  else task.priority = row.priority as Task['priority'];
+  if (row.due_at === null) delete task.dueAt;
+  else task.dueAt = row.due_at;
+  return task;
+}
+
 function insertSessionSql() {
   return `INSERT INTO focus_sessions (owner_id,id,task_id,task_name,status,planned_duration_seconds,focused_duration_seconds,paused_duration_seconds,started_at,completed_at,cancelled_at,last_paused_at,last_resumed_at,created_at,updated_at,legacy_extra_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
 }
 
+async function taskColumnIdForSession(db: SQLite.SQLiteDatabase, ownerId: string, session: FocusSession, allowHistoricalLink = false): Promise<string | null> {
+  if (!session.taskId) return null;
+  const task = await db.getFirstAsync<{ id: string }>('SELECT id FROM tasks WHERE owner_id = ? AND id = ?', ownerId, session.taskId);
+  if (task?.id === session.taskId) return session.taskId;
+  if (allowHistoricalLink) return null;
+  throw new Error('FOREIGN KEY: focus session task is unavailable');
+}
+
 async function insertSession(db: SQLite.SQLiteDatabase, session: FocusSession, now: string, ownerId = LOCAL_OWNER_ID) {
-  await db.runAsync(insertSessionSql(), ...sessionValues(session, now, ownerId));
+  await db.runAsync(insertSessionSql(), ...sessionValues(session, now, ownerId, await taskColumnIdForSession(db, ownerId, session)));
 }
 
 function validateNewTask(task: Task) {
   validateLegacyTask(task as unknown as Record<string, unknown>);
+  if (task.title.trim().length > 120
+    || (task.goalId !== undefined && (!task.goalId.trim() || task.goalId.length > 128))
+    || (task.dueAt !== undefined && (!validTimestamp(task.dueAt) || new Date(task.dueAt).toISOString() !== task.dueAt))
+    || (task.status !== 'completed' && task.completedAt !== undefined)) {
+    throw new RangeError('INVALID_INPUT: invalid task title, relationship, due date, or lifecycle');
+  }
 }
 
 function validateNewGoal(goal: Goal) {
@@ -985,10 +1214,23 @@ export function createAccountLocalDatabaseStore(
 }
 
 export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies) {
+  if (!dependencies || typeof dependencies !== 'object' || Array.isArray(dependencies)
+    || typeof dependencies.platform !== 'string'
+    || typeof dependencies.openDatabase !== 'function'
+    || typeof dependencies.readLegacyFiles !== 'function'
+    || (dependencies.now !== undefined && typeof dependencies.now !== 'function')) {
+    throw new TypeError('INVALID_STORAGE_DEPENDENCIES');
+  }
   let initialization: Promise<SQLite.SQLiteDatabase> | null = null;
   let connection: SQLite.SQLiteDatabase | null = null;
   const ownerId = dependencies.ownerId ?? LOCAL_OWNER_ID;
   const ownerKind = dependencies.ownerKind ?? 'device_local';
+  if (typeof ownerId !== 'string'
+    || (ownerKind !== 'device_local' && ownerKind !== 'account')
+    || (ownerKind === 'device_local' && ownerId !== LOCAL_OWNER_ID)
+    || (ownerKind === 'account' && !ACCOUNT_OWNER_ID.test(ownerId))) {
+    throw new TypeError('INVALID_OWNER_NAMESPACE');
+  }
   const now = dependencies.now ?? (() => new Date().toISOString());
 
   // All access to this private connection is queued, including reads, so a
@@ -1104,6 +1346,16 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
           if (!columns.some((column) => column.name === 'updated_at')) await transaction.execAsync("ALTER TABLE user_settings ADD COLUMN updated_at TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z';");
           await transaction.execAsync('PRAGMA user_version = 12;');
         }
+        if ((latest?.user_version ?? 0) < 13) {
+          await transaction.execAsync(BREAK_SCHEMA_SQL);
+          await transaction.execAsync(INCREMENTAL_SYNC_BREAK_KIND_MIGRATION_SQL);
+          await transaction.execAsync('PRAGMA user_version = 13;');
+        }
+        if ((latest?.user_version ?? 0) < 14) {
+          await transaction.execAsync(REMINDER_SCHEMA_SQL);
+          await transaction.execAsync(INCREMENTAL_SYNC_REMINDER_KIND_MIGRATION_SQL);
+          await transaction.execAsync('PRAGMA user_version = 14;');
+        }
       });
     }
     if (!marker) {
@@ -1164,6 +1416,14 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
           if (!columns.some((column) => column.name === 'ai_features_enabled')) await transaction.execAsync('ALTER TABLE user_settings ADD COLUMN ai_features_enabled INTEGER NOT NULL DEFAULT 0 CHECK (ai_features_enabled IN (0, 1));');
           if (!columns.some((column) => column.name === 'version')) await transaction.execAsync('ALTER TABLE user_settings ADD COLUMN version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0);');
           if (!columns.some((column) => column.name === 'updated_at')) await transaction.execAsync("ALTER TABLE user_settings ADD COLUMN updated_at TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z';");
+        }
+        if ((current?.user_version ?? 0) < 13) {
+          await transaction.execAsync(BREAK_SCHEMA_SQL);
+          await transaction.execAsync(INCREMENTAL_SYNC_BREAK_KIND_MIGRATION_SQL);
+        }
+        if ((current?.user_version ?? 0) < 14) {
+          await transaction.execAsync(REMINDER_SCHEMA_SQL);
+          await transaction.execAsync(INCREMENTAL_SYNC_REMINDER_KIND_MIGRATION_SQL);
         }
         await transaction.runAsync('INSERT INTO local_owners (id,kind,created_at) VALUES (?,?,?)', LOCAL_OWNER_ID, 'device_local', now());
 
@@ -1415,25 +1675,9 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
     async loadTasks(): Promise<Task[]> {
       return serialize(async () => {
       const db = await database();
-      const rows = await db.getAllAsync<TaskRow & { goal_id: string | null; priority: string | null; due_at: string | null }>(
+      const rows = await db.getAllAsync<StoredTaskRow>(
         'SELECT id,title,description,status,created_at,updated_at,completed_at,legacy_extra_json,goal_id,priority,due_at FROM tasks WHERE owner_id = ? ORDER BY created_at DESC,id', ownerId);
-      return rows.map((row) => {
-        const task = mergeExtra({
-          id: row.id, title: row.title, status: row.status, createdAt: row.created_at,
-          updatedAt: row.updated_at, ...(row.description !== null ? { description: row.description } : {}),
-          ...(row.completed_at !== null ? { completedAt: row.completed_at } : {}),
-          ...(row.goal_id ? { goalId: row.goal_id } : {}), ...(row.priority ? { priority: row.priority } : {}),
-          ...(row.due_at ? { dueAt: row.due_at } : {}),
-        }, row.legacy_extra_json) as Task & Record<string, unknown>;
-        // Typed SQLite columns are canonical; never resurrect cleared values from older duplicate JSON fields.
-        if (row.goal_id === null) delete task.goalId;
-        else task.goalId = row.goal_id;
-        if (row.priority === null) delete task.priority;
-        else task.priority = row.priority as Task['priority'];
-        if (row.due_at === null) delete task.dueAt;
-        else task.dueAt = row.due_at;
-        return task;
-      });
+      return rows.map(taskFromRow);
       });
     },
 
@@ -1462,6 +1706,34 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
           normalizedTitle, updatedAt, ownerId, taskId, expectedUpdatedAt,
         );
         return result.changes === 1 ? updatedAt : null;
+      });
+    },
+
+    async completeTask(taskId: string, expectedUpdatedAt: string): Promise<{ task: Task; outcome: 'completed' | 'already_completed' } | null> {
+      if (!taskId || !validTimestamp(expectedUpdatedAt)) {
+        throw new RangeError('INVALID_INPUT: task ID and valid revision are required');
+      }
+      return transaction(async (db) => {
+        const current = await db.getFirstAsync<StoredTaskRow>(
+          'SELECT id,title,description,status,created_at,updated_at,completed_at,legacy_extra_json,goal_id,priority,due_at FROM tasks WHERE owner_id = ? AND id = ?',
+          ownerId, taskId,
+        );
+        if (!current) return null;
+        if (current.status === 'completed') return { task: taskFromRow(current), outcome: 'already_completed' };
+        if (current.updated_at !== expectedUpdatedAt || !['pending', 'in_progress'].includes(current.status)) return null;
+        const completedAt = now();
+        if (!validTimestamp(completedAt)) throw new RangeError('INVALID_CLOCK: task completion timestamp is invalid');
+        const updatedAt = nextRevisionTimestamp(current.updated_at, completedAt);
+        const result = await db.runAsync(
+          `UPDATE tasks SET status = 'completed', completed_at = ?, updated_at = ?
+           WHERE owner_id = ? AND id = ? AND updated_at = ? AND status IN ('pending','in_progress')`,
+          completedAt, updatedAt, ownerId, taskId, expectedUpdatedAt,
+        );
+        if (result.changes !== 1) return null;
+        return {
+          task: taskFromRow({ ...current, status: 'completed', completed_at: completedAt, updated_at: updatedAt }),
+          outcome: 'completed',
+        };
       });
     },
 
@@ -1518,11 +1790,18 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
         );
         if (!task || task.updated_at !== expectedUpdatedAt) return false;
         const deletedAt = now();
-        await db.runAsync(
-          `UPDATE focus_sessions SET task_id = NULL, task_name = COALESCE(task_name, ?), updated_at = ?
-           WHERE owner_id = ? AND task_id = ?`,
-          task.title, deletedAt, ownerId, taskId,
+        const linkedSessions = await db.getAllAsync<{ id: string; task_name: string | null; legacy_extra_json: string | null }>(
+          'SELECT id,task_name,legacy_extra_json FROM focus_sessions WHERE owner_id = ? AND task_id = ?', ownerId, taskId,
         );
+        for (const session of linkedSessions) {
+          const extras = mergeExtra({}, session.legacy_extra_json);
+          extras.historicalTaskId = taskId;
+          await db.runAsync(
+            `UPDATE focus_sessions SET task_id = NULL, task_name = COALESCE(task_name, ?), updated_at = ?, legacy_extra_json = ?
+             WHERE owner_id = ? AND id = ? AND task_id = ?`,
+            task.title, deletedAt, extraJson(extras, []), ownerId, session.id, taskId,
+          );
+        }
         const result = await db.runAsync(
           'DELETE FROM tasks WHERE owner_id = ? AND id = ? AND updated_at = ?', ownerId, taskId, expectedUpdatedAt,
         );
@@ -1622,12 +1901,14 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
       await transaction(async (db) => {
         const current = await db.getFirstAsync<{ session_id: string }>('SELECT session_id FROM active_focus_sessions WHERE owner_id = ?', ownerId);
         if (current && current.session_id !== session.id) throw new Error('ACTIVE_SESSION_CONFLICT: refusing to replace a different recovery pointer');
-        const existing = await db.getFirstAsync<{ id: string; status: FocusSession['status'] }>('SELECT id,status FROM focus_sessions WHERE owner_id = ? AND id = ?', ownerId, session.id);
+        const existing = await db.getFirstAsync<SessionRow & { task_id: string | null }>('SELECT * FROM focus_sessions WHERE owner_id = ? AND id = ?', ownerId, session.id);
         if (existing?.status === 'completed' || existing?.status === 'cancelled') {
           throw new Error('TERMINAL_SESSION_CONFLICT: refusing to revive finalized history');
         }
         if (existing) {
-          await db.runAsync(`UPDATE focus_sessions SET task_id=?,task_name=?,status=?,planned_duration_seconds=?,focused_duration_seconds=?,paused_duration_seconds=?,started_at=?,completed_at=?,cancelled_at=?,last_paused_at=?,last_resumed_at=?,updated_at=?,legacy_extra_json=? WHERE owner_id=? AND id=?`, ...sessionUpdateValues(session, now(), ownerId), ownerId, session.id);
+          const current = sessionFromRow(existing, existing.task_id);
+          const taskColumnId = await taskColumnIdForSession(db, ownerId, session, existing.task_id === null && current.taskId === session.taskId);
+          await db.runAsync(`UPDATE focus_sessions SET task_id=?,task_name=?,status=?,planned_duration_seconds=?,focused_duration_seconds=?,paused_duration_seconds=?,started_at=?,completed_at=?,cancelled_at=?,last_paused_at=?,last_resumed_at=?,updated_at=?,legacy_extra_json=? WHERE owner_id=? AND id=?`, ...sessionUpdateValues(session, now(), ownerId, taskColumnId), ownerId, session.id);
         } else await insertSession(db, session, now(), ownerId);
         await db.runAsync('INSERT INTO active_focus_sessions (owner_id,session_id) VALUES (?,?) ON CONFLICT(owner_id) DO UPDATE SET session_id=excluded.session_id', ownerId, session.id);
       });
@@ -1652,6 +1933,18 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
       await transaction(async (db) => {
         await persistTerminalInTransaction(db, session, now(), true, ownerId);
         await reconcileGoalLifecycleInTransaction(db, ownerId, now());
+      });
+    },
+
+    async loadFinalizedSession(sessionId: string): Promise<FocusSession | null> {
+      if (!sessionId.trim()) throw new RangeError('INVALID_SESSION_ID');
+      return serialize(async () => {
+        const db = await database();
+        const row = await db.getFirstAsync<SessionRow & { task_id: string | null }>(
+          "SELECT * FROM focus_sessions WHERE owner_id = ? AND id = ? AND status IN ('completed','cancelled')",
+          ownerId, sessionId,
+        );
+        return row ? sessionFromRow(row, row.task_id) : null;
       });
     },
 
@@ -1941,9 +2234,6 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
         const state = await db.getFirstAsync<{ last_sequence: string }>(
           'SELECT last_sequence FROM sync_remote_pull_cursors WHERE owner_id = ?', ownerId,
         );
-        const hasAppliedReceipt = Boolean(await db.getFirstAsync<{ owner_id: string }>(
-          'SELECT owner_id FROM sync_remote_change_receipts WHERE owner_id = ? LIMIT 1', ownerId,
-        ));
         let lastSequence = state?.last_sequence ?? '0';
         let applied = 0;
         let replayed = 0;
@@ -1956,7 +2246,9 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
             replayed += 1;
             continue;
           }
-          if (hasAppliedReceipt && compareDecimal(item.change.sequence, lastSequence) <= 0) throw new Error('SYNC_SEQUENCE_ORDER_INVALID');
+          // A snapshot establishes a cursor even when it has no incremental
+          // receipts. Never allow a later pull to move that cursor backwards.
+          if (state && compareDecimal(item.change.sequence, lastSequence) <= 0) throw new Error('SYNC_SEQUENCE_ORDER_INVALID');
           await db.runAsync(
             `INSERT INTO sync_remote_change_receipts
                (owner_id,sequence,change_hash,entity_kind,entity_id,operation,created_at)
@@ -1977,6 +2269,17 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
           if (item.change.entityKind === 'settings' && item.change.operation === 'upsert') {
             if (!item.change.payload || !isObject(item.change.payload)) throw new Error('SYNC_SETTINGS_INVALID');
             await materializeRemoteSettings(db, ownerId, item.change.entityId, item.change.payload);
+          }
+          if (item.change.entityKind === 'break' && item.change.operation === 'upsert') {
+            if (!item.change.payload || !isObject(item.change.payload)) throw new Error('SYNC_BREAK_INVALID');
+            await materializeRemoteBreak(db, ownerId, item.change.entityId, item.change.payload, now());
+          }
+          if (item.change.entityKind === 'reminder' && item.change.operation === 'upsert') {
+            if (!item.change.payload || !isObject(item.change.payload)) throw new Error('SYNC_REMINDER_INVALID');
+            await materializeRemoteReminder(db, ownerId, item.change.entityId, item.change.payload, now());
+          }
+          if (item.change.entityKind === 'reminder' && item.change.operation === 'delete') {
+            await materializeRemoteReminderDelete(db, ownerId, item.change.entityId, now());
           }
           lastSequence = item.change.sequence;
           applied += 1;
@@ -2163,19 +2466,21 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
 }
 
 async function persistTerminalInTransaction(db: SQLite.SQLiteDatabase, session: FocusSession, now: string, clearPointer: boolean, ownerId = LOCAL_OWNER_ID) {
-  const existing = await db.getFirstAsync<SessionRow>('SELECT * FROM focus_sessions WHERE owner_id = ? AND id = ?', ownerId, session.id);
+  const existing = await db.getFirstAsync<SessionRow & { task_id: string | null }>('SELECT * FROM focus_sessions WHERE owner_id = ? AND id = ?', ownerId, session.id);
   if (!existing) await insertSession(db, session, now, ownerId);
   else if (existing.status === 'completed' || existing.status === 'cancelled') {
-    const current = sessionFromRow(existing);
+    const current = sessionFromRow(existing, existing.task_id);
     if (canonicalJson(current) !== canonicalJson(session)) throw new Error('Conflicting terminal history record');
   } else {
     const pointer = await db.getFirstAsync<{ session_id: string }>('SELECT session_id FROM active_focus_sessions WHERE owner_id = ?', ownerId);
     if (pointer?.session_id !== session.id) throw new Error('ACTIVE_SESSION_CONFLICT: terminal command does not own the active pointer');
-    await db.runAsync(`UPDATE focus_sessions SET task_id=?,task_name=?,status=?,planned_duration_seconds=?,focused_duration_seconds=?,paused_duration_seconds=?,started_at=?,completed_at=?,cancelled_at=?,last_paused_at=?,last_resumed_at=?,updated_at=?,legacy_extra_json=? WHERE owner_id=? AND id=?`, ...sessionUpdateValues(session, now, ownerId), ownerId, session.id);
+    const current = sessionFromRow(existing, existing.task_id);
+    const taskColumnId = await taskColumnIdForSession(db, ownerId, session, existing.task_id === null && current.taskId === session.taskId);
+    await db.runAsync(`UPDATE focus_sessions SET task_id=?,task_name=?,status=?,planned_duration_seconds=?,focused_duration_seconds=?,paused_duration_seconds=?,started_at=?,completed_at=?,cancelled_at=?,last_paused_at=?,last_resumed_at=?,updated_at=?,legacy_extra_json=? WHERE owner_id=? AND id=?`, ...sessionUpdateValues(session, now, ownerId, taskColumnId), ownerId, session.id);
   }
   const payload = canonicalJson(session);
   const payloadHash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, payload);
-  const mutationId = `terminal:${session.id}`;
+  const mutationId = createFinalizedSessionProcessing(session).idempotencyKey;
   const queued = await db.getFirstAsync<{ payload_hash: string; payload_json: string }>(
     'SELECT payload_hash,payload_json FROM local_outbox WHERE owner_id = ? AND mutation_id = ?', ownerId, mutationId,
   );
@@ -2265,6 +2570,7 @@ export const loadActivePlan = (...args: Parameters<typeof deviceLocalStore.loadA
 export const cancelActivePlan = (...args: Parameters<typeof deviceLocalStore.cancelActivePlan>) => owners.current().cancelActivePlan(...args);
 export const saveTasks = (...args: Parameters<typeof deviceLocalStore.saveTasks>) => owners.current().saveTasks(...args);
 export const updateTaskTitle = (...args: Parameters<typeof deviceLocalStore.updateTaskTitle>) => owners.current().updateTaskTitle(...args);
+export const completeTask = (...args: Parameters<typeof deviceLocalStore.completeTask>) => owners.current().completeTask(...args);
 export const updateTaskDetails = (...args: Parameters<typeof deviceLocalStore.updateTaskDetails>) => owners.current().updateTaskDetails(...args);
 export const updateTaskArchive = (...args: Parameters<typeof deviceLocalStore.updateTaskArchive>) => owners.current().updateTaskArchive(...args);
 export const deleteTask = (...args: Parameters<typeof deviceLocalStore.deleteTask>) => owners.current().deleteTask(...args);
@@ -2277,6 +2583,7 @@ export const saveActiveSession = (...args: Parameters<typeof deviceLocalStore.sa
 export const clearActiveSession = (...args: Parameters<typeof deviceLocalStore.clearActiveSession>) => owners.current().clearActiveSession(...args);
 export const appendSessionHistory = (...args: Parameters<typeof deviceLocalStore.appendSessionHistory>) => owners.current().appendSessionHistory(...args);
 export const persistTerminalSession = (...args: Parameters<typeof deviceLocalStore.persistTerminalSession>) => owners.current().persistTerminalSession(...args);
+export const loadFinalizedSession = (...args: Parameters<typeof deviceLocalStore.loadFinalizedSession>) => owners.current().loadFinalizedSession(...args);
 export const beginSnapshotStaging = (...args: Parameters<typeof deviceLocalStore.beginSnapshotStaging>) => owners.current().beginSnapshotStaging(...args);
 export const stageSnapshotPage = (...args: Parameters<typeof deviceLocalStore.stageSnapshotPage>) => owners.current().stageSnapshotPage(...args);
 export const loadSnapshotStaging = (...args: Parameters<typeof deviceLocalStore.loadSnapshotStaging>) => owners.current().loadSnapshotStaging(...args);

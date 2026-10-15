@@ -94,3 +94,35 @@ test('startSession rejects ownership injection and unsafe timer inputs before SQ
   await assert.rejects(applyStartSession(client, { actorId: OWNER, operation: 'startSession', mutationId: MUTATION, requestSha256: HASH, body: { ...base, plannedMs: 0 } }), /VALIDATION_FAILED/);
   assert.equal(calls, 0);
 });
+
+test('startSession rejects malformed client and outer request before SQL', async () => {
+  await assert.rejects(() => applyStartSession(null, null), /DEPENDENCY_UNAVAILABLE/);
+  await assert.rejects(() => applyStartSession({ query: async () => ({ rows: [] }) }, null), /VALIDATION_FAILED/);
+  await assert.rejects(() => applyStartSession({ query: async () => ({ rows: [] }) }, { actorId: Symbol('owner'), operation: 'startSession', body: {} }), /VALIDATION_FAILED/);
+});
+
+test('startSession fails closed on malformed or ambiguous database results', async () => {
+  const malformed = { query: async (sql) => sql.includes('from df_private.workspaces') ? { rows: null } : { rows: [] } };
+  await assert.rejects(() => applyStartSession(malformed, { actorId: OWNER, operation: 'startSession', mutationId: MUTATION, requestSha256: HASH, body: { id: SESSION, workspaceId: WORKSPACE, plannedMs: 1, startedAt: '2026-10-10T01:00:00.000Z' } }), /DEPENDENCY_UNAVAILABLE/);
+  const duplicate = { query: async (sql) => sql.includes('from df_private.workspaces') ? { rows: [{ owner_id: OWNER, id: WORKSPACE }] } : { rows: [{ id: SESSION, owner_id: OWNER, workspace_id: WORKSPACE, version: 1, status: 'active' }, { id: SESSION, owner_id: OWNER, workspace_id: WORKSPACE, version: 1, status: 'active' }] } };
+  await assert.rejects(() => applyStartSession(duplicate, { actorId: OWNER, operation: 'startSession', mutationId: MUTATION, requestSha256: HASH, body: { id: SESSION, workspaceId: WORKSPACE, plannedMs: 1, startedAt: '2026-10-10T01:00:00.000Z' } }), /DEPENDENCY_UNAVAILABLE/);
+});
+
+test('startSession fails closed on sparse workspace rows before session writes', async () => {
+  const sparse = [];
+  sparse[1] = { owner_id: OWNER, id: WORKSPACE };
+  let writes = 0;
+  const client = { query: async (sql) => {
+    if (sql.includes('from df_private.workspaces')) return { rows: sparse };
+    writes += 1;
+    return { rows: [] };
+  } };
+  await assert.rejects(() => applyStartSession(client, {
+    actorId: OWNER,
+    operation: 'startSession',
+    mutationId: MUTATION,
+    requestSha256: HASH,
+    body: { id: SESSION, workspaceId: WORKSPACE, plannedMs: 1, startedAt: '2026-10-10T01:00:00.000Z' },
+  }), /DEPENDENCY_UNAVAILABLE/);
+  assert.equal(writes, 0);
+});

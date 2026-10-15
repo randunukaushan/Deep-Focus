@@ -19,3 +19,10 @@ rows to client roles, or treats malformed database output as an allow.
 
 The migration is local and review-pending. No Supabase project, production data,
 paid service, deployment, commit or push was touched.
+
+## Follow-up: gateway clock validation — 2026-10-11
+
+- The generic gateway admission now rejects negative timestamps before calling
+  the shared counter, matching the PostgreSQL adapter contract.
+- Rate-limit focused checks: **11/11 PASS**; latest full suite:
+  **1194/1194 PASS**.

@@ -7,7 +7,7 @@ begin;
 create table df_private.server_entitlements (
   owner_id uuid not null references df_private.profiles(owner_id) on delete restrict,
   capability text not null check (capability in ('ai','cloud_resources')),
-  status text not null check (status in ('pending','active','expired','revoked')),
+  status text not null check (status in ('pending','active','grace','expired','revoked')),
   verified_by text not null check (verified_by = 'server'),
   policy_version text not null check (char_length(policy_version) between 1 and 64),
   expires_at timestamptz,

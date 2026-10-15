@@ -391,3 +391,14 @@ recoverable; malformed, ambiguous or conflicting sources abort the whole import
 without a success marker or cutover. The local namespace is not silently merged
 into a subsequently signed-in account. Qualified independent review, native
 failure/restart tests and legal review remain separate acceptance gates.
+
+### October 14 onboarding language selection amendment
+
+The owner approved the onboarding language flow: the first onboarding step must
+let the user choose Sinhala (`si`), Tamil (`ta`) or English (`en`) before the
+remaining onboarding questions are shown. Save that interface-language choice
+as the app preference, use it throughout onboarding, and keep the existing
+Settings language control so the user can change it later. This decision is
+about interface language only; it does not select a curriculum, country,
+education stage or account language, and it does not waive translation,
+accessibility or device-rendering QA.

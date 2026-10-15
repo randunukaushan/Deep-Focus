@@ -27,3 +27,24 @@ test('unsafe policy input is rejected before the shared counter is called', asyn
   await assert.rejects(enforceGatewayRateLimit({ ...base, actorId: 'foreign', counter: { consume: async () => { called = true; return { allowed: true, retryAfterSeconds: 0 }; } } }), /VALIDATION_FAILED/);
   assert.equal(called, false);
 });
+
+test('negative clock values are rejected before the shared counter is called', async () => {
+  let called = false;
+  await assert.rejects(enforceGatewayRateLimit({ ...base, nowMs: -1, counter: { consume: async () => { called = true; return { allowed: true, retryAfterSeconds: 0 }; } } }), /VALIDATION_FAILED/);
+  assert.equal(called, false);
+});
+
+test('rate-limit admission rejects unsafe actor and operation runtime types before counter access', async () => {
+  let called = false;
+  const counter = { consume: async () => { called = true; return { allowed: true, retryAfterSeconds: 0 }; } };
+  await assert.rejects(enforceGatewayRateLimit({ ...base, actorId: Symbol('actor'), counter }), /VALIDATION_FAILED/);
+  await assert.rejects(enforceGatewayRateLimit({ ...base, operation: Symbol('operation'), counter }), /VALIDATION_FAILED/);
+  assert.equal(called, false);
+});
+
+test('rate-limit admission rejects malformed composition before counter access', async () => {
+  await assert.rejects(enforceGatewayRateLimit(null), /VALIDATION_FAILED/);
+  await assert.rejects(enforceGatewayRateLimit([]), /VALIDATION_FAILED/);
+  await assert.rejects(enforceGatewayRateLimit({ ...base, counter: null }), /VALIDATION_FAILED/);
+  await assert.rejects(enforceGatewayRateLimit({ ...base, counter: { consume: 'not-a-function' } }), /VALIDATION_FAILED/);
+});

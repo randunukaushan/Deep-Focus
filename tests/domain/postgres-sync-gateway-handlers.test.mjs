@@ -24,7 +24,7 @@ function harness() {
       const row = [...changes.values()].find((candidate) => BigInt(candidate.sequence) > BigInt(params[1]) && BigInt(candidate.sequence) <= BigInt(params[2]));
       return { rows: row ? [{ owner_id: OWNER, sequence: row.sequence, entity_kind: row.entityKind, entity_id: row.entityId, operation: row.operation, payload: row.payload, change_hash: row.changeHash }] : [] };
     }
-    if (sql.includes('insert into df_private.sync_changes')) { changes.set(`${params[0]}:${params[1]}`, { sequence: params[1], entityKind: params[2], entityId: params[3], operation: params[4], payload: JSON.parse(params[5]), changeHash: params[6] }); return { rows: [{ owner_id: params[0], sequence: params[1], change_hash: params[6] }] }; }
+    if (sql.includes('insert into df_private.sync_changes')) { changes.set(`${params[0]}:${params[1]}`, { sequence: params[1], entityKind: params[2], entityId: params[3], operation: params[4], payload: JSON.parse(params[5]), changeHash: params[6] }); return { rows: [{ owner_id: params[0], sequence: params[1], entity_kind: params[2], entity_id: params[3], operation: params[4], change_hash: params[6] }] }; }
     return { rows: [] };
   } };
   return { changes, calls, runner: { withTransaction: async (run) => run(client) } };
@@ -58,6 +58,25 @@ test('sync pull handler preserves signed cursor owner and limit binding', async 
   await assert.rejects(() => handlers.pull({ actorId: '33333333-3333-4333-8333-333333333333', sessionId: SESSION, cursor: first.nextCursor, limit: 10 }), /SYNC_CURSOR_INVALID/);
 });
 
+test('sync pull resolves cursor timestamps for each request instead of handler creation', async () => {
+  const h = harness();
+  let nowReads = 0;
+  let expiryReads = 0;
+  const now = () => {
+    nowReads += 1;
+    return nowReads === 1 ? '2026-10-10T00:00:00.000Z' : '2026-10-10T02:00:00.000Z';
+  };
+  const expiresAt = () => {
+    expiryReads += 1;
+    return expiryReads === 1 ? '2026-10-10T01:00:00.000Z' : '2026-10-10T03:00:00.000Z';
+  };
+  const handlers = createPostgresSyncGatewayHandlers({ runner: h.runner, cursorSecret: SECRET, now, expiresAt });
+  await handlers.pull({ actorId: OWNER, sessionId: SESSION, cursor: null, limit: 10 });
+  await handlers.pull({ actorId: OWNER, sessionId: SESSION, cursor: null, limit: 10 });
+  assert.equal(nowReads, 2);
+  assert.equal(expiryReads, 2);
+});
+
 test('sync gateway rejects a revoked transaction session before database data access', async () => {
   const h = harness();
   const revokedRunner = { withTransaction: async (run) => run({ query: async (sql) => {
@@ -68,4 +87,24 @@ test('sync gateway rejects a revoked transaction session before database data ac
   await assert.rejects(() => handlers.pull({ actorId: OWNER, sessionId: SESSION, cursor: null, limit: 10 }), /AUTH_REQUIRED/);
   await assert.rejects(() => handlers.commit({ actorId: OWNER, sessionId: SESSION, cursorLastSequence: '0', nextCursor: 'cursor', changes: [] }), /AUTH_REQUIRED/);
   assert.equal(h.changes.size, 0);
+});
+
+test('sync gateway rejects malformed runtime configuration and request containers before storage', async () => {
+  assert.throws(() => createPostgresSyncGatewayHandlers(null), /VALIDATION_FAILED/);
+  assert.throws(() => createPostgresSyncGatewayHandlers({ runner: { withTransaction: 'not-a-function' }, cursorSecret: SECRET, now: NOW, expiresAt: EXPIRY }), /VALIDATION_FAILED/);
+  assert.throws(() => createPostgresSyncGatewayHandlers({ runner: { withTransaction: async () => {} }, cursorSecret: 'short', now: NOW, expiresAt: EXPIRY }), /VALIDATION_FAILED/);
+  assert.throws(() => createPostgresSyncGatewayHandlers({ runner: { withTransaction: async () => {} }, cursorSecret: SECRET, now: EXPIRY, expiresAt: NOW }), /VALIDATION_FAILED/);
+  let opened = false;
+  const handlers = createPostgresSyncGatewayHandlers({ runner: { withTransaction: async () => { opened = true; } }, cursorSecret: SECRET, now: NOW, expiresAt: EXPIRY });
+  await assert.rejects(() => handlers.pull(null), /VALIDATION_FAILED/);
+  await assert.rejects(() => handlers.commit(null), /VALIDATION_FAILED/);
+  assert.equal(opened, false);
+});
+
+test('sync gateway rejects runtime-confused actor and session values safely', async () => {
+  let opened = false;
+  const handlers = createPostgresSyncGatewayHandlers({ runner: { withTransaction: async () => { opened = true; } }, cursorSecret: SECRET, now: NOW, expiresAt: EXPIRY });
+  await assert.rejects(() => handlers.pull({ actorId: Symbol('actor'), sessionId: SESSION, cursor: null, limit: 10 }), /VALIDATION_FAILED/);
+  await assert.rejects(() => handlers.commit({ actorId: OWNER, sessionId: Symbol('session'), cursorLastSequence: '0', nextCursor: 'cursor', changes: [] }), /VALIDATION_FAILED/);
+  assert.equal(opened, false);
 });

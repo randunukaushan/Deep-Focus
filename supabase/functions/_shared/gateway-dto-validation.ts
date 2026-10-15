@@ -3,12 +3,21 @@
 import type { GatewayOperation } from './gateway-router.ts';
 // @ts-expect-error The Edge runtime and domain test loader resolve TypeScript modules directly.
 import { SafeBoundaryError } from './server-boundary.ts';
+// @ts-expect-error The Edge runtime and domain test loader resolve TypeScript modules directly.
+import { validatePlanGenerationInput } from './ai-plan-generation-validation.ts';
+// @ts-expect-error The Edge runtime and domain test loader resolve TypeScript modules directly.
+import { normalizePlanLifecycleInput } from './plan-lifecycle-validation.ts';
+// @ts-expect-error The Edge runtime and domain test loader resolve TypeScript modules directly.
+import { validatePlanEditInput } from './plan-replication-wire.ts';
+// @ts-expect-error The Edge runtime and domain test loader resolve TypeScript modules directly.
+import { isPlainJsonValueForBoundary } from './json-response-boundary.ts';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
 const PRIORITIES = new Set([null, 'low', 'medium', 'high']);
 const TYPES = new Set(['focus_time', 'session_count', 'task_completion']);
 const PERIODS = new Set(['daily', 'weekly', 'monthly', 'custom']);
+const SHA256 = /^[a-f0-9]{64}$/;
 const ACTIONS = new Set(['begin', 'complete', 'cancel', 'archive']);
 const EVENT_TYPES = new Set(['pause', 'resume', 'complete', 'cancel']);
 
@@ -27,6 +36,18 @@ function instant(value: unknown): void { const result = string(value, 24); if (!
 function nullableUuid(value: unknown): void { if (value !== null) uuid(value); }
 function optionalText(value: unknown): void { if (value !== null) string(value, 4000); }
 function priority(value: unknown): void { if (value !== null && (typeof value !== 'string' || !PRIORITIES.has(value))) invalid(); }
+
+function decimal(value: unknown, max = 80): void { if (typeof value !== 'string' || value.length < 1 || value.length > max || !/^(?:0|[1-9][0-9]*)$/.test(value)) invalid(); }
+
+function syncChange(value: unknown): void {
+  const entry = object(value);
+  if (Object.keys(entry).sort().join(',') !== 'entityId,entityKind,operation,payload,sequence') invalid();
+  uuid(entry.entityId); decimal(entry.sequence);
+  if (typeof entry.entityKind !== 'string' || !['profile', 'goal', 'task', 'session', 'focus_session', 'settings', 'break', 'reminder'].includes(entry.entityKind)) invalid();
+  if (entry.operation !== 'upsert' && entry.operation !== 'delete') invalid();
+  if (entry.operation === 'delete') { if (entry.payload !== null) invalid(); }
+  else if (!entry.payload || typeof entry.payload !== 'object' || Array.isArray(entry.payload)) invalid();
+}
 
 function due(value: unknown): void {
   const entry = object(value);
@@ -48,6 +69,41 @@ function commonTaskFields(body: Body, patch: boolean): void {
 export function validateGatewayOperationDto(operation: GatewayOperation, value: unknown): void {
   const body = object(value);
   switch (operation) {
+    case 'revokeAccountSessions':
+      if (body.scope === 'one') { if (Object.keys(body).length !== 2 || typeof body.sessionId !== 'string' || !UUID.test(body.sessionId)) invalid(); return; }
+      if ((body.scope === 'others' || body.scope === 'all') && Object.keys(body).length === 1) return;
+      invalid();
+    case 'cancelAiGeneration':
+      if (Object.keys(body).length !== 0) invalid();
+      return;
+    case 'applyAiProposal':
+      if (Object.keys(body).length !== 3 || !Number.isSafeInteger(body.expectedProposalVersion) || (body.expectedProposalVersion as number) < 1
+        || typeof body.reviewDigest !== 'string' || !SHA256.test(body.reviewDigest)
+        || !Array.isArray(body.selectedOperationIds) || !isPlainJsonValueForBoundary(body.selectedOperationIds) || body.selectedOperationIds.length < 1 || body.selectedOperationIds.length > 25
+        || body.selectedOperationIds.some((id) => typeof id !== 'string' || !UUID.test(id))
+        || new Set(body.selectedOperationIds as string[]).size !== (body.selectedOperationIds as string[]).length) invalid();
+      return;
+    case 'createAiGeneration':
+      validatePlanGenerationInput(body);
+      return;
+    case 'applyPlanAction':
+      normalizePlanLifecycleInput(body);
+      return;
+    case 'patchPlan':
+      validatePlanEditInput(body);
+      return;
+    case 'createPrivacyExport':
+      if (Object.keys(body).length !== 2 || body.format !== 'json' || body.scope !== 'own_account_data') invalid();
+      return;
+    case 'createSyncSnapshot':
+      if (Object.keys(body).length !== 0) invalid();
+      return;
+    case 'pushSync':
+      if (Object.keys(body).length !== 3) invalid();
+      decimal(body.cursorLastSequence); string(body.nextCursor, 4096, true);
+      if (!Array.isArray(body.changes) || !isPlainJsonValueForBoundary(body.changes) || body.changes.length > 100) invalid();
+      body.changes.forEach(syncChange);
+      return;
     case 'patchMe':
       version(body.expectedVersion); string(body.displayName, 100, true); return;
     case 'createTask':
@@ -91,6 +147,16 @@ export function validateGatewayOperationDto(operation: GatewayOperation, value: 
       uuid(body.id); uuid(body.focusSessionId); instant(body.startedAt); instant(body.endedAt); positiveMs(body.plannedMs);
       if ((body.plannedMs as number) > 86400000 || typeof body.outcome !== 'string' || !['completed', 'ended_early'].includes(body.outcome)) invalid();
       return;
+    case 'createReminder':
+      uuid(body.id); uuid(body.taskId); instant(body.scheduledFor); string(body.timeZone, 100, true); if (body.delivery !== 'local_device') invalid(); return;
+    case 'patchReminder':
+      version(body.expectedVersion); if (Object.keys(body).length < 2) invalid();
+      if ('scheduledFor' in body) instant(body.scheduledFor);
+      if ('timeZone' in body) string(body.timeZone, 100, true);
+      if ('enabled' in body && typeof body.enabled !== 'boolean') invalid();
+      return;
+    case 'deleteReminder':
+      version(body.expectedVersion); if (Object.keys(body).length !== 1) invalid(); return;
     default: return;
   }
 }

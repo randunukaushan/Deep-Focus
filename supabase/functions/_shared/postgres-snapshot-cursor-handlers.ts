@@ -13,10 +13,23 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 function invalid(): never { throw new SafeBoundaryError(422, 'VALIDATION_FAILED'); }
 function notFound(): never { throw new SafeBoundaryError(404, 'NOT_FOUND'); }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID.test(value);
+}
+
+function validRunner(value: unknown): value is PostgresTransactionRunner {
+  return isRecord(value) && typeof value.withTransaction === 'function';
+}
+
 export function createPostgresSnapshotCursorHandlers(input: {
   runner: PostgresTransactionRunner;
   secret: string;
 }) {
+  if (!isRecord(input) || !validRunner(input.runner) || typeof input.secret !== 'string' || input.secret.length < 32) invalid();
   const pageReader = createPostgresSnapshotPageReader(input);
 
   return {
@@ -27,7 +40,7 @@ export function createPostgresSnapshotCursorHandlers(input: {
       cursor: string;
       now: string;
     }) => {
-      if (!UUID.test(request.actorId) || !UUID.test(request.sessionId) || !UUID.test(request.snapshotId)
+      if (!isRecord(request) || !isUuid(request.actorId) || !isUuid(request.sessionId) || !isUuid(request.snapshotId)
         || typeof request.cursor !== 'string' || !Number.isFinite(Date.parse(request.now))) invalid();
 
       let verified;

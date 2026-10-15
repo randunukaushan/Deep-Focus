@@ -75,12 +75,14 @@ export function HomeScreen() {
   const quickActions = getQuickActions(copy);
   const dateLabel = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
   const [todayProgress, setTodayProgress] = useState({ focusedSeconds: 0, sessionsCompleted: 0 });
-  const [pausedSession, setPausedSession] = useState<Awaited<ReturnType<typeof loadActiveSession>>>(null);
+  const [recoverableSession, setRecoverableSession] = useState<Awaited<ReturnType<typeof loadActiveSession>>>(null);
 
   useFocusEffect(useCallback(() => {
     let active = true;
-    void loadActiveSession().then((session) => {
-      if (active) setPausedSession(session?.status === 'paused' ? session : null);
+    void loadActiveSession(true).then((session) => {
+      if (active) setRecoverableSession(session?.status === 'active' || session?.status === 'paused' ? session : null);
+    }).catch(() => {
+      if (active) router.replace('/focus/recovery');
     });
     void loadSessionHistory().then((sessions) => {
       if (!active) return;
@@ -94,7 +96,7 @@ export function HomeScreen() {
       });
     });
     return () => { active = false; };
-  }, []));
+  }, [router]));
 
   const hasProgress = todayProgress.sessionsCompleted > 0;
   const progressLabel = hasProgress
@@ -154,13 +156,13 @@ export function HomeScreen() {
             </View>
           </View>
 
-          {pausedSession ? <View accessibilityLabel={`${copy.home.focusSession}: ${pausedSession.taskName || copy.home.focusSession}`} style={[styles.recoveryCard, { backgroundColor: homeActionSoft, borderColor: homeBorder }]}>
+          {recoverableSession ? <View accessibilityLabel={`${copy.home.focusSession}: ${recoverableSession.taskName || copy.home.focusSession}`} style={[styles.recoveryCard, { backgroundColor: homeActionSoft, borderColor: homeBorder }]}>
             <View style={styles.recoveryCopy}>
-              <ThemedText style={[styles.sectionEyebrow, { color: homeAction }]} type="smallBold">{copy.home.pausedKicker}</ThemedText>
-              <ThemedText type="subtitle">{pausedSession.taskName || copy.home.focusSession}</ThemedText>
-              <ThemedText themeColor="textSecondary" type="small">{formatFocusTime(Math.max(0, pausedSession.plannedDurationSeconds - pausedSession.focusedDurationSeconds))} {copy.home.remaining}</ThemedText>
+              <ThemedText style={[styles.sectionEyebrow, { color: homeAction }]} type="smallBold">{recoverableSession.status === 'paused' ? copy.home.pausedKicker : copy.home.focusSession}</ThemedText>
+              <ThemedText type="subtitle">{recoverableSession.taskName || copy.home.focusSession}</ThemedText>
+              <ThemedText themeColor="textSecondary" type="small">{formatFocusTime(Math.max(0, recoverableSession.plannedDurationSeconds - recoverableSession.focusedDurationSeconds))} {copy.home.remaining}</ThemedText>
             </View>
-            <Button label={copy.home.continue} onPress={() => router.push({ pathname: '/focus/session', params: { durationMinutes: String(pausedSession.plannedDurationSeconds / 60), taskName: pausedSession.taskName || '', resume: '1' } })} />
+            <Button label={copy.home.continue} onPress={() => router.push({ pathname: '/focus/session', params: { durationMinutes: String(recoverableSession.plannedDurationSeconds / 60), taskName: recoverableSession.taskName || '', ...(recoverableSession.status === 'paused' ? { resume: '1' } : {}) } })} />
           </View> : null}
 
           <ThemedView accessibilityLabel={`${copy.home.focusSoFar}. ${progressLabel}`} style={[styles.progressCard, { backgroundColor: homeSurface, borderColor: homeBorder }, compact && styles.progressCardCompact]}>

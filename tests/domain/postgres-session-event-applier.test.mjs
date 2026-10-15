@@ -31,6 +31,39 @@ test('session event locks, inserts an ordered event, and updates focused time at
   assert.equal(calls[3].params[4], 600000);
 });
 
+test('session event normalizes PostgreSQL bigint timer and sequence strings', async () => {
+  const client = { query: async (sql) => {
+    if (sql.includes('from df_private.focus_sessions')) return { rows: [{ owner_id: OWNER, id: SESSION, status: 'active', version: 1, planned_ms: '1500000', focused_ms: '300000', paused_ms: '0', started_at: '2026-10-10T01:00:00.000Z', last_event_sequence: '0' }] };
+    if (sql.includes('from df_private.focus_events')) return { rows: [] };
+    if (sql.trimStart().startsWith('insert')) return { rows: [{ owner_id: OWNER, session_id: SESSION, sequence: 1, type: 'pause' }] };
+    return { rows: [{ id: SESSION, owner_id: OWNER, version: 2, status: 'paused' }] };
+  } };
+  const result = await applySessionEvent(client, input());
+  assert.equal(result.responseBody.status, 'paused');
+});
+
+test('session event accepts a PostgreSQL bigint string from the inserted event row', async () => {
+  const client = { query: async (sql) => {
+    if (sql.includes('from df_private.focus_sessions')) return { rows: [{ owner_id: OWNER, id: SESSION, status: 'active', version: 1, planned_ms: 1500000, focused_ms: 300000, paused_ms: 0, started_at: '2026-10-10T01:00:00.000Z', last_event_sequence: 0 }] };
+    if (sql.includes('from df_private.focus_events')) return { rows: [] };
+    if (sql.trimStart().startsWith('insert')) return { rows: [{ owner_id: OWNER, session_id: SESSION, sequence: '1', type: 'pause' }] };
+    return { rows: [{ id: SESSION, owner_id: OWNER, version: 2, status: 'paused' }] };
+  } };
+  const result = await applySessionEvent(client, input());
+  assert.equal(result.responseBody.version, 2);
+});
+
+test('session event fails closed for malformed PostgreSQL bigint timer data', async () => {
+  let eventInsertCalled = false;
+  const client = { query: async (sql) => {
+    if (sql.includes('from df_private.focus_sessions')) return { rows: [{ owner_id: OWNER, id: SESSION, status: 'active', version: 1, planned_ms: 'not-a-number', focused_ms: '300000', paused_ms: '0', started_at: '2026-10-10T01:00:00.000Z', last_event_sequence: '0' }] };
+    eventInsertCalled = true;
+    return { rows: [] };
+  } };
+  await assert.rejects(applySessionEvent(client, input()), /DEPENDENCY_UNAVAILABLE/);
+  assert.equal(eventInsertCalled, false);
+});
+
 test('session event fails closed when event insert is not acknowledged', async () => {
   const client = { query: async (sql) => {
     if (sql.includes('from df_private.focus_sessions')) return { rows: [{ owner_id: OWNER, id: SESSION, status: 'active', version: 1, planned_ms: 1500000, focused_ms: 300000, paused_ms: 0, started_at: '2026-10-10T01:00:00.000Z', last_event_sequence: 0 }] };
@@ -92,4 +125,16 @@ test('session event fails closed when the locked session row returns another own
     return { rows: [] };
   } };
   await assert.rejects(() => applySessionEvent(client, input()), /NOT_FOUND/);
+});
+
+test('session event rejects malformed client and outer request before SQL', async () => {
+  await assert.rejects(() => applySessionEvent(null, null), /DEPENDENCY_UNAVAILABLE/);
+  await assert.rejects(() => applySessionEvent({ query: async () => ({ rows: [] }) }, null), /VALIDATION_FAILED/);
+  await assert.rejects(() => applySessionEvent({ query: async () => ({ rows: [] }) }, { ...input(), actorId: Symbol('owner') }), /VALIDATION_FAILED/);
+});
+
+test('session event fails closed on malformed or ambiguous database results', async () => {
+  await assert.rejects(() => applySessionEvent({ query: async () => ({ rows: null }) }, input()), /DEPENDENCY_UNAVAILABLE/);
+  const duplicate = { query: async (sql) => sql.includes('from df_private.focus_sessions') ? { rows: [{ owner_id: OWNER, id: SESSION, status: 'active', version: 1, planned_ms: 1500000, focused_ms: 300000, paused_ms: 0, started_at: '2026-10-10T01:00:00.000Z', last_event_sequence: 0 }, { owner_id: OWNER, id: SESSION, status: 'active', version: 1, planned_ms: 1500000, focused_ms: 300000, paused_ms: 0, started_at: '2026-10-10T01:00:00.000Z', last_event_sequence: 0 }] } : { rows: [] } };
+  await assert.rejects(() => applySessionEvent(duplicate, input()), /DEPENDENCY_UNAVAILABLE/);
 });

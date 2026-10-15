@@ -20,9 +20,10 @@
   payload, keeps the authenticated owner boundary, ignores stale versions,
   and applies the receipt, mirror row, settings row and cursor in one
   transaction so a failure rolls the whole page back.
-- Raised the local SQLite schema to version 12. The migration rebuilds the
+- Raised the local SQLite schema to version 13. The migration rebuilds the
   sync receipt constraint to include `settings` and adds typed settings
-  columns without deleting the legacy JSON source.
+  columns without deleting the legacy JSON source. Version 13 also adds the
+  owner-bound local break table used by the adjacent break sync slice.
 
 ## Verification
 

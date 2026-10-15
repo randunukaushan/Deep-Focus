@@ -2,14 +2,11 @@ import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import 'react-native-url-polyfill/auto';
+import { isValidSupabaseProjectUrl } from './supabase-config';
 
 const projectUrl = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim();
 const publishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
-const validProjectUrl = (() => {
-  if (!projectUrl) return false;
-  try { return new URL(projectUrl).protocol === 'https:'; }
-  catch { return false; }
-})();
+const validProjectUrl = isValidSupabaseProjectUrl(projectUrl);
 const validPublishableKey = Boolean(publishableKey?.startsWith('sb_publishable_'));
 
 export const authConfigurationError = Platform.OS === 'web'

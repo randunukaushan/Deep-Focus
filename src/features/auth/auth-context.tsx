@@ -3,13 +3,15 @@ import * as Crypto from 'expo-crypto';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { AppState, Platform } from 'react-native';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { activateAccountLocalStore, activateDeviceLocalStore } from '@/features/storage/local-database';
 import { useAppLocale } from '@/features/localization/app-locale-context';
 import { getAuthRuntimeCopy } from '@/features/localization/auth-runtime-copy';
 import { authRedirectCode, createAuthService, exchangeAuthCodeOnce, type AuthServiceResult } from './auth-service';
-import { authConfigurationError, supabase } from './supabase-client';
+import { authConfigurationError, secureAuthStorage, supabase } from './supabase-client';
+import { activateSessionOwner } from './session-owner-activation';
+import { applySuccessfulLocalSignOut } from './sign-out-transition';
 
 export type AuthStatus = 'initializing' | 'signed_out' | 'verification_required' | 'signed_in' | 'recovering' | 'configuration_error' | 'error';
 
@@ -35,11 +37,13 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 const redirectUrl = Linking.createURL('auth/callback', { scheme: 'deepfocus' });
+const VERIFIED_OWNER_KEY = 'deep-focus.verified-owner';
 WebBrowser.maybeCompleteAuthSession();
 
 export function AuthProvider({ children }: React.PropsWithChildren) {
   const { locale } = useAppLocale();
   const copy = getAuthRuntimeCopy(locale);
+  const authGeneration = useRef(0);
   const [snapshot, setSnapshot] = useState<AuthSnapshot>(supabase
     ? { status: 'initializing' }
     : { status: 'configuration_error', message: authConfigurationError ?? copy.configurationUnavailable });
@@ -50,23 +54,39 @@ export function AuthProvider({ children }: React.PropsWithChildren) {
     ...(Platform.OS === 'ios' ? { apple: AppleAuthentication, crypto: Crypto } : {}),
   }) : null, []);
 
-  const updateFromSession = useCallback((session: { user?: { id?: string; email?: string } } | null, recovery = false) => {
-    if (session?.user?.id) {
-      try {
-        activateAccountLocalStore(session.user.id);
-        setSnapshot({
-          status: recovery ? 'recovering' : 'signed_in',
-          userId: session.user.id,
-          ...(session.user.email ? { email: session.user.email } : {}),
-        });
-      } catch {
-        setSnapshot({ status: 'error', message: copy.accountSessionUnsafe });
-      }
+  const updateFromSession = useCallback(async (session: { user?: { id?: string; email?: string } } | null, recovery = false) => {
+    const generation = ++authGeneration.current;
+    if (!session?.user?.id) {
+      activateDeviceLocalStore();
+      setSnapshot({ status: 'signed_out' });
       return;
     }
-    activateDeviceLocalStore();
-    setSnapshot({ status: 'signed_out' });
-  }, [copy]);
+    const result = await activateSessionOwner({ userId: session.user.id }, {
+      getClaims: async () => {
+        const { data, error } = await supabase!.auth.getUser();
+        return { claims: { sub: data.user?.id }, error };
+      },
+      readPreviouslyVerifiedOwner: () => secureAuthStorage.getItem(VERIFIED_OWNER_KEY),
+      rememberVerifiedOwner: (userId) => secureAuthStorage.setItem(VERIFIED_OWNER_KEY, userId),
+      activateAccount: (userId) => activateAccountLocalStore(userId),
+      activateDevice: activateDeviceLocalStore,
+      isCurrent: () => authGeneration.current === generation,
+    });
+    if (authGeneration.current !== generation) return;
+    if (result.status === 'denied') {
+      setSnapshot({ status: 'error', message: copy.accountSessionUnsafe });
+      return;
+    }
+    try {
+      setSnapshot({
+        status: recovery ? 'recovering' : 'signed_in',
+        userId: result.userId,
+        ...(session.user.email ? { email: session.user.email } : {}),
+      });
+    } catch {
+      setSnapshot({ status: 'error', message: copy.accountSessionUnsafe });
+    }
+  }, [copy.accountSessionUnsafe]);
 
   useEffect(() => {
     if (!supabase) {
@@ -77,17 +97,19 @@ export function AuthProvider({ children }: React.PropsWithChildren) {
     let mounted = true;
     const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
-      updateFromSession(session, event === 'PASSWORD_RECOVERY');
+      void updateFromSession(session, event === 'PASSWORD_RECOVERY');
     });
 
     void client.auth.getSession().then(({ data, error }) => {
       if (!mounted) return;
       if (error) {
+        authGeneration.current += 1;
         activateDeviceLocalStore();
         setSnapshot({ status: 'error', message: copy.sessionRestoreFailed });
-      } else updateFromSession(data.session);
+      } else void updateFromSession(data.session);
     }).catch(() => {
       if (!mounted) return;
+      authGeneration.current += 1;
       activateDeviceLocalStore();
       setSnapshot({ status: 'error', message: copy.sessionRestoreFailed });
     });
@@ -115,7 +137,7 @@ export function AuthProvider({ children }: React.PropsWithChildren) {
         const { data, error } = await exchangeAuthCodeOnce(client, parsed.code);
         if (!mounted) return;
         if (error || !data.session) setSnapshot({ status: 'error', message: copy.invalidLink });
-        else updateFromSession(data.session, parsed.recovery);
+        else void updateFromSession(data.session, parsed.recovery);
       } catch {
         if (mounted) setSnapshot({ status: 'error', message: copy.linkFailed });
       }
@@ -123,6 +145,8 @@ export function AuthProvider({ children }: React.PropsWithChildren) {
 
     return () => {
       mounted = false;
+      // Invalidate provider work that is still awaiting verified claims.
+      authGeneration.current += 1;
       subscription.unsubscribe();
       appStateSubscription.remove();
       linkSubscription.remove();
@@ -164,8 +188,16 @@ export function AuthProvider({ children }: React.PropsWithChildren) {
     return result;
   }, [copy.configurationUnavailable, requireService]);
 
-  const signOut = useCallback(async () => requireService()?.signOut()
-    ?? { status: 'error' as const, message: authConfigurationError ?? copy.configurationUnavailable }, [copy.configurationUnavailable, requireService]);
+  const signOut = useCallback(async () => {
+    const result = await (requireService()?.signOut()
+      ?? Promise.resolve({ status: 'error' as const, message: authConfigurationError ?? copy.configurationUnavailable }));
+    applySuccessfulLocalSignOut(result, {
+      invalidatePendingAuthWork: () => { authGeneration.current += 1; },
+      activateDeviceLocalStore,
+      markSignedOut: () => setSnapshot({ status: 'signed_out' }),
+    });
+    return result;
+  }, [copy.configurationUnavailable, requireService]);
 
   const handleAuthRedirect = useCallback(async (url: string): Promise<AuthServiceResult> => {
     if (!supabase) return { status: 'error', message: authConfigurationError ?? copy.configurationUnavailable };
@@ -177,7 +209,7 @@ export function AuthProvider({ children }: React.PropsWithChildren) {
     try {
       const { data, error } = await exchangeAuthCodeOnce(supabase, parsed.code);
       if (error || !data.session) return { status: 'error', message: copy.invalidLink };
-      updateFromSession(data.session, parsed.recovery);
+      await updateFromSession(data.session, parsed.recovery);
       return { status: parsed.recovery ? 'sent' : 'signed_in' };
     } catch { return { status: 'error', message: copy.linkFailed }; }
   }, [copy, updateFromSession]);

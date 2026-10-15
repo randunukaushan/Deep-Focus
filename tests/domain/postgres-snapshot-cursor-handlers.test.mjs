@@ -111,3 +111,12 @@ test('cursor handler fails before page access when the session is revoked', asyn
   await assert.rejects(() => handlers.readPageByCursor({ actorId: OWNER, sessionId: SESSION, snapshotId: SNAPSHOT, cursor: token, now: NOW }), /AUTH_REQUIRED/);
   assert.equal(calls.filter((call) => call.sql.includes('sync_snapshot')).length, 0);
 });
+
+test('cursor handler rejects malformed dependencies and request types before storage', async () => {
+  assert.throws(() => createPostgresSnapshotCursorHandlers({ runner: null, secret: SECRET }), /VALIDATION_FAILED/);
+  assert.throws(() => createPostgresSnapshotCursorHandlers({ runner: harness().runner, secret: 'short' }), /VALIDATION_FAILED/);
+  const h = harness();
+  const handlers = createPostgresSnapshotCursorHandlers({ runner: h.runner, secret: SECRET });
+  await assert.rejects(() => handlers.readPageByCursor({ actorId: Symbol('actor'), sessionId: SESSION, snapshotId: SNAPSHOT, cursor: 'x', now: NOW }), /VALIDATION_FAILED/);
+  assert.equal(h.calls.length, 0);
+});

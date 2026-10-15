@@ -25,8 +25,32 @@ test('sync pull rejects malformed, oversized and foreign-shaped pages before sto
   assert.equal(applied, false);
 });
 
+test('sync pull rejects a page over the wire byte limit before storage', async () => {
+  let applied = false;
+  const oversized = { ...page, changes: [{ ...page.changes[0], payload: { title: 'x'.repeat(70_000) } }] };
+  await assert.rejects(applyAuthorizedSyncPage(OWNER, oversized, { applyPageAtomically: async () => { applied = true; } }), /SYNC_PAGE_INVALID/);
+  assert.equal(applied, false);
+});
+
+test('sync pull rejects the zero sequence used by no committed server change', async () => {
+  let applied = false;
+  await assert.rejects(
+    applyAuthorizedSyncPage(OWNER, { ...page, changes: [{ ...page.changes[0], sequence: '0' }] }, {
+      applyPageAtomically: async () => { applied = true; },
+    }),
+    /SYNC_PAGE_INVALID/,
+  );
+  assert.equal(applied, false);
+});
+
 test('sync pull never accepts a non-account owner namespace', async () => {
   await assert.rejects(applyAuthorizedSyncPage('account:foreign', page, { applyPageAtomically: async () => { throw new Error('must not run'); } }), /SYNC_OWNER_INVALID/);
+});
+
+test('sync pull rejects runtime-confused owner and storage dependencies before page access', async () => {
+  await assert.rejects(applyAuthorizedSyncPage(Symbol('owner'), page, { applyPageAtomically: async () => {} }), /SYNC_OWNER_INVALID/);
+  await assert.rejects(applyAuthorizedSyncPage(OWNER, page, null), /SYNC_DEPENDENCY_INVALID/);
+  await assert.rejects(applyAuthorizedSyncPage(OWNER, page, { applyPageAtomically: 'not-a-function' }), /SYNC_DEPENDENCY_INVALID/);
 });
 
 test('sync pull preserves store failure for retry instead of advancing a cursor', async () => {

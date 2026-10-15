@@ -14,6 +14,7 @@ const exports = {};
 runInNewContext(outputText, { exports, require(name) {
   if (name === '@/features/goals/goal-progress') return goalProgress;
   if (name === '@/features/goals/goal-period') return goalPeriod;
+  if (name === './streak') return { calculateStreak: () => ({ currentStreakDays: 0, longestStreakDays: 0, qualifyingDates: [], lastQualifyingDate: null }) };
   throw new Error(`Unexpected dependency: ${name}`);
 } });
 const { summarizeProgress } = exports;
@@ -56,6 +57,17 @@ test('month and all windows apply inclusive start and exclude future terminal ev
   const future = session('future', 'completed', '2026-11-01T00:00:00.000Z', 50);
   assert.equal(summarize([atMonthStart, priorMonth, future], [], [], { window: 'month' }).focusedSeconds, 30);
   assert.equal(summarize([atMonthStart, priorMonth, future], [], [], { window: 'all' }).focusedSeconds, 70);
+});
+
+test('today uses the selected timezone calendar day and exposes ratio and task rate', () => {
+  const todaySession = session('today', 'completed', '2026-10-07T05:00:00.000Z', 120);
+  const yesterdaySession = session('yesterday', 'completed', '2026-10-06T18:29:59.000Z', 90);
+  const todayTask = { ...task, completedAt: '2026-10-07T05:00:00.000Z', createdAt: '2026-10-07T04:00:00.000Z' };
+  const result = summarize([todaySession, yesterdaySession], [todayTask], [], { window: 'today', timeZone: 'Asia/Colombo' });
+  assert.equal(result.focusedSeconds, 120);
+  assert.equal(result.completedSessions, 1);
+  assert.equal(result.focusPlanRatio, 0.4);
+  assert.equal(result.taskCompletionRate, 1);
 });
 
 test('duplicate identities are counted once only when their records agree; conflicts fail closed', () => {

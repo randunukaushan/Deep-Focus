@@ -37,7 +37,9 @@ function response(status: number, code: string): GatewayResponse {
 }
 
 function bearer(headers: Record<string, string | undefined>): string | null {
+  if (!headers || typeof headers !== 'object') return null;
   const value = headers.Authorization ?? headers.authorization;
+  if (typeof value !== 'string') return null;
   if (!value || !/^Bearer\s+\S+$/.test(value) || CONTROL.test(value)) return null;
   const token = value.slice(value.indexOf(' ') + 1);
   return token.startsWith('sb_') ? null : token;
@@ -46,6 +48,8 @@ function bearer(headers: Record<string, string | undefined>): string | null {
 function safeBody(value: unknown): Record<string, unknown> | null | undefined {
   if (value === undefined) return undefined;
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return null;
   const body = value as Record<string, unknown>;
   if (Object.keys(body).some((key) => ['ownerId', 'userId', 'serviceRole'].includes(key))) return null;
   return body;
@@ -61,9 +65,15 @@ function bodyBytes(value: unknown): number {
 }
 
 function canonicalJson(value: unknown): string {
-  if (value === null || typeof value === 'string' || typeof value === 'boolean' || typeof value === 'number') return JSON.stringify(value);
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new TypeError('UNHASHABLE_BODY');
+    return JSON.stringify(value);
+  }
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
   if (!value || typeof value !== 'object') throw new TypeError('UNHASHABLE_BODY');
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) throw new TypeError('UNHASHABLE_BODY');
   const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) => left.localeCompare(right));
   return `{${entries.map(([key, child]) => `${JSON.stringify(key)}:${canonicalJson(child)}`).join(',')}}`;
 }
@@ -86,6 +96,8 @@ function validSyncMutationBatch(body: Record<string, unknown> | null | undefined
       || mutation.command.length < 1 || mutation.command.length > 120
       || !RESOURCE_ID.test(String(mutation.targetId ?? ''))
       || !mutation.body || typeof mutation.body !== 'object' || Array.isArray(mutation.body)) return false;
+    const bodyPrototype = Object.getPrototypeOf(mutation.body);
+    if (bodyPrototype !== Object.prototype && bodyPrototype !== null) return false;
     const payload = mutation.body as Record<string, unknown>;
     return !['ownerId', 'userId', 'serviceRole'].some((key) => key in payload);
   });

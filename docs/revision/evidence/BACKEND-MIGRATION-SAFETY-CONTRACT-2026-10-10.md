@@ -19,3 +19,13 @@ they do not execute SQL or prove remote rollback behavior.
 
 No migration was applied to Supabase or production. Existing local files and
 user changes were preserved.
+
+## Service-role grant guard follow-up — 2026-10-11
+
+Every current migration that creates a `df_private` table must now declare a
+`service_role` grant while still denying `public`, `anon` and `authenticated`.
+This is static SQL evidence only; it does not prove live RLS behavior.
+
+- Migration/RLS/security focused checks: **28/28 PASS**.
+- TypeScript and affected ESLint: **PASS**.
+- Live Supabase execution and independent review: **NOT_RUN / REVIEW_PENDING**.

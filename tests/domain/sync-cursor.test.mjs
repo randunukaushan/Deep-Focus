@@ -38,3 +38,9 @@ test('sync cursor rejects malformed encoded segments and oversized tokens safely
   await assert.rejects(verifySyncCursor('A.A', SECRET, { ownerId: OWNER, limit: 50, now: NOW }), /SYNC_CURSOR_INVALID/);
   await assert.rejects(verifySyncCursor(`${'A'.repeat(4096)}.A`, SECRET, { ownerId: OWNER, limit: 50, now: NOW }), /SYNC_CURSOR_INVALID/);
 });
+
+test('sync cursor rejects unsafe expected runtime types before verification', async () => {
+  const token = await signSyncCursor(payload, SECRET);
+  await assert.rejects(verifySyncCursor(token, SECRET, { ownerId: Symbol('owner'), limit: 50, now: NOW }), /SYNC_CURSOR_INVALID/);
+  await assert.rejects(verifySyncCursor(token, SECRET, { ownerId: OWNER, limit: 50, now: Symbol('clock') }), /SYNC_CURSOR_INVALID/);
+});

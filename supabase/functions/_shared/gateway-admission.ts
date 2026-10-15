@@ -11,6 +11,10 @@ const MAX_BODY_BYTES = 64 * 1024;
 const MAX_PATH_BYTES = 512;
 const METHODS = new Set(['GET', 'POST', 'PATCH', 'DELETE']);
 
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID.test(value);
+}
+
 export type GatewayAdmission = {
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   path: string;
@@ -18,6 +22,7 @@ export type GatewayAdmission = {
   requestId?: string;
   idempotencyKey?: string;
   body: Record<string, unknown> | null;
+  query?: { cursor?: string; limit?: number };
 };
 
 export function admitGatewayRequest(input: {
@@ -28,18 +33,22 @@ export function admitGatewayRequest(input: {
   bodyText?: string;
   allowedBodyKeys?: readonly string[];
 }): GatewayAdmission {
+  if (!input || typeof input !== 'object' || Array.isArray(input)
+    || !input.headers || typeof input.headers !== 'object' || Array.isArray(input.headers)) {
+    throw new SafeBoundaryError(400, 'VALIDATION_FAILED');
+  }
   if (!METHODS.has(input.method)) throw new SafeBoundaryError(400, 'METHOD_NOT_ALLOWED');
-  if (!/^\/v1\/[A-Za-z0-9/_-]{1,480}$/.test(input.path) || CONTROL.test(input.path) || new TextEncoder().encode(input.path).length > MAX_PATH_BYTES) {
+  if (typeof input.path !== 'string' || !/^\/v1\/[A-Za-z0-9/_-]{1,480}$/.test(input.path) || CONTROL.test(input.path) || new TextEncoder().encode(input.path).length > MAX_PATH_BYTES) {
     throw new SafeBoundaryError(404, 'NOT_FOUND');
   }
-  if (!UUID.test(input.actorId)) throw new SafeBoundaryError(401, 'AUTH_REQUIRED');
+  if (!isUuid(input.actorId)) throw new SafeBoundaryError(401, 'AUTH_REQUIRED');
 
   const requestId = input.headers['X-Request-Id'] ?? input.headers['x-request-id'];
-  if (requestId !== undefined && !REQUEST_ID.test(requestId)) throw new SafeBoundaryError(400, 'VALIDATION_FAILED');
+  if (requestId !== undefined && (typeof requestId !== 'string' || !REQUEST_ID.test(requestId))) throw new SafeBoundaryError(400, 'VALIDATION_FAILED');
 
   const isWrite = input.method !== 'GET';
   const idempotencyKey = input.headers['Idempotency-Key'] ?? input.headers['idempotency-key'];
-  if (isWrite && (!idempotencyKey || !UUID.test(idempotencyKey))) {
+  if (isWrite && (!isUuid(idempotencyKey))) {
     throw new SafeBoundaryError(400, 'VALIDATION_FAILED');
   }
   if (!isWrite && idempotencyKey !== undefined) throw new SafeBoundaryError(400, 'VALIDATION_FAILED');
@@ -49,7 +58,7 @@ export function admitGatewayRequest(input: {
     if (isWrite) throw new SafeBoundaryError(400, 'VALIDATION_FAILED');
     return { method: input.method as GatewayAdmission['method'], path: input.path, actorId: input.actorId, ...(requestId ? { requestId } : {}), body: null };
   }
-  if (new TextEncoder().encode(bodyText).length > MAX_BODY_BYTES || INVALID_JSON_CONTROL.test(bodyText)) {
+  if (typeof bodyText !== 'string' || new TextEncoder().encode(bodyText).length > MAX_BODY_BYTES || INVALID_JSON_CONTROL.test(bodyText)) {
     throw new SafeBoundaryError(400, 'VALIDATION_FAILED');
   }
   const contentType = input.headers['Content-Type'] ?? input.headers['content-type'];

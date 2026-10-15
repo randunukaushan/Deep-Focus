@@ -1,16 +1,21 @@
 import type { FocusSession } from '@/features/focus/session-types';
 import { getGoalProgress } from '@/features/goals/goal-progress';
-import { getGoalPeriodRange } from '@/features/goals/goal-period';
+import { getGoalPeriodRange, getLocalDayRange } from '@/features/goals/goal-period';
 import type { Goal, GoalPeriod } from '@/features/goals/goal-types';
 import type { Task } from '@/features/tasks/task-types';
+import { calculateStreak, type StreakSummary } from './streak';
 
-export type ProgressWindow = 'week' | 'month' | 'all';
+export type ProgressWindow = 'today' | 'week' | 'month' | 'all';
 
 export type ProgressSummary = {
   focusedSeconds: number;
   completedSessions: number;
   averageCompletedFocusSeconds: number;
   completedTasks: number;
+  totalTasks: number;
+  taskCompletionRate: number;
+  focusPlanRatio: number | null;
+  streak: StreakSummary;
   activityDays: { date: string; day: string; focusedSeconds: number }[];
   goals: { id: string; title: string; type: Goal['type']; status: Goal['status']; currentValue: number; targetValue: number; progress: number }[];
 };
@@ -42,6 +47,7 @@ function dateKey(year: number, month: number, day: number) {
 
 function windowStart(window: ProgressWindow, now: number, timeZone: string): number | null {
   if (window === 'all') return null;
+  if (window === 'today') return Date.parse(getLocalDayRange(now, timeZone).startsAt);
   const period: GoalPeriod = window === 'week' ? 'weekly' : 'monthly';
   return Date.parse(getGoalPeriodRange(period, now, timeZone).startsAt);
 }
@@ -95,13 +101,23 @@ export function summarizeProgress(
     return Number.isFinite(instant) && instant <= now && (start === null || instant >= start);
   });
   const completed = selectedSessions.filter((session) => session.status === 'completed');
-  const completedTasks = [...uniqueTasks.values()].filter((task) => {
+  const periodTasks = [...uniqueTasks.values()].filter((task) => {
+    if (task.archivedAt) return false;
+    if (!task.createdAt || !Number.isFinite(Date.parse(task.createdAt))) throw new RangeError('INVALID_TASK: creation has no valid timestamp');
+    const created = Date.parse(task.createdAt);
+    return created <= now && (start === null || created >= start);
+  });
+  const completedTasks = periodTasks.filter((task) => {
     if (task.status !== 'completed' || !task.completedAt) return false;
     const instant = Date.parse(task.completedAt);
     if (!Number.isFinite(instant)) throw new RangeError('INVALID_TASK: completion has no valid timestamp');
     return instant <= now && (start === null || instant >= start);
   }).length;
-  const goalSessions = sourceSessions.filter((session) => Date.parse(eventTimestamp(session) ?? '') <= now);
+  const goalSessions = sourceSessions.filter((session) => {
+    const timestamp = eventTimestamp(session);
+    const instant = timestamp ? Date.parse(timestamp) : Number.NaN;
+    return Number.isFinite(instant) && instant <= now;
+  });
 
   const week = getGoalPeriodRange('weekly', now, timeZone);
   const weekStart = Date.parse(week.startsAt);
@@ -134,6 +150,13 @@ export function summarizeProgress(
     completedSessions: completed.length,
     averageCompletedFocusSeconds: completed.length ? Math.round(safeSum(completed) / completed.length) : 0,
     completedTasks,
+    totalTasks: periodTasks.length,
+    taskCompletionRate: periodTasks.length ? completedTasks / periodTasks.length : 0,
+    focusPlanRatio: (() => {
+      const planned = selectedSessions.reduce((total, session) => total + session.plannedDurationSeconds, 0);
+      return planned > 0 ? safeSum(selectedSessions) / planned : null;
+    })(),
+    streak: calculateStreak(sourceSessions, { now, timeZone }),
     activityDays: buckets,
     goals: goals.map((goal) => {
       const { currentValue, progress } = getGoalProgress(goal, goalSessions);

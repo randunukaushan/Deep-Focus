@@ -17,10 +17,10 @@ Guest/anonymous branch එකක් නැත; Supabase remote runtime එකට
 
 ## Actual checks
 
-- Request session focused tests — **5/5 PASS**.
+- Request session focused tests — **6/6 PASS**.
 - TypeScript `--noEmit` — **PASS**.
 - Affected-file ESLint — **PASS**.
-- Full bundled-runtime repository suite — **384/384 PASS**.
+- Latest full bundled-runtime repository suite — **1191/1191 PASS**.
 
 ## Remaining gates
 

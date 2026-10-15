@@ -57,3 +57,22 @@ test('metadata reader rejects a missing session before snapshot data access', as
   await assert.rejects(() => createPostgresSnapshotMetadataReader(h).read({ ownerId: OWNER, snapshotId: SNAPSHOT, now: NOW, sessionId: undefined }), /VALIDATION_FAILED/);
   assert.equal(h.calls.length, 0);
 });
+
+test('metadata reader rejects unsafe request identity and clock types before storage', async () => {
+  const h = harness();
+  const reader = createPostgresSnapshotMetadataReader(h);
+  await assert.rejects(() => reader.read({ ownerId: Symbol('owner'), snapshotId: SNAPSHOT, now: NOW, sessionId: SESSION }), /VALIDATION_FAILED/);
+  await assert.rejects(() => reader.read({ ownerId: OWNER, snapshotId: SNAPSHOT, now: NOW, sessionId: Symbol('session') }), /VALIDATION_FAILED/);
+  await assert.rejects(() => reader.read({ ownerId: OWNER, snapshotId: SNAPSHOT, now: Symbol('clock'), sessionId: SESSION }), /VALIDATION_FAILED/);
+  assert.equal(h.calls.length, 0);
+});
+
+test('metadata reader fails closed on sparse result rows', async () => {
+  const sparse = [];
+  sparse[1] = ROW;
+  await assert.rejects(() => createPostgresSnapshotMetadataReader(harness(sparse)).read({ ownerId: OWNER, snapshotId: SNAPSHOT, now: NOW, sessionId: SESSION }), /DEPENDENCY_UNAVAILABLE/);
+});
+
+test('metadata reader fails closed on duplicate result rows', async () => {
+  await assert.rejects(() => createPostgresSnapshotMetadataReader(harness([ROW, ROW])).read({ ownerId: OWNER, snapshotId: SNAPSHOT, now: NOW, sessionId: SESSION }), /DEPENDENCY_UNAVAILABLE/);
+});

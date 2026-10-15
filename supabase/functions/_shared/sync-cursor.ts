@@ -17,6 +17,10 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const DECIMAL = /^(?:0|[1-9][0-9]*)$/;
 const TOKEN = /^(?=.{1,4096}$)[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID.test(value);
+}
+
 function bytes(value: string): Uint8Array {
   return new TextEncoder().encode(value);
 }
@@ -87,7 +91,8 @@ export async function verifySyncCursor(
   expected: { ownerId: string; limit: number; now: string },
 ): Promise<SyncCursorPayload> {
   if (typeof token !== 'string' || !TOKEN.test(token)) throw new Error('SYNC_CURSOR_INVALID');
-  if (!UUID.test(expected.ownerId) || !Number.isInteger(expected.limit) || !Number.isFinite(Date.parse(expected.now))) throw new Error('SYNC_CURSOR_INVALID');
+  if (!isUuid(expected.ownerId) || !Number.isInteger(expected.limit)
+    || typeof expected.now !== 'string' || !Number.isFinite(Date.parse(expected.now))) throw new Error('SYNC_CURSOR_INVALID');
   const [encoded, encodedSignature] = token.split('.');
   const key = await signingKey(secret, ['verify']);
   const valid = await crypto.subtle.verify('HMAC', key, Uint8Array.from(fromBase64Url(encodedSignature)) as unknown as BufferSource, cryptoBytes(encoded));

@@ -135,3 +135,21 @@ test('diagnostic logger failures and invalid request IDs cannot escape the publi
   });
   assert.deepEqual(result, { status: 503, body: { error: { code: 'DEPENDENCY_UNAVAILABLE', retryable: true } } });
 });
+
+test('gateway entrypoints reject malformed composition inputs safely', async () => {
+  assert.deepEqual(await handleGatewayRequest(null), {
+    status: 400, body: { error: { code: 'VALIDATION_FAILED', retryable: false } },
+  });
+  assert.deepEqual(await handleAuthenticatedGatewayRequest(null), {
+    status: 400, body: { error: { code: 'VALIDATION_FAILED', retryable: false } },
+  });
+  const malformed = {
+    method: 'GET', path: '/v1/me', headers: { Authorization: 'Bearer token' }, verifyProviderToken: async () => ({ sub: actorA, sessionId: appSession.sessionId, exp: 1791590700, iss: ISSUER, aud: AUDIENCE }),
+    expectedIssuer: ISSUER, expectedAudience: AUDIENCE, now: NOW,
+    loadSession: async () => { throw new Error('private provider detail'); },
+    ownerStore: store({}), handlers: { getMe: async () => ({ status: 200, body: {} }) }, rateLimit,
+  };
+  assert.deepEqual(await handleAuthenticatedGatewayRequest(malformed), {
+    status: 401, body: { error: { code: 'AUTH_REQUIRED', retryable: false } },
+  });
+});

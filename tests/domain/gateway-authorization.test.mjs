@@ -20,9 +20,35 @@ test('owner authorization permits an own resource and workspace-linked create', 
   await assert.doesNotReject(authorizeGatewayOperation({ admitted, store: store({ [`workspace:${workspaceId}`]: actorA }) }));
 });
 
+test('plan lifecycle action requires ownership of the route plan', async () => {
+  const planId = '99999999-9999-4999-8999-999999999999';
+  const admitted = admitGatewayOperation({ method: 'POST', path: `/v1/plans/${planId}/actions`, actorId: actorA, headers, bodyText: '{"action":"archive","expectedVersion":1,"reminderVersions":[]}' });
+  await assert.doesNotReject(authorizeGatewayOperation({ admitted, store: store({ [`plan:${planId}`]: actorA }) }));
+  await assert.rejects(authorizeGatewayOperation({ admitted, store: store({ [`plan:${planId}`]: actorB }) }), /NOT_FOUND/);
+});
+
 test('owner authorization hides a foreign resource as not found', async () => {
   const admitted = admitGatewayOperation({ method: 'GET', path: `/v1/tasks/${taskId}`, actorId: actorA, headers: {}, });
   await assert.rejects(authorizeGatewayOperation({ admitted, store: store({ [`task:${taskId}`]: actorB }) }), /NOT_FOUND/);
+});
+
+test('task delete and goal mutations require gateway ownership before handlers', async () => {
+  const goalId = '66666666-6666-4666-8666-666666666666';
+  for (const [path, body, kind, id] of [
+    [`/v1/tasks/${taskId}`, '{"expectedVersion":1}', 'task', taskId],
+    [`/v1/goals/${goalId}`, '{"expectedVersion":1,"title":"Updated","description":null}', 'goal', goalId],
+    [`/v1/goals/${goalId}`, '{"expectedVersion":1}', 'goal', goalId],
+  ]) {
+    const method = path.includes('/tasks/') ? 'DELETE' : body.includes('title') ? 'PATCH' : 'DELETE';
+    const admitted = admitGatewayOperation({ method, path, actorId: actorA, headers, bodyText: body });
+    await assert.rejects(authorizeGatewayOperation({ admitted, store: store({ [`${kind}:${id}`]: actorB }) }), /NOT_FOUND/);
+  }
+});
+
+test('goal progress requires ownership of the route goal', async () => {
+  const goalId = '66666666-6666-4666-8666-666666666666';
+  const admitted = admitGatewayOperation({ method: 'GET', path: `/v1/goals/${goalId}/progress`, actorId: actorA, headers: {} });
+  await assert.rejects(authorizeGatewayOperation({ admitted, store: store({ [`goal:${goalId}`]: actorB }) }), /NOT_FOUND/);
 });
 
 test('linked goal and task ownership are checked for creates', async () => {
@@ -44,4 +70,21 @@ test('break recording requires ownership of the linked focus session', async () 
   const admitted = admitGatewayOperation({ method: 'POST', path: '/v1/breaks', actorId: actorA, headers, bodyText: JSON.stringify(breakBody) });
   await assert.doesNotReject(authorizeGatewayOperation({ admitted, store: store({ [`session:${breakBody.focusSessionId}`]: actorA }) }));
   await assert.rejects(authorizeGatewayOperation({ admitted, store: store({ [`session:${breakBody.focusSessionId}`]: actorB }) }), /NOT_FOUND/);
+});
+
+test('reminder create checks task ownership and edit/delete checks reminder ownership', async () => {
+  const reminderId = '88888888-8888-4888-8888-888888888888';
+  const create = admitGatewayOperation({ method: 'POST', path: '/v1/task-reminders', actorId: actorA, headers, bodyText: JSON.stringify({ id: reminderId, taskId, scheduledFor: '2026-10-12T01:00:00.000Z', timeZone: 'Asia/Colombo', delivery: 'local_device' }) });
+  await assert.doesNotReject(authorizeGatewayOperation({ admitted: create, store: store({ [`task:${taskId}`]: actorA }) }));
+  await assert.rejects(authorizeGatewayOperation({ admitted: create, store: store({ [`task:${taskId}`]: actorB }) }), /NOT_FOUND/);
+  const patch = admitGatewayOperation({ method: 'PATCH', path: `/v1/task-reminders/${reminderId}`, actorId: actorA, headers, bodyText: '{"expectedVersion":1,"enabled":false}' });
+  await assert.doesNotReject(authorizeGatewayOperation({ admitted: patch, store: store({ [`reminder:${reminderId}`]: actorA }) }));
+});
+
+test('malformed authorization input fails closed before reading ownership', async () => {
+  for (const input of [null, [], { admitted: null, store: store({}) }, { admitted: {}, store: {} }]) {
+    await assert.rejects(authorizeGatewayOperation(input), /VALIDATION_FAILED/);
+  }
+  const admitted = admitGatewayOperation({ method: 'GET', path: `/v1/tasks/${taskId}`, actorId: actorA, headers: {} });
+  await assert.rejects(authorizeGatewayOperation({ admitted: { ...admitted, request: { ...admitted.request, actorId: 'forged' } }, store: store({}) }), /VALIDATION_FAILED/);
 });

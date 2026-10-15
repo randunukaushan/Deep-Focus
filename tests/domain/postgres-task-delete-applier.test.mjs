@@ -21,3 +21,19 @@ test('deleteTask rejects extra fields, stale versions and malformed returned row
   await assert.rejects(applyDeleteTask(client, { actorId: OWNER, operation: 'deleteTask', resourceId: TASK, mutationId: MUTATION, requestSha256: HASH, body: { expectedVersion: 3 } }), /VERSION_CONFLICT/);
   assert.equal(calls, 1);
 });
+
+test('deleteTask rejects malformed client, actor and resource before storage', async () => {
+  const body = { expectedVersion: 3 };
+  await assert.rejects(() => applyDeleteTask({ query: null }, { actorId: OWNER, operation: 'deleteTask', resourceId: TASK, mutationId: MUTATION, requestSha256: HASH, body }), /DEPENDENCY_UNAVAILABLE/);
+  let opened = false;
+  const client = { query: async () => { opened = true; return { rows: [] }; } };
+  await assert.rejects(() => applyDeleteTask(client, { actorId: Symbol('actor'), operation: 'deleteTask', resourceId: TASK, mutationId: MUTATION, requestSha256: HASH, body }), /VALIDATION_FAILED/);
+  await assert.rejects(() => applyDeleteTask(client, { actorId: OWNER, operation: 'deleteTask', resourceId: Symbol('resource'), mutationId: MUTATION, requestSha256: HASH, body }), /VALIDATION_FAILED/);
+  assert.equal(opened, false);
+});
+
+test('deleteTask fails closed on malformed or ambiguous database results', async () => {
+  await assert.rejects(() => applyDeleteTask({ query: async () => ({ rows: null }) }, { actorId: OWNER, operation: 'deleteTask', resourceId: TASK, mutationId: MUTATION, requestSha256: HASH, body: { expectedVersion: 3 } }), /DEPENDENCY_UNAVAILABLE/);
+  const duplicate = { query: async () => ({ rows: [{ id: TASK, owner_id: OWNER, version: 4, status: 'pending', deleted_at: '2026-10-11T00:00:00.000Z' }, { id: TASK, owner_id: OWNER, version: 4, status: 'pending', deleted_at: '2026-10-11T00:00:00.000Z' }] }) };
+  await assert.rejects(() => applyDeleteTask(duplicate, { actorId: OWNER, operation: 'deleteTask', resourceId: TASK, mutationId: MUTATION, requestSha256: HASH, body: { expectedVersion: 3 } }), /DEPENDENCY_UNAVAILABLE/);
+});

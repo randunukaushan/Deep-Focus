@@ -1,12 +1,16 @@
 /** Server-only AI planning lifecycle; provider credentials stay outside this module. */
 
 // @ts-expect-error The Edge runtime and domain test loader resolve TypeScript modules directly.
-import { confirmPlanProposal } from '../../../src/features/planning/ai-planner.ts';
+import { confirmPlanProposal, validatePlanProposal, validatePlanningRequest } from '../../../src/features/planning/ai-planner.ts';
 import type { AiPlanningProvider, ConfirmedPlan, PlanProposal, PlanningRequest } from '../../../src/features/planning/ai-planner.ts';
 // @ts-expect-error The Edge runtime and domain test loader resolve TypeScript modules directly.
 import { SafeBoundaryError } from './server-boundary.ts';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID.test(value);
+}
 
 type UsageService = {
   reserve: (input: {
@@ -28,9 +32,18 @@ type UsageService = {
 
 function invalid(): never { throw new SafeBoundaryError(422, 'VALIDATION_FAILED'); }
 
-function validateContext(input: { verifiedActorId: string; sessionId: string; periodKey: string; receiptId: string; now: string }): void {
-  if (!UUID.test(input.verifiedActorId) || !UUID.test(input.sessionId) || !UUID.test(input.receiptId)
-    || typeof input.periodKey !== 'string' || !input.periodKey.trim() || !Number.isFinite(Date.parse(input.now))) invalid();
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function validateContext(input: unknown): asserts input is {
+  verifiedActorId: string; sessionId: string; periodKey: string; receiptId: string; now: string; request: PlanningRequest;
+} {
+  if (!isRecord(input)) invalid();
+  if (!isUuid(input.verifiedActorId) || !isUuid(input.sessionId) || !isUuid(input.receiptId)
+    || typeof input.periodKey !== 'string' || !input.periodKey.trim()
+    || typeof input.now !== 'string' || !Number.isFinite(Date.parse(input.now))) invalid();
+  try { validatePlanningRequest(input.request); } catch { invalid(); }
 }
 
 export function createServerAiPlanningBoundary(input: {
@@ -67,6 +80,7 @@ export function createServerAiPlanningBoundary(input: {
       if (!reserved.allowed) throw new SafeBoundaryError(429, 'AI_ALLOWANCE_EXCEEDED');
       try {
         const proposal = await input.provider.createProposal(value.request);
+        validatePlanProposal(proposal, value.request);
         const settled = await input.usage.settle({ verifiedActorId: value.verifiedActorId, sessionId: value.sessionId, receiptId: value.receiptId, action: 'consume' });
         if (!settled.allowed || settled.status !== 'consumed') throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE');
         return proposal;
@@ -87,9 +101,10 @@ export function createServerAiPlanningBoundary(input: {
       confirmationToken: string;
       confirmedAt: string;
     }): Promise<ConfirmedPlan> {
-      if (!UUID.test(value.verifiedActorId) || !UUID.test(value.sessionId)) invalid();
+      if (!isRecord(value) || !isUuid(value.verifiedActorId) || !isUuid(value.sessionId)
+        || typeof value.confirmationToken !== 'string' || typeof value.confirmedAt !== 'string') invalid();
       let plan: ConfirmedPlan;
-      try { plan = confirmPlanProposal(value.proposal, value.confirmationToken, value.confirmedAt); } catch { invalid(); }
+      try { plan = confirmPlanProposal(value.proposal as PlanProposal, value.confirmationToken, value.confirmedAt); } catch { invalid(); }
       try {
         await input.recheckSession(value.verifiedActorId, value.sessionId);
       } catch (error) {

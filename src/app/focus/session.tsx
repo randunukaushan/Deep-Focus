@@ -62,7 +62,7 @@ export default function ActiveSessionRoute() {
     try {
       await persistTerminalSession(terminalSession);
       if (routeMounted.current) {
-        router.replace({ pathname: '/focus/summary', params: { status: terminalSession.status, focusedSeconds: String(terminalSession.focusedDurationSeconds), plannedSeconds: String(terminalSession.plannedDurationSeconds), plannedMinutes: String(terminalSession.plannedDurationSeconds / 60), taskName: terminalSession.taskName ?? '' } });
+        router.replace({ pathname: '/focus/summary', params: { sessionId: terminalSession.id } });
       }
     } catch {
       if (routeMounted.current) setTerminalSaveError(text.terminalSaveFailure);

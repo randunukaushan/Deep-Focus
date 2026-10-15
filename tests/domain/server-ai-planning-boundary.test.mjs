@@ -42,6 +42,12 @@ test('provider failure releases the reservation and never applies a plan', async
   assert.equal(h.applied.length, 0);
 });
 
+test('malformed provider proposals release the reservation before allowance consumption', async () => {
+  const h = boundary({ provider: { createProposal: async () => ({ provider: 'openai', model: request.model, createdAt: request.createdAt, items: [], requiresConfirmation: true, id: 'bad' }) } });
+  await assert.rejects(() => h.service.createProposal({ verifiedActorId: OWNER, sessionId: SESSION, periodKey: '2026-10', receiptId: RECEIPT, now: NOW, request }), /AI_PROVIDER_UNAVAILABLE/);
+  assert.deepEqual(h.events.map(([kind, value]) => kind === 'settle' ? [kind, value.action] : [kind]), [['reserve'], ['settle', 'release']]);
+});
+
 test('allowance denial prevents provider calls and writes', async () => {
   let called = false;
   const h = boundary({ provider: { createProposal: async () => { called = true; throw new Error('must not call'); } }, usage: { reserve: async () => ({ allowed: false }), settle: async () => ({ allowed: true, status: 'released' }) } });
@@ -102,4 +108,45 @@ test('raw allowance reservation failures become safe errors before provider call
     return true;
   });
   assert.equal(called, false);
+});
+
+test('AI planning rejects unsafe runtime identity and clock types before provider or server writes', async () => {
+  let providerCalls = 0;
+  let applied = 0;
+  const h = boundary({
+    provider: { createProposal: async () => { providerCalls += 1; return {}; } },
+    applyConfirmed: async () => { applied += 1; },
+  });
+  await assert.rejects(() => h.service.createProposal({ verifiedActorId: Symbol('owner'), sessionId: SESSION, periodKey: '2026-10', receiptId: RECEIPT, now: NOW, request }), /VALIDATION_FAILED/);
+  await assert.rejects(() => h.service.createProposal({ verifiedActorId: OWNER, sessionId: SESSION, periodKey: '2026-10', receiptId: RECEIPT, now: Symbol('clock'), request }), /VALIDATION_FAILED/);
+  await assert.rejects(() => h.service.applyConfirmed({ verifiedActorId: Symbol('owner'), sessionId: SESSION, proposal: {}, confirmationToken: 'token', confirmedAt: NOW }), /VALIDATION_FAILED/);
+  assert.equal(providerCalls, 0);
+  assert.equal(applied, 0);
+});
+
+test('AI planning rejects malformed outer request containers before any dependency call', async () => {
+  let providerCalls = 0;
+  let rechecks = 0;
+  const h = boundary({
+    provider: { createProposal: async () => { providerCalls += 1; throw new Error('must not call'); } },
+    recheckSession: async () => { rechecks += 1; },
+  });
+  await assert.rejects(() => h.service.createProposal(null), /VALIDATION_FAILED/);
+  await assert.rejects(() => h.service.createProposal([]), /VALIDATION_FAILED/);
+  await assert.rejects(() => h.service.applyConfirmed(null), /VALIDATION_FAILED/);
+  await assert.rejects(() => h.service.applyConfirmed([]), /VALIDATION_FAILED/);
+  assert.equal(providerCalls, 0);
+  assert.equal(rechecks, 0);
+});
+
+test('AI planning rejects malformed planning requests before reserving allowance', async () => {
+  const events = [];
+  const h = boundary({
+    usage: {
+      reserve: async () => { events.push('reserve'); return { allowed: true }; },
+      settle: async () => { events.push('settle'); return { allowed: true, status: 'released' }; },
+    },
+  });
+  await assert.rejects(() => h.service.createProposal({ verifiedActorId: OWNER, sessionId: SESSION, periodKey: '2026-10', receiptId: RECEIPT, now: NOW, request: null }), /VALIDATION_FAILED/);
+  assert.deepEqual(events, []);
 });

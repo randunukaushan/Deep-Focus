@@ -5,13 +5,17 @@ import { signSnapshotPageCursor } from './snapshot-page-cursor.ts';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID.test(value);
+}
+
 export function createSnapshotPageCursorFactory(input: {
   ownerId: string;
   snapshotId: string;
   expiresAt: string;
   secret: string;
 }): (pageIndex: number, pageCount: number) => Promise<string | null> {
-  if (!UUID.test(input.ownerId) || !UUID.test(input.snapshotId)
+  if (!isUuid(input.ownerId) || !isUuid(input.snapshotId) || typeof input.expiresAt !== 'string'
     || !Number.isFinite(Date.parse(input.expiresAt)) || typeof input.secret !== 'string' || input.secret.length < 32) {
     throw new Error('SNAPSHOT_CURSOR_FACTORY_INVALID');
   }

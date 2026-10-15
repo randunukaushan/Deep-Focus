@@ -73,3 +73,13 @@ This is a local candidate only. No payment provider, AI provider, Supabase conne
 - Live billing/provider integration, remote PostgreSQL/RLS execution,
   independent security review and device verification remain
   **NOT_RUN / REVIEW_PENDING**.
+
+## Follow-up: entitlement policy-version binding — 2026-10-11
+
+- Usage reservations now reject an allowance row whose policy version differs
+  from the active server entitlement policy version.
+- Entitlement, usage-boundary and PostgreSQL usage focused checks — **37/37
+  PASS**.
+- Latest full bundled-runtime suite — **1193/1193 PASS**.
+- Live PostgreSQL concurrency, billing/provider integration, independent
+  security review and device verification remain **NOT_RUN / REVIEW_PENDING**.

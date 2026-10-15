@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { formatSessionDuration, getHistoricalSessions, getSessionTimestamp } from '@/features/focus/session-history';
 import { loadSessionHistory } from '@/features/focus/session-storage';
+import { deriveLocalAchievementProjection } from '@/features/progress/reward-projection';
 import { getRewardsCopy } from '@/features/localization/rewards-copy';
 import { useAppLocale } from '@/features/localization/app-locale-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -47,12 +48,14 @@ export default function RewardsRoute() {
   }, [refresh]));
 
   const focusedSeconds = sessions.reduce((total, session) => total + session.focusedDurationSeconds, 0);
+  const projection = deriveLocalAchievementProjection(sessions);
   const milestones = [
-    { icon: 'leaf-outline' as const, title: text.firstTitle, detail: text.firstDetail, unlocked: sessions.length >= 1 },
-    { icon: 'layers-outline' as const, title: text.fiveTitle, detail: text.fiveDetail, unlocked: sessions.length >= 5 },
-    { icon: 'time-outline' as const, title: text.hourTitle, detail: text.hourDetail, unlocked: focusedSeconds >= 60 * 60 },
+    { id: 'first_focus_session', icon: 'leaf-outline' as const, title: text.firstTitle, detail: text.firstDetail },
+    { id: 'five_focus_sessions', icon: 'layers-outline' as const, title: text.fiveTitle, detail: text.fiveDetail },
+    { id: 'one_hour_focus', icon: 'time-outline' as const, title: text.hourTitle, detail: text.hourDetail },
   ];
-  const unlocked = milestones.filter((milestone) => milestone.unlocked).length;
+  const milestonesWithState = milestones.map((milestone) => ({ ...milestone, unlocked: projection.find((item) => item.id === milestone.id)?.unlocked === true }));
+  const unlocked = milestonesWithState.filter((milestone) => milestone.unlocked).length;
 
   return (
     <ThemedView style={[styles.screen, { backgroundColor: background }]}>
@@ -72,7 +75,7 @@ export default function RewardsRoute() {
                 <View style={[styles.summaryIcon, { backgroundColor: softAction }]}><Ionicons color={action} name="ribbon-outline" size={27} /></View>
                 <View style={styles.summaryCopy}><ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">{text.yourMilestones}</ThemedText><ThemedText style={styles.summaryTitle} type="subtitle">{unlocked}/{milestones.length} {text.unlockedSummary}</ThemedText><ThemedText themeColor="textSecondary" type="small">{sessions.length} {sessions.length === 1 ? text.completedSession : text.completedSessions} · {formatSessionDuration(focusedSeconds)} {text.focused}</ThemedText></View>
               </ThemedView>
-              <View style={styles.section}><ThemedText style={[styles.sectionLabel, { color: action }]} type="smallBold">{text.milestones}</ThemedText>{milestones.map((milestone) => <Milestone action={action} border={border} key={milestone.title} text={text} {...milestone} />)}</View>
+              <View style={styles.section}><ThemedText style={[styles.sectionLabel, { color: action }]} type="smallBold">{text.milestones}</ThemedText>{milestonesWithState.map((milestone) => <Milestone action={action} border={border} key={milestone.title} text={text} {...milestone} />)}</View>
               {sessions.length === 0 ? <ThemedView accessibilityLabel={text.emptyLabel} style={[styles.emptyCard, { backgroundColor: surface, borderColor: border }]}><ThemedText type="smallBold">{text.emptyTitle}</ThemedText><ThemedText themeColor="textSecondary">{text.emptyDetail}</ThemedText><Pressable accessibilityLabel={text.startFocus} accessibilityRole="button" onPress={() => router.push('/focus/setup')} style={({ pressed }) => [styles.primaryButton, { backgroundColor: action, borderColor: action }, pressed && styles.pressed]}><ThemedText style={{ color: Palette.deepNavy }} type="smallBold">{text.startFocus}</ThemedText></Pressable></ThemedView> : null}
               {sessions.length > 0 ? <ThemedText accessibilityLabel={`Latest completed session on ${getSessionTimestamp(sessions[0])}`} themeColor="textSecondary" type="small">{text.latestDetail}</ThemedText> : null}
             </>

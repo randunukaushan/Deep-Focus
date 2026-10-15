@@ -16,6 +16,7 @@ test('server capability admission rejects missing, foreign, wrong-capability and
   assert.equal(admitServerCapability({ verifiedActorId: OWNER, capability: 'ai', entitlement: { ...entitlement, ownerId: '22222222-2222-4222-8222-222222222222' }, now: NOW }).reason, 'owner_mismatch');
   assert.equal(admitServerCapability({ verifiedActorId: OWNER, capability: 'cloud_resources', entitlement, now: NOW }).reason, 'owner_mismatch');
   assert.equal(admitServerCapability({ verifiedActorId: OWNER, capability: 'ai', entitlement: { ...entitlement, status: 'revoked' }, now: NOW }).reason, 'not_active');
+  assert.equal(admitServerCapability({ verifiedActorId: OWNER, capability: 'ai', entitlement: { ...entitlement, status: 'grace' }, now: NOW }).reason, 'not_active');
 });
 
 test('server capability admission rejects expired and invalid-clock records', () => {
@@ -28,6 +29,19 @@ test('server capability admission rejects malformed server metadata', () => {
   assert.equal(admitServerCapability({ verifiedActorId: OWNER, capability: 'ai', entitlement: { ...entitlement, verifiedBy: 'client' }, now: NOW }).reason, 'not_active');
   assert.equal(admitServerCapability({ verifiedActorId: OWNER, capability: 'ai', entitlement: { ...entitlement, policyVersion: '' }, now: NOW }).reason, 'not_active');
   assert.equal(admitServerCapability({ verifiedActorId: OWNER, capability: 'ai', entitlement: { ...entitlement, policyVersion: 'x'.repeat(65) }, now: NOW }).reason, 'not_active');
+});
+
+test('server capability admission rejects an untrusted runtime capability before reading entitlement state', () => {
+  assert.equal(admitServerCapability({ verifiedActorId: OWNER, capability: 'billing', entitlement, now: NOW }).reason, 'invalid_capability');
+});
+
+test('server capability admission safely rejects runtime values with unsafe actor or clock types', () => {
+  assert.equal(admitServerCapability(null).reason, 'invalid_actor');
+  assert.equal(admitServerCapability([]).reason, 'invalid_actor');
+  assert.doesNotThrow(() => admitServerCapability({ verifiedActorId: Symbol('actor'), capability: 'ai', entitlement, now: NOW }));
+  assert.equal(admitServerCapability({ verifiedActorId: Symbol('actor'), capability: 'ai', entitlement, now: NOW }).reason, 'invalid_actor');
+  assert.doesNotThrow(() => admitServerCapability({ verifiedActorId: OWNER, capability: 'ai', entitlement, now: Symbol('clock') }));
+  assert.equal(admitServerCapability({ verifiedActorId: OWNER, capability: 'ai', entitlement, now: Symbol('clock') }).reason, 'invalid_clock');
 });
 
 test('server capability admission returns no price, provider or client grant fields', () => {

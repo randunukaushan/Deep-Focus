@@ -29,3 +29,30 @@ test('mutation guard rejects malformed actor, mutation and operation values', ()
   assert.equal(decideOwnedMutation({ ...base, operation: 'Task/Create' }).reason, 'invalid_mutation');
   assert.equal(decideOwnedMutation({ ...base, requestSha256: 'short' }).reason, 'invalid_mutation');
 });
+
+test('mutation guard refuses malformed stored receipt status or payload', () => {
+  for (const receipt of [
+    { ownerId: OWNER, operation: 'task.create', mutationId: MUTATION, requestSha256: SHA, responseBody: { ok: true }, responseStatus: 500 },
+    { ownerId: OWNER, operation: 'task.create', mutationId: MUTATION, requestSha256: SHA, responseBody: ['not-an-object'], responseStatus: 201 },
+  ]) assert.deepEqual(decideOwnedMutation({ ...base, existingReceipt: receipt }), { action: 'reject', reason: 'idempotency_conflict' });
+});
+
+test('mutation guard refuses oversized stored receipt payloads', () => {
+  const receipt = { ownerId: OWNER, operation: 'task.create', mutationId: MUTATION, requestSha256: SHA, responseBody: { payload: 'x'.repeat(262145) }, responseStatus: 201 };
+  assert.deepEqual(decideOwnedMutation({ ...base, existingReceipt: receipt }), { action: 'reject', reason: 'idempotency_conflict' });
+});
+
+test('mutation guard refuses coercion-prone stored receipt payloads', () => {
+  class CustomValue { constructor() { this.ok = true; } }
+  for (const responseBody of [{ at: new Date('2026-10-10T00:00:00.000Z') }, { missing: undefined }, { value: new CustomValue() }]) {
+    assert.deepEqual(decideOwnedMutation({ ...base, existingReceipt: { ownerId: OWNER, operation: 'task.create', mutationId: MUTATION, requestSha256: SHA, responseBody, responseStatus: 201 } }), { action: 'reject', reason: 'idempotency_conflict' });
+  }
+});
+
+test('mutation guard rejects unsafe runtime identity values without regex exceptions', () => {
+  assert.deepEqual(decideOwnedMutation({ ...base, actorId: Symbol('actor') }), { action: 'reject', reason: 'invalid_actor' });
+  assert.deepEqual(decideOwnedMutation({ ...base, mutationId: Symbol('mutation') }), { action: 'reject', reason: 'invalid_mutation' });
+  assert.deepEqual(decideOwnedMutation({ ...base, operation: Symbol('operation') }), { action: 'reject', reason: 'invalid_mutation' });
+  assert.deepEqual(decideOwnedMutation({ ...base, requestSha256: Symbol('hash') }), { action: 'reject', reason: 'invalid_mutation' });
+  assert.deepEqual(decideOwnedMutation({ ...base, existingReceipt: { ...base, requestSha256: Symbol('hash') } }), { action: 'reject', reason: 'idempotency_conflict' });
+});

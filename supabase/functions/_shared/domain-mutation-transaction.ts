@@ -3,10 +3,20 @@
 import type { MutationReceipt } from './mutation-guard.ts';
 // @ts-expect-error The Edge runtime and domain test loader resolve TypeScript modules directly.
 import { SafeBoundaryError } from './server-boundary.ts';
+// @ts-expect-error The Edge runtime and domain test loader resolve TypeScript modules directly.
+import { isBoundedJsonResponse } from './json-response-boundary.ts';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SHA256 = /^[a-f0-9]{64}$/;
 const OPERATION = /^[a-z][A-Za-z0-9.]{0,79}$/;
+
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID.test(value);
+}
+
+function validateResponseBody(value: unknown): asserts value is Record<string, unknown> {
+  if (!isBoundedJsonResponse(value)) throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE');
+}
 
 export type DomainMutationTransaction = {
   recheckSession?: (actorId: string, sessionId: string) => Promise<void>;
@@ -25,10 +35,11 @@ export type DomainMutationResult =
   | { action: 'replayed'; receipt: MutationReceipt };
 
 function validate(input: { actorId: string; operation: string; mutationId: string; requestSha256: string; body: Record<string, unknown> | null; resourceId?: string; sessionId?: string }): void {
-  if (!UUID.test(input.actorId) || !UUID.test(input.mutationId) || !OPERATION.test(input.operation) || !SHA256.test(input.requestSha256)
+  if (!isUuid(input.actorId) || !isUuid(input.mutationId) || typeof input.operation !== 'string' || !OPERATION.test(input.operation)
+    || typeof input.requestSha256 !== 'string' || !SHA256.test(input.requestSha256)
     || (input.body !== null && (typeof input.body !== 'object' || Array.isArray(input.body)))
-    || (input.resourceId !== undefined && !UUID.test(input.resourceId))
-    || (input.sessionId !== undefined && !UUID.test(input.sessionId))) {
+    || (input.resourceId !== undefined && !isUuid(input.resourceId))
+    || (input.sessionId !== undefined && !isUuid(input.sessionId))) {
     throw new SafeBoundaryError(400, 'VALIDATION_FAILED');
   }
 }
@@ -68,6 +79,7 @@ export async function executeDomainMutation(input: {
     if (!Number.isInteger(applied.responseStatus) || applied.responseStatus < 200 || applied.responseStatus > 299) {
       throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE');
     }
+    validateResponseBody(applied.responseBody);
     const receipt: MutationReceipt = {
       ownerId: input.actorId,
       operation: input.operation,

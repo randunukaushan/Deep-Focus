@@ -12,6 +12,9 @@ export async function resolve(specifier, context, nextResolve) {
   if (specifier === '@/features/focus/session-engine') {
     return nextResolve(new URL('../../src/features/focus/session-engine.ts', import.meta.url).href, context);
   }
+  if (specifier === '@/features/focus/completion-processing') {
+    return nextResolve(new URL('../../src/features/focus/completion-processing.ts', import.meta.url).href, context);
+  }
   if (specifier === '@/features/goals/goal-progress') {
     return nextResolve(new URL('../../src/features/goals/goal-progress.ts', import.meta.url).href, context);
   }

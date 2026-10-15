@@ -23,7 +23,7 @@ export default function SessionRecoveryRoute() {
   const [recoveryState, setRecoveryState] = useState<'checking' | 'empty' | 'error'>('checking');
   const check = useCallback(async () => {
     setRecoveryState('checking');
-    const result = await checkSessionRecovery(loadActiveSession);
+    const result = await checkSessionRecovery(() => loadActiveSession(true));
     if (result.state === 'error') {
       setRecoveryState('error');
       return;

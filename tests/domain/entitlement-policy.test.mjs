@@ -23,6 +23,7 @@ test('only a matching server-verified active entitlement allows premium access',
 test('foreign, missing and expired entitlements fail closed', () => {
   assert.equal(decideCapabilityAccess('cloud_resources', OWNER, null, NOW).reason, 'missing_entitlement');
   assert.equal(decideCapabilityAccess('ai', OWNER, entitlement({ ownerId: 'owner-b' }), NOW).reason, 'owner_mismatch');
+  assert.equal(decideCapabilityAccess('cloud_resources', OWNER, entitlement(), NOW).reason, 'capability_mismatch');
   assert.equal(decideCapabilityAccess('ai', OWNER, entitlement({ expiresAt: NOW }), NOW).reason, 'expired');
 });
 

@@ -24,6 +24,14 @@ test('gateway requires a real bearer token and rejects publishable keys as ident
   assert.equal((await handle({ method: 'GET', path: '/v1/me', headers: { Authorization: `Bearer ${TOKEN}` } })).status, 200);
 });
 
+test('gateway fails closed for malformed runtime authorization headers', async () => {
+  const { handle } = gateway();
+  for (const Authorization of [42, {}, ['Bearer', TOKEN]]) {
+    const result = await handle({ method: 'GET', path: '/v1/me', headers: { Authorization } });
+    assert.equal(result.status, 401);
+  }
+});
+
 test('gateway derives the actor before dispatch and requires UUID idempotency for mutations', async () => {
   const { handle, calls } = gateway();
   assert.equal((await handle({ method: 'POST', path: '/v1/tasks', headers: { Authorization: `Bearer ${TOKEN}` }, body: { id: 'task' } })).status, 400);
@@ -105,6 +113,22 @@ test('gateway hashes equivalent object key order identically for replay comparis
   assert.equal((await handle({ method: 'POST', path: '/v1/tasks', headers, body: { title: 'same', id: 'task' } })).status, 200);
   assert.equal((await handle({ method: 'POST', path: '/v1/tasks', headers, body: { id: 'task', title: 'same' } })).status, 200);
   assert.equal(calls[0].requestSha256, calls[1].requestSha256);
+});
+
+test('gateway does not hash non-finite mutation values as JSON null', async () => {
+  let dispatched = false;
+  const { handle } = gateway({ dispatch: async () => { dispatched = true; return { status: 200, body: { data: {} } }; } });
+  const result = await handle({ method: 'POST', path: '/v1/tasks', headers: { Authorization: `Bearer ${TOKEN}`, 'Idempotency-Key': KEY }, body: { value: Number.NaN } });
+  assert.equal(result.status, 503);
+  assert.equal(dispatched, false);
+});
+
+test('gateway rejects non-plain JSON request bodies before hashing or dispatch', async () => {
+  let dispatched = false;
+  const { handle } = gateway({ dispatch: async () => { dispatched = true; return { status: 200, body: { data: {} } }; } });
+  const result = await handle({ method: 'POST', path: '/v1/tasks', headers: { Authorization: `Bearer ${TOKEN}`, 'Idempotency-Key': KEY }, body: new Date('2026-10-10T00:00:00.000Z') });
+  assert.equal(result.status, 400);
+  assert.equal(dispatched, false);
 });
 
 test('gateway exposes bounded sync pull and push routes with actor-bound query data', async () => {

@@ -77,6 +77,8 @@ test('real SQLite stages snapshot pages atomically, makes retries idempotent, an
 
   assert.equal(await accountA.beginSnapshotStaging(snapshot), 'created');
   assert.equal(await accountA.beginSnapshotStaging(snapshot), 'existing', 'retrying the same staging header must not duplicate it');
+  await assert.rejects(accountA.stageSnapshotPage({ ...page0, payload: [{ ...page0.payload[0], metadata: { elapsed: Number.NaN } }] }), /INVALID_JSON_VALUE/);
+  assert.equal((await accountA.loadSnapshotStaging(snapshot.snapshotId)).pages.length, 0, 'malformed payload must fail before a page write');
   assert.equal(await accountA.stageSnapshotPage(page0), 'inserted');
   assert.equal(await accountA.stageSnapshotPage(page0), 'existing', 'retrying the same page must be idempotent');
   await assert.rejects(accountA.stageSnapshotPage({ ...page0, pageDigest: 'd'.repeat(64) }), /SNAPSHOT_PAGE_CONFLICT/);
@@ -229,6 +231,45 @@ test('SQLite incremental pull is owner-scoped, replay-safe, conflict-safe, and a
   await assert.rejects(accountA.applySyncPageAtomically({ ownerId: owner, nextCursor: 'cursor-4', changes: [{ sequence: '4', entityKind: 'task', entityId: page.changes[0].entityId, operation: 'upsert', payload: { title: 'Conflicting replay' } }] }), /SYNC_REPLAY_CONFLICT/);
 });
 
+test('SQLite incremental pull rejects stale sequences after a snapshot cursor even without receipts', async (t) => {
+  const db = makeDatabaseAdapter();
+  t.after(() => db.close());
+  const dependencies = { platform: 'android', openDatabase: async () => db, readLegacyFiles: async () => ({}), now: () => '2026-10-11T02:00:00.000Z' };
+  const account = createAccountLocalDatabaseStore(USER_A, dependencies);
+  const owner = `account:${USER_A}`;
+  await account.applySnapshotAtomically({
+    ownerId: owner,
+    snapshotId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    highWater: '20',
+    resumeCursor: 'snapshot-20',
+    entities: [{ entity: 'task', entityId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', version: 20, operation: 'upsert', payload: { title: 'Snapshot task' } }],
+    preserveOutbox: true,
+    preserveLocalOverlay: true,
+  });
+  await assert.rejects(account.applySyncPageAtomically({
+    ownerId: owner,
+    nextCursor: 'cursor-21',
+    changes: [{ sequence: '19', entityKind: 'task', entityId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', operation: 'upsert', payload: { title: 'Stale task' } }],
+  }), /SYNC_SEQUENCE_ORDER_INVALID/);
+  assert.deepEqual(await account.loadRemotePullState(), { nextCursor: 'snapshot-20', lastSequence: '20' });
+  assert.deepEqual((await account.loadRemoteMirror()).entities[0].payload, { title: 'Snapshot task' });
+});
+
+test('SQLite incremental pull rejects zero sequences before changing the cursor or mirror', async (t) => {
+  const db = makeDatabaseAdapter();
+  t.after(() => db.close());
+  const dependencies = { platform: 'android', openDatabase: async () => db, readLegacyFiles: async () => ({}), now: () => '2026-10-11T02:00:00.000Z' };
+  const account = createAccountLocalDatabaseStore(USER_A, dependencies);
+  const owner = `account:${USER_A}`;
+  await assert.rejects(account.applySyncPageAtomically({
+    ownerId: owner,
+    nextCursor: 'cursor-0',
+    changes: [{ sequence: '0', entityKind: 'task', entityId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', operation: 'upsert', payload: { title: 'Invalid task' } }],
+  }), /SYNC_CHANGE_INVALID/);
+  assert.equal(await account.loadRemotePullState(), null);
+  assert.deepEqual((await account.loadRemoteMirror()).entities, []);
+});
+
 test('SQLite materializes owner settings sync atomically, replays safely, and rejects unsupported data', async (t) => {
   const db = makeDatabaseAdapter();
   t.after(() => db.close());
@@ -248,6 +289,70 @@ test('SQLite materializes owner settings sync atomically, replays safely, and re
   assert.deepEqual(replay, { applied: 0, replayed: 1, nextCursor: 'settings-1' });
   await assert.rejects(accountA.applySyncPageAtomically({ ownerId: owner, nextCursor: 'settings-2', changes: [{ sequence: '2', entityKind: 'settings', entityId: settingsId, operation: 'upsert', payload: { ...page.changes[0].payload, defaultFocusDurationMinutes: 30, version: 3 } }] }), /SYNC_SETTINGS_INVALID/);
   assert.equal((await accountA.loadRemotePullState()).lastSequence, '1');
+});
+
+test('SQLite materializes owner break sync atomically, replays safely, and rejects invalid break data', async (t) => {
+  const db = makeDatabaseAdapter();
+  t.after(() => db.close());
+  const dependencies = { platform: 'android', openDatabase: async () => db, readLegacyFiles: async () => ({}), now: () => '2026-10-11T00:00:00.000Z' };
+  const accountA = createAccountLocalDatabaseStore(USER_A, dependencies);
+  const owner = `account:${USER_A}`;
+  const session = completeFocusSession(createFocusSession(25, 'Break owner session', Date.parse('2026-10-11T01:00:00.000Z')), Date.parse('2026-10-11T01:25:00.000Z'));
+  await accountA.persistTerminalSession(session);
+  const breakId = '88888888-8888-4888-8888-888888888888';
+  const page = { nextCursor: 'break-1', changes: [{ sequence: '1', entityKind: 'break', entityId: breakId, operation: 'upsert', payload: {
+    id: breakId, focusSessionId: session.id, startedAt: '2026-10-11T01:25:00.000Z', endedAt: '2026-10-11T01:30:00.000Z', plannedMs: 300000, actualMs: 300000, outcome: 'completed', version: 1, verificationState: 'pending',
+  } }] };
+  await applyAuthorizedSyncPage(owner, page, { applyPageAtomically: async (ownerId, validated) => accountA.applySyncPageAtomically({ ownerId, ...validated }) });
+  const materialized = await db.getFirstAsync('SELECT owner_id,focus_session_id,actual_ms,version FROM break_records WHERE owner_id = ? AND id = ?', owner, breakId);
+  assert.equal(materialized.owner_id, owner);
+  assert.equal(materialized.focus_session_id, session.id);
+  assert.equal(materialized.actual_ms, 300000);
+  assert.equal(materialized.version, 1);
+  assert.deepEqual(await accountA.applySyncPageAtomically({ ownerId: owner, ...page }), { applied: 0, replayed: 1, nextCursor: 'break-1' });
+  await assert.rejects(accountA.applySyncPageAtomically({ ownerId: owner, nextCursor: 'break-2', changes: [{ sequence: '2', entityKind: 'break', entityId: breakId, operation: 'upsert', payload: { ...page.changes[0].payload, outcome: 'completed', actualMs: 1000, version: 2 } }] }), /SYNC_BREAK_INVALID/);
+  assert.equal((await accountA.loadRemotePullState()).lastSequence, '1');
+  assert.equal(await db.getFirstAsync('SELECT owner_id FROM break_records WHERE owner_id = ?', `account:${USER_B}`), null);
+});
+
+test('SQLite materializes owner reminder sync atomically, replays safely, and rejects foreign tasks', async (t) => {
+  const db = makeDatabaseAdapter();
+  t.after(() => db.close());
+  const dependencies = { platform: 'android', openDatabase: async () => db, readLegacyFiles: async () => ({}), now: () => '2026-10-11T00:00:00.000Z' };
+  const accountA = createAccountLocalDatabaseStore(USER_A, dependencies);
+  const owner = `account:${USER_A}`;
+  const taskId = '99999999-9999-4999-8999-999999999999';
+  await accountA.saveTasks([task(taskId, 'Reminder task')]);
+  const reminderId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const payload = { id: reminderId, taskId, scheduledFor: '2026-10-12T01:00:00.000Z', timeZone: 'Asia/Colombo', enabled: true, delivery: 'local_device', version: 1, updatedAt: '2026-10-11T00:00:00.000Z' };
+  const page = { nextCursor: 'reminder-1', changes: [{ sequence: '1', entityKind: 'reminder', entityId: reminderId, operation: 'upsert', payload }] };
+  await applyAuthorizedSyncPage(owner, page, { applyPageAtomically: async (ownerId, validated) => accountA.applySyncPageAtomically({ ownerId, ...validated }) });
+  const materialized = await db.getFirstAsync('SELECT owner_id,task_id,enabled,delivery,version FROM task_reminders WHERE owner_id = ? AND id = ?', owner, reminderId);
+  assert.equal(materialized.owner_id, owner); assert.equal(materialized.task_id, taskId); assert.equal(materialized.enabled, 1); assert.equal(materialized.delivery, 'local_device'); assert.equal(materialized.version, 1);
+  assert.deepEqual(await accountA.applySyncPageAtomically({ ownerId: owner, ...page }), { applied: 0, replayed: 1, nextCursor: 'reminder-1' });
+  await assert.rejects(accountA.applySyncPageAtomically({ ownerId: owner, nextCursor: 'reminder-2', changes: [{ sequence: '2', entityKind: 'reminder', entityId: reminderId, operation: 'upsert', payload: { ...payload, taskId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', version: 2 } }] }), /SYNC_REMINDER_INVALID/);
+  assert.equal((await accountA.loadRemotePullState()).lastSequence, '1');
+});
+
+test('SQLite applies reminder tombstones, disables delivery, and never resurrects the deleted ID', async (t) => {
+  const db = makeDatabaseAdapter();
+  t.after(() => db.close());
+  const dependencies = { platform: 'android', openDatabase: async () => db, readLegacyFiles: async () => ({}) };
+  const account = createAccountLocalDatabaseStore(USER_A, dependencies);
+  const owner = `account:${USER_A}`;
+  const taskId = '99999999-9999-4999-8999-999999999999';
+  const reminderId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  await account.saveTasks([task(taskId, 'Reminder task')]);
+  await account.applySyncPageAtomically({ ownerId: owner, nextCursor: 'r-1', changes: [{ sequence: '1', entityKind: 'reminder', entityId: reminderId, operation: 'upsert', payload: { id: reminderId, taskId, scheduledFor: '2026-10-12T01:00:00.000Z', timeZone: 'Asia/Colombo', enabled: true, delivery: 'local_device', version: 1, updatedAt: '2026-10-11T00:00:00.000Z' } }] });
+  await account.applySyncPageAtomically({ ownerId: owner, nextCursor: 'r-2', changes: [{ sequence: '2', entityKind: 'reminder', entityId: reminderId, operation: 'delete', payload: null }] });
+  const deleted = await db.getFirstAsync('SELECT enabled,deleted_at FROM task_reminders WHERE owner_id = ? AND id = ?', owner, reminderId);
+  assert.equal(deleted.enabled, 0);
+  assert.equal(typeof deleted.deleted_at, 'string');
+  await account.applySyncPageAtomically({ ownerId: owner, nextCursor: 'r-3', changes: [{ sequence: '3', entityKind: 'reminder', entityId: reminderId, operation: 'upsert', payload: { id: reminderId, taskId, scheduledFor: '2026-10-13T01:00:00.000Z', timeZone: 'Asia/Colombo', enabled: true, delivery: 'local_device', version: 2, updatedAt: '2026-10-12T00:00:00.000Z' } }] });
+  const stillDeleted = await db.getFirstAsync('SELECT enabled,deleted_at,scheduled_for FROM task_reminders WHERE owner_id = ? AND id = ?', owner, reminderId);
+  assert.equal(stillDeleted.enabled, 0);
+  assert.equal(typeof stillDeleted.deleted_at, 'string');
+  assert.equal(stillDeleted.scheduled_for, '2026-10-12T01:00:00.000Z');
 });
 
 test('SQLite stale-cursor reset clears only remote sync state and preserves local work and mirror data', async (t) => {
@@ -294,7 +399,7 @@ test('real SQLite assessment drafts migrate atomically, survive reopen, and stay
   const dependencies = { platform: 'android', openDatabase: async () => adapter, readLegacyFiles: async () => ({}), now: () => '2026-10-07T02:00:00.000Z' };
   const initial = createAccountLocalDatabaseStore(USER_A, dependencies);
   await initial.saveTasks([task('kept-task', 'Keep existing data')]);
-  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 12);
+  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 14);
   assert.ok(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sync_snapshot_staging'").get());
   assert.ok(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sync_snapshot_staging_pages'").get());
   assert.ok(database.prepare('PRAGMA table_info(user_settings)').all().some(({ name }) => name === 'ui_locale'));
@@ -327,7 +432,7 @@ test('real SQLite assessment drafts migrate atomically, survive reopen, and stay
 
   const reopened = createAccountLocalDatabaseStore(USER_A, dependencies);
   assert.deepEqual((await reopened.loadAssessment(draft.id)).answers, draft.answers);
-  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 12);
+  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 14);
   assert.ok(database.prepare('PRAGMA table_info(user_settings)').all().some(({ name }) => name === 'ui_locale'));
 });
 
@@ -394,6 +499,34 @@ test('real SQLite task-title update is owner-scoped, revision-checked, and rejec
   assert.equal(await accountA.updateTaskTitle(ownedTask.id, renamedTask.updatedAt, 'Terminal rewrite'), null);
   await assert.rejects(accountA.updateTaskTitle(ownedTask.id, renamedTask.updatedAt, '   '), /1 to 120/);
   assert.equal((await accountA.loadTasks())[0].title, 'Updated title');
+});
+
+test('real SQLite task completion is owner-scoped, exactly-once, and cannot resurrect a deleted task', async (t) => {
+  const db = makeDatabaseAdapter();
+  t.after(() => db.close());
+  const now = '2026-10-07T02:00:00.000Z';
+  const dependencies = { platform: 'android', openDatabase: async () => db, readLegacyFiles: async () => ({}), now: () => now };
+  const accountA = createAccountLocalDatabaseStore(USER_A, dependencies);
+  const accountB = createAccountLocalDatabaseStore(USER_B, dependencies);
+  const ownedTask = task('complete-once-task', 'Complete safely');
+  await accountA.saveTasks([ownedTask]);
+  await accountB.saveTasks([{ ...ownedTask, title: 'Other account task' }]);
+
+  const results = await Promise.all([
+    accountA.completeTask(ownedTask.id, ownedTask.updatedAt),
+    accountA.completeTask(ownedTask.id, ownedTask.updatedAt),
+  ]);
+  assert.deepEqual(results.map((result) => result?.outcome).sort(), ['already_completed', 'completed']);
+  const completed = (await accountA.loadTasks())[0];
+  assert.equal(completed.status, 'completed');
+  assert.equal(completed.completedAt, now);
+  assert.equal((await accountB.completeTask(ownedTask.id, ownedTask.updatedAt))?.outcome, 'completed', 'the same ID resolves only within the current owner namespace');
+  assert.equal((await accountB.loadTasks())[0].title, 'Other account task');
+  assert.equal((await accountA.loadTasks())[0].title, 'Complete safely');
+  assert.equal((await accountA.completeTask(ownedTask.id, ownedTask.updatedAt))?.outcome, 'already_completed');
+  assert.equal(await accountA.deleteTask(ownedTask.id, completed.updatedAt), true);
+  assert.equal(await accountA.completeTask(ownedTask.id, completed.updatedAt), null, 'a stale completion request cannot recreate a deleted task');
+  assert.deepEqual(await accountA.loadTasks(), []);
 });
 
 test('real SQLite task archive is reversible, revision-checked, owner-scoped, and preserves linked focus history', async (t) => {
@@ -464,6 +597,32 @@ test('real SQLite terminal records enqueue one durable owner-scoped mutation and
   await accountA.acknowledgeOutbox(`terminal:${terminal.id}`);
   assert.deepEqual(await accountA.loadPendingOutbox(), []);
   assert.equal((await accountA.loadSessionHistory())[0].id, terminal.id, 'acknowledgement never removes local history');
+});
+
+test('real SQLite summary lookup is owner-scoped and returns finalized sessions only', async (t) => {
+  const db = makeDatabaseAdapter();
+  t.after(() => db.close());
+  const dependencies = { platform: 'android', openDatabase: async () => db, readLegacyFiles: async () => ({}) };
+  const accountA = createAccountLocalDatabaseStore(USER_A, dependencies);
+  const accountB = createAccountLocalDatabaseStore(USER_B, dependencies);
+  const active = createFocusSession(25, 'Open session', 0);
+  const terminal = completeFocusSession(createFocusSession(25, 'Saved summary', 0), 1_500_000);
+
+  await accountA.persistTerminalSession(terminal);
+  await accountA.saveActiveSession(active);
+  assert.equal(await accountA.loadFinalizedSession(active.id), null);
+  assert.deepEqual(await accountA.loadFinalizedSession(terminal.id), {
+    id: terminal.id,
+    status: 'completed',
+    taskName: terminal.taskName,
+    plannedDurationSeconds: terminal.plannedDurationSeconds,
+    focusedDurationSeconds: terminal.focusedDurationSeconds,
+    pausedDurationSeconds: terminal.pausedDurationSeconds,
+    createdAt: terminal.createdAt,
+    startedAt: terminal.startedAt,
+    completedAt: terminal.completedAt,
+  });
+  assert.equal(await accountB.loadFinalizedSession(terminal.id), null);
 });
 
 test('real SQLite goal edit preserves period semantics, isolates owners, and rejects stale revisions', async (t) => {
@@ -707,11 +866,12 @@ test('real SQLite task deletion is atomic, owner-scoped, duplicate-safe, and kee
   assert.deepEqual(await accountB.loadTasks(), [taskB]);
   const activeAfter = await accountA.loadActiveSession();
   assert.equal(activeAfter.id, active.id);
-  assert.equal(activeAfter.taskId, undefined);
+  assert.equal(activeAfter.taskId, taskA.id, 'deletion preserves the stable historical task ID');
   assert.equal(activeAfter.taskName, taskA.title);
+  await accountA.saveActiveSession(activeAfter);
   const history = await accountA.loadSessionHistory();
   assert.equal(history.length, 1);
-  assert.equal(history[0].taskId, undefined);
+  assert.equal(history[0].taskId, taskA.id, 'terminal history preserves the stable historical task ID');
   assert.equal(history[0].taskName, taskA.title);
   assert.equal(await accountA.deleteTask(taskA.id, taskA.updatedAt), false);
 });
@@ -750,6 +910,35 @@ test('invalid account identity is rejected before the database is opened', async
     readLegacyFiles: async () => ({}),
   }), /INVALID_AUTH_ID/);
   assert.equal(opened, false);
+});
+
+test('runtime-confused account identities are rejected before namespace creation', async () => {
+  assert.throws(() => createAccountLocalDatabaseStore(Symbol('account'), {
+    platform: 'android', openDatabase: async () => { throw new Error('must not open'); }, readLegacyFiles: async () => ({}),
+  }), /INVALID_AUTH_ID/);
+  assert.throws(() => createAccountLocalDatabaseStore(null, {
+    platform: 'android', openDatabase: async () => { throw new Error('must not open'); }, readLegacyFiles: async () => ({}),
+  }), /INVALID_AUTH_ID/);
+});
+
+test('SQLite store factory rejects malformed dependencies before opening a database', async () => {
+  assert.throws(() => createLocalDatabaseStore(null), /INVALID_STORAGE_DEPENDENCIES/);
+  assert.throws(() => createLocalDatabaseStore({ platform: 'android', openDatabase: null, readLegacyFiles: async () => ({}) }), /INVALID_STORAGE_DEPENDENCIES/);
+  assert.throws(() => createLocalDatabaseStore({ platform: 'android', openDatabase: async () => ({}), readLegacyFiles: null }), /INVALID_STORAGE_DEPENDENCIES/);
+});
+
+test('SQLite store factory rejects mismatched owner namespaces before opening a database', async () => {
+  const dependencies = { platform: 'android', openDatabase: async () => { throw new Error('must not open'); }, readLegacyFiles: async () => ({}) };
+  assert.throws(() => createLocalDatabaseStore({ ...dependencies, ownerId: Symbol('owner'), ownerKind: 'account' }), /INVALID_OWNER_NAMESPACE/);
+  assert.throws(() => createLocalDatabaseStore({ ...dependencies, ownerId: 'account:not-a-uuid', ownerKind: 'account' }), /INVALID_OWNER_NAMESPACE/);
+  assert.throws(() => createLocalDatabaseStore({ ...dependencies, ownerId: 'account:11111111-1111-4111-8111-111111111111', ownerKind: 'device_local' }), /INVALID_OWNER_NAMESPACE/);
+  assert.throws(() => createLocalDatabaseStore({ ...dependencies, ownerId: 'local:device', ownerKind: 'account' }), /INVALID_OWNER_NAMESPACE/);
+});
+
+test('SQLite store factory rejects a malformed clock dependency before initialization', async () => {
+  assert.throws(() => createLocalDatabaseStore({
+    platform: 'android', openDatabase: async () => ({}), readLegacyFiles: async () => ({}), now: 'not-a-function',
+  }), /INVALID_STORAGE_DEPENDENCIES/);
 });
 
 test('goals, linked tasks, active pointers, settings and history remain in the same account namespace', async (t) => {

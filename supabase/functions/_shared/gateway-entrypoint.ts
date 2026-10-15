@@ -16,6 +16,10 @@ import { enforceGatewayRateLimit, type RateLimitCounter } from './gateway-rate-l
 type GatewayRateLimitConfig = { counter: RateLimitCounter; nowMs: number; windowMs: number; limit: number };
 type GatewayDiagnosticLog = ReturnType<typeof safeBoundaryLog>;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
 export async function handleGatewayRequest(input: {
   method: string;
   path: string;
@@ -28,6 +32,7 @@ export async function handleGatewayRequest(input: {
   rateLimit?: GatewayRateLimitConfig;
   logger?: (record: GatewayDiagnosticLog) => void;
 }): Promise<GatewayResponse> {
+  if (!isRecord(input)) return publicBoundaryError(new SafeBoundaryError(400, 'VALIDATION_FAILED'));
   try {
     const admitted = admitGatewayOperation(input);
     if (input.rateLimit) await enforceGatewayRateLimit({
@@ -73,25 +78,37 @@ export async function handleAuthenticatedGatewayRequest(input: {
   rateLimit: GatewayRateLimitConfig;
   logger?: (record: GatewayDiagnosticLog) => void;
 }): Promise<GatewayResponse> {
-  const decision = await authorizeRequestSession({
-    headers: input.headers,
-    verifyProviderToken: input.verifyProviderToken,
-    expectedIssuer: input.expectedIssuer,
-    expectedAudience: input.expectedAudience,
-    now: input.now,
-    loadSession: input.loadSession,
-  });
-  if (!decision.allowed) return publicBoundaryError(new SafeBoundaryError(401, 'AUTH_REQUIRED'));
-  return handleGatewayRequest({
-    method: input.method,
-    path: input.path,
-    actorId: decision.ownerId,
-    sessionId: decision.sessionId,
-    headers: input.headers,
-    ...(input.bodyText === undefined ? {} : { bodyText: input.bodyText }),
-    ownerStore: input.ownerStore,
-    handlers: input.handlers,
-    rateLimit: input.rateLimit,
-    logger: input.logger,
-  });
+  if (!isRecord(input) || !isRecord(input.headers) || typeof input.verifyProviderToken !== 'function'
+    || typeof input.loadSession !== 'function' || !isRecord(input.ownerStore) || !isRecord(input.handlers)
+    || !isRecord(input.rateLimit) || typeof input.logger === 'string') {
+    return publicBoundaryError(new SafeBoundaryError(400, 'VALIDATION_FAILED'));
+  }
+  try {
+    const decision = await authorizeRequestSession({
+      headers: input.headers,
+      verifyProviderToken: input.verifyProviderToken,
+      expectedIssuer: input.expectedIssuer,
+      expectedAudience: input.expectedAudience,
+      now: input.now,
+      loadSession: input.loadSession,
+    });
+    if (!decision.allowed) return publicBoundaryError(new SafeBoundaryError(401, 'AUTH_REQUIRED'));
+    return handleGatewayRequest({
+      method: input.method,
+      path: input.path,
+      actorId: decision.ownerId,
+      sessionId: decision.sessionId,
+      headers: input.headers,
+      ...(input.bodyText === undefined ? {} : { bodyText: input.bodyText }),
+      ownerStore: input.ownerStore,
+      handlers: input.handlers,
+      rateLimit: input.rateLimit,
+      logger: input.logger,
+    });
+  } catch (error) {
+    if (typeof input.logger === 'function') {
+      try { input.logger(safeBoundaryLog({ event: 'gateway.request_failed', error, requestId: input.headers['X-Request-Id'] })); } catch { /* diagnostics stay non-fatal */ }
+    }
+    return publicBoundaryError(error);
+  }
 }

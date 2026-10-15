@@ -4,6 +4,10 @@ import type { AppSessionRecord, AppSessionMutation } from './app-session.ts';
 // @ts-expect-error The Edge runtime and domain test loader resolve TypeScript modules directly.
 import { revokeAppSession } from './app-session.ts';
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function isUuid(value: unknown): value is string { return typeof value === 'string' && UUID.test(value); }
+function isTimestamp(value: unknown): value is string { return typeof value === 'string' && Number.isFinite(Date.parse(value)); }
+
 export type SessionRevocationOutbox = {
   loadSession: (ownerId: string, sessionId: string) => Promise<AppSessionRecord | null>;
   revokeSession: (input: { ownerId: string; sessionId: string; revokedAt: string }) => Promise<void>;
@@ -25,6 +29,9 @@ export async function revokeAndQueueProviderRevocation(input: {
   now: string;
   store: SessionRevocationTransactionStore;
 }): Promise<RevocationResult> {
+  if (!isUuid(input.verifiedOwnerId) || !isUuid(input.sessionId) || !isUuid(input.revocationId) || !isTimestamp(input.now)) {
+    return { ok: false, reason: 'invalid_input', outbox: 'not_queued' };
+  }
   return input.store.withTransaction(async (transaction) => {
     const record = await transaction.loadSession(input.verifiedOwnerId, input.sessionId);
     const mutation = revokeAppSession({ verifiedOwnerId: input.verifiedOwnerId, record, now: input.now });

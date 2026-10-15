@@ -107,3 +107,39 @@ test('deleteGoal rejects malformed, stale and already-deleted results', async ()
   await assert.rejects(applyDeleteGoal(client, { actorId: OWNER, operation: 'deleteGoal', resourceId: GOAL, mutationId: MUTATION, requestSha256: HASH, body: { expectedVersion: 3 } }), /VERSION_CONFLICT/);
   assert.equal(calls, 1);
 });
+
+test('goal appliers reject malformed client, actor and resource before storage', async () => {
+  const createBody = { id: GOAL, workspaceId: WORKSPACE, title: 'Goal', type: 'session_count', period: 'weekly', startsAt: '2026-10-05T00:00:00.000Z', endsAt: '2026-10-12T00:00:00.000Z', timeZone: 'Asia/Colombo', targetValue: 1, targetUnit: 'count' };
+  await assert.rejects(() => applyCreateGoal({ query: null }, { actorId: OWNER, operation: 'createGoal', mutationId: MUTATION, requestSha256: HASH, body: createBody }), /DEPENDENCY_UNAVAILABLE/);
+  let opened = false;
+  const client = { query: async () => { opened = true; return { rows: [] }; } };
+  await assert.rejects(() => applyCreateGoal(client, { actorId: Symbol('actor'), operation: 'createGoal', mutationId: MUTATION, requestSha256: HASH, body: createBody }), /VALIDATION_FAILED/);
+  await assert.rejects(() => applyPatchGoal(client, { actorId: OWNER, operation: 'patchGoal', resourceId: Symbol('resource'), mutationId: MUTATION, requestSha256: HASH, body: { expectedVersion: 1, title: 'Goal' } }), /VALIDATION_FAILED/);
+  await assert.rejects(() => applyDeleteGoal(client, { actorId: OWNER, operation: 'deleteGoal', resourceId: Symbol('resource'), mutationId: MUTATION, requestSha256: HASH, body: { expectedVersion: 1 } }), /VALIDATION_FAILED/);
+  assert.equal(opened, false);
+});
+
+test('goal appliers fail closed on malformed or ambiguous database results', async () => {
+  const createBody = { id: GOAL, workspaceId: WORKSPACE, title: 'Goal', type: 'session_count', period: 'weekly', startsAt: '2026-10-05T00:00:00.000Z', endsAt: '2026-10-12T00:00:00.000Z', timeZone: 'Asia/Colombo', targetValue: 1, targetUnit: 'count' };
+  await assert.rejects(() => applyCreateGoal({ query: async (sql) => sql.includes('from df_private.workspaces') ? { rows: null } : { rows: [] } }, { actorId: OWNER, operation: 'createGoal', mutationId: MUTATION, requestSha256: HASH, body: createBody }), /DEPENDENCY_UNAVAILABLE/);
+  const duplicatePatch = { query: async () => ({ rows: [{ id: GOAL, owner_id: OWNER, version: 2, status: 'active' }, { id: GOAL, owner_id: OWNER, version: 2, status: 'active' }] }) };
+  await assert.rejects(() => applyPatchGoal(duplicatePatch, { actorId: OWNER, operation: 'patchGoal', resourceId: GOAL, mutationId: MUTATION, requestSha256: HASH, body: { expectedVersion: 1, title: 'Goal' } }), /DEPENDENCY_UNAVAILABLE/);
+  const duplicateDelete = { query: async () => ({ rows: [{ id: GOAL, owner_id: OWNER, version: 2, status: 'active', deleted_at: '2026-10-11T00:00:00.000Z' }, { id: GOAL, owner_id: OWNER, version: 2, status: 'active', deleted_at: '2026-10-11T00:00:00.000Z' }] }) };
+  await assert.rejects(() => applyDeleteGoal(duplicateDelete, { actorId: OWNER, operation: 'deleteGoal', resourceId: GOAL, mutationId: MUTATION, requestSha256: HASH, body: { expectedVersion: 1 } }), /DEPENDENCY_UNAVAILABLE/);
+});
+
+test('goal appliers fail closed on sparse database result rows before mutation', async () => {
+  const sparse = [];
+  sparse[1] = { owner_id: OWNER, id: WORKSPACE };
+  let goalInsert = false;
+  const client = { query: async (sql) => {
+    if (sql.includes('from df_private.workspaces')) return { rows: sparse };
+    goalInsert = true;
+    return { rows: [] };
+  } };
+  await assert.rejects(() => applyCreateGoal(client, { actorId: OWNER, operation: 'createGoal', mutationId: MUTATION, requestSha256: HASH, body: {
+    id: GOAL, workspaceId: WORKSPACE, title: 'Goal', type: 'session_count', period: 'weekly',
+    startsAt: '2026-10-05T00:00:00.000Z', endsAt: '2026-10-12T00:00:00.000Z', timeZone: 'Asia/Colombo', targetValue: 1, targetUnit: 'count',
+  } }), /DEPENDENCY_UNAVAILABLE/);
+  assert.equal(goalInsert, false);
+});

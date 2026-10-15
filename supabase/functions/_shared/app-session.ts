@@ -24,7 +24,7 @@ export type AppSessionMutation =
   | { ok: false; reason: 'invalid_input' | 'owner_mismatch' | 'already_revoked' | 'expired' };
 
 export type AppSessionStore = {
-  insertSession: (record: AppSessionRecord) => Promise<void>;
+  insertSession: (record: AppSessionRecord) => Promise<AppSessionRecord | undefined>;
   loadSession: (ownerId: string, sessionId: string) => Promise<AppSessionRecord | null>;
   revokeSession: (input: { ownerId: string; sessionId: string; revokedAt: string }) => Promise<void>;
 };
@@ -35,11 +35,23 @@ export type AppSessionTransactionStore = {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID.test(value);
+}
+
+function isTimestamp(value: unknown): value is string {
+  return typeof value === 'string' && Number.isFinite(Date.parse(value));
+}
+
+function isInputObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
 function validClaims(value: unknown, expectedIssuer: string, expectedAudience: string, now: string): value is VerifiedSessionClaims {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const claims = value as Partial<VerifiedSessionClaims>;
-  return typeof claims.sub === 'string' && UUID.test(claims.sub)
-    && typeof claims.sessionId === 'string' && UUID.test(claims.sessionId)
+  return isUuid(claims.sub)
+    && isUuid(claims.sessionId)
     && typeof claims.exp === 'number' && Number.isSafeInteger(claims.exp) && claims.exp > Math.floor(Date.parse(now) / 1000)
     && claims.iss === expectedIssuer && claims.aud === expectedAudience;
 }
@@ -47,10 +59,10 @@ function validClaims(value: unknown, expectedIssuer: string, expectedAudience: s
 function validRegistryRecord(value: unknown): value is AppSessionRecord {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const record = value as Partial<AppSessionRecord>;
-  if (typeof record.ownerId !== 'string' || !UUID.test(record.ownerId)
-    || typeof record.sessionId !== 'string' || !UUID.test(record.sessionId)
+  if (!isUuid(record.ownerId)
+    || !isUuid(record.sessionId)
     || !['active', 'revoked'].includes(String(record.status))
-    || typeof record.issuedAt !== 'string' || typeof record.expiresAt !== 'string'
+    || !isTimestamp(record.issuedAt) || !isTimestamp(record.expiresAt)
     || (record.revokedAt !== null && typeof record.revokedAt !== 'string')) return false;
   const issuedAt = Date.parse(record.issuedAt);
   const expiresAt = Date.parse(record.expiresAt);
@@ -71,7 +83,8 @@ export async function authorizeAppSession(input: {
   now: string;
   loadSession: (ownerId: string, sessionId: string) => Promise<AppSessionRecord | null>;
 }): Promise<AppSessionDecision> {
-  if (!Number.isFinite(Date.parse(input.now)) || typeof input.expectedIssuer !== 'string' || !input.expectedIssuer
+  if (!isInputObject(input)) return { allowed: false, reason: 'invalid_claims' };
+  if (typeof input.now !== 'string' || !Number.isFinite(Date.parse(input.now)) || typeof input.expectedIssuer !== 'string' || !input.expectedIssuer
     || typeof input.expectedAudience !== 'string' || !input.expectedAudience
     || !validClaims(input.claims, input.expectedIssuer, input.expectedAudience, input.now)) return { allowed: false, reason: 'invalid_claims' };
   const claims = input.claims;
@@ -90,8 +103,9 @@ export function issueAppSession(input: {
   issuedAt: string;
   expiresAt: string;
 }): AppSessionMutation {
-  if (!UUID.test(input.ownerId) || !UUID.test(input.sessionId)
-    || !Number.isFinite(Date.parse(input.issuedAt)) || !Number.isFinite(Date.parse(input.expiresAt))
+  if (!isInputObject(input)) return { ok: false, reason: 'invalid_input' };
+  if (!isUuid(input.ownerId) || !isUuid(input.sessionId)
+    || !isTimestamp(input.issuedAt) || !isTimestamp(input.expiresAt)
     || Date.parse(input.expiresAt) <= Date.parse(input.issuedAt)) return { ok: false, reason: 'invalid_input' };
   return {
     ok: true,
@@ -105,7 +119,8 @@ export function revokeAppSession(input: {
   record: AppSessionRecord | null;
   now: string;
 }): AppSessionMutation {
-  if (!UUID.test(input.verifiedOwnerId) || !Number.isFinite(Date.parse(input.now)) || !validRegistryRecord(input.record)) return { ok: false, reason: 'invalid_input' };
+  if (!isInputObject(input)) return { ok: false, reason: 'invalid_input' };
+  if (!isUuid(input.verifiedOwnerId) || !isTimestamp(input.now) || !validRegistryRecord(input.record)) return { ok: false, reason: 'invalid_input' };
   if (input.record.ownerId !== input.verifiedOwnerId) return { ok: false, reason: 'owner_mismatch' };
   if (input.record.status === 'revoked' || input.record.revokedAt !== null) return { ok: false, reason: 'already_revoked' };
   if (!Number.isFinite(Date.parse(input.record.expiresAt)) || Date.parse(input.record.expiresAt) <= Date.parse(input.now)) return { ok: false, reason: 'expired' };
@@ -120,6 +135,7 @@ export async function issueAppSessionAtomically(input: {
   expiresAt: string;
   store: Pick<AppSessionStore, 'insertSession'>;
 }): Promise<AppSessionMutation> {
+  if (!isInputObject(input)) return { ok: false, reason: 'invalid_input' };
   const mutation = issueAppSession(input);
   if (!mutation.ok) return mutation;
   await input.store.insertSession(mutation.record);
@@ -132,7 +148,8 @@ export async function revokeAppSessionAtomically(input: {
   now: string;
   store: Pick<AppSessionStore, 'loadSession' | 'revokeSession'>;
 }): Promise<AppSessionMutation> {
-  if (!UUID.test(input.sessionId)) return { ok: false, reason: 'invalid_input' };
+  if (!isInputObject(input)) return { ok: false, reason: 'invalid_input' };
+  if (!isUuid(input.sessionId)) return { ok: false, reason: 'invalid_input' };
   const record = await input.store.loadSession(input.verifiedOwnerId, input.sessionId);
   const mutation = revokeAppSession({ verifiedOwnerId: input.verifiedOwnerId, record, now: input.now });
   if (!mutation.ok) return mutation;
@@ -147,7 +164,8 @@ export async function revokeAppSessionTransactionally(input: {
   now: string;
   store: AppSessionTransactionStore;
 }): Promise<AppSessionMutation> {
-  if (!UUID.test(input.sessionId)) return { ok: false, reason: 'invalid_input' };
+  if (!isInputObject(input)) return { ok: false, reason: 'invalid_input' };
+  if (!isUuid(input.sessionId)) return { ok: false, reason: 'invalid_input' };
   return input.store.withTransaction(async (transaction) => {
     const record = await transaction.loadSession(input.verifiedOwnerId, input.sessionId);
     const mutation = revokeAppSession({ verifiedOwnerId: input.verifiedOwnerId, record, now: input.now });
@@ -165,10 +183,27 @@ export async function issueAppSessionTransactionally(input: {
   expiresAt: string;
   store: AppSessionTransactionStore;
 }): Promise<AppSessionMutation> {
+  if (!isInputObject(input)) return { ok: false, reason: 'invalid_input' };
   const mutation = issueAppSession(input);
   if (!mutation.ok) return mutation;
   return input.store.withTransaction(async (transaction) => {
-    await transaction.insertSession(mutation.record);
-    return mutation;
+    // A lost successful response can cause the provider client to repeat the
+    // bootstrap request with the same provider session. Preserve the first
+    // registry row; never overwrite it with a client-controlled retry.
+    const existing = await transaction.loadSession(mutation.record.ownerId, mutation.record.sessionId);
+    if (existing) {
+      if (!validRegistryRecord(existing)) return { ok: false, reason: 'invalid_input' };
+      if (existing.ownerId !== mutation.record.ownerId || existing.sessionId !== mutation.record.sessionId) return { ok: false, reason: 'owner_mismatch' };
+      if (existing.status === 'revoked' || existing.revokedAt !== null) return { ok: false, reason: 'already_revoked' };
+      if (Date.parse(existing.expiresAt) <= Date.parse(mutation.record.issuedAt)) return { ok: false, reason: 'expired' };
+      return { ok: true, record: existing };
+    }
+    const inserted = await transaction.insertSession(mutation.record);
+    if (!inserted) return mutation;
+    if (!validRegistryRecord(inserted)) return { ok: false, reason: 'invalid_input' };
+    if (inserted.ownerId !== mutation.record.ownerId || inserted.sessionId !== mutation.record.sessionId) return { ok: false, reason: 'owner_mismatch' };
+    if (inserted.status === 'revoked' || inserted.revokedAt !== null) return { ok: false, reason: 'already_revoked' };
+    if (Date.parse(inserted.expiresAt) <= Date.parse(mutation.record.issuedAt)) return { ok: false, reason: 'expired' };
+    return { ok: true, record: inserted };
   });
 }

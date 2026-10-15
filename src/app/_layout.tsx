@@ -31,7 +31,7 @@ function RootNavigator() {
   useEffect(() => {
     if (snapshot.status !== 'signed_in' || !snapshot.userId || recoveredForUser.current === snapshot.userId) return;
     recoveredForUser.current = snapshot.userId;
-    loadActiveSession().then((session) => {
+    loadActiveSession(true).then((session) => {
       if (!session) return;
       router.replace({ pathname: '/focus/session', params: { durationMinutes: String(session.plannedDurationSeconds / 60), taskName: session.taskName ?? '' } });
     }).catch(() => router.replace('/focus/recovery'));

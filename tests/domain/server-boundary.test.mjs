@@ -9,6 +9,7 @@ test('server secret helper accepts only private sufficiently long values', () =>
   assert.throws(() => requireServerSecret({ EXPO_PUBLIC_SECRET: 'a'.repeat(40) }, 'EXPO_PUBLIC_SECRET'), /SERVER_SECRET_NAME_INVALID/);
   assert.throws(() => requireServerSecret({ DEEP_FOCUS_CURSOR_SIGNING_KEY: 'short' }, 'DEEP_FOCUS_CURSOR_SIGNING_KEY'), /SERVER_SECRET_INVALID/);
   assert.throws(() => requireServerSecret({ DEEP_FOCUS_CURSOR_SIGNING_KEY: `a${String.fromCharCode(10)}b` }, 'DEEP_FOCUS_CURSOR_SIGNING_KEY'), /SERVER_SECRET_INVALID/);
+  assert.throws(() => requireServerSecret({}, Symbol('secret-name')), /SERVER_SECRET_NAME_INVALID/);
 });
 
 test('server URL helper rejects non-HTTPS credentials and query-bearing endpoints', () => {
@@ -30,10 +31,23 @@ test('unknown boundary failures fail closed without raw fields', () => {
   assert.equal(JSON.stringify(result).includes('private'), false);
 });
 
+test('boundary errors normalize runtime-confused status and code values', () => {
+  const confused = new SafeBoundaryError(Symbol('status'), Symbol('code'));
+  assert.deepEqual(publicBoundaryError(confused), { status: 503, body: { error: { code: 'DEPENDENCY_UNAVAILABLE', retryable: true } } });
+});
+
 test('safe boundary logs contain only allowlisted diagnostic fields', () => {
   const result = safeBoundaryLog({ event: 'sync.push.failure', requestId: 'req_123', error: new Error('token=private password=secret') });
   assert.deepEqual(result, { event: 'sync.push.failure', status: 503, code: 'DEPENDENCY_UNAVAILABLE', retryable: true, requestId: 'req_123' });
   assert.equal(JSON.stringify(result).includes('password'), false);
   assert.throws(() => safeBoundaryLog({ event: 'Bad Event', error: null }), /LOG_EVENT_INVALID/);
   assert.throws(() => safeBoundaryLog({ event: 'sync.failure', requestId: 'private token', error: null }), /LOG_REQUEST_ID_INVALID/);
+});
+
+test('safe boundary logger rejects runtime type confusion before regex or serialization', () => {
+  for (const input of [null, [], Symbol('log')]) {
+    assert.throws(() => safeBoundaryLog(input), /LOG_INPUT_INVALID/);
+  }
+  assert.throws(() => safeBoundaryLog({ event: Symbol('event'), error: null }), /LOG_EVENT_INVALID/);
+  assert.throws(() => safeBoundaryLog({ event: 'sync.failure', requestId: Symbol('request'), error: null }), /LOG_REQUEST_ID_INVALID/);
 });

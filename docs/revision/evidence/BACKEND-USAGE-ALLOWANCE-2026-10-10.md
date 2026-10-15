@@ -8,6 +8,8 @@ integration එකක් නොවේ.
 
 - Verified active capability admission එකක් නැත්නම් usage grant එකක් නොදෙයි.
 - Owner, capability, period, policy version සහ server-held counters එකට බැඳී ඇත.
+- Allowance policy version එක active entitlement policy version එකට නොගැළපුණොත්
+  stale allowance එකක් මත grant නොදී fail-closed වේ.
 - Consumed සහ reserved units එකතුව limit එක ඉක්මවන්නේ නම් fail-closed වේ.
 - Request units bounds පරීක්ෂා කරයි; client-controlled counter එකක් result එකට
   පිළිගන්නේ නැත.
@@ -17,14 +19,17 @@ integration එකක් නොවේ.
   call එක නැවත නොයන ලෙස fail-closed වේ. Reserved provider execution helper එක
   success එකේ consume කරයි; provider failure එකේ release කරයි; settlement failure
   එක success ලෙස සඟවන්නේ නැහැ.
+- `reserved` receipt එක replay වුණත් durable provider-status lookup එකක් නැතිව
+  දෙවන provider call එකක් නොකර `reservation_in_progress` ලෙස explicit
+  reconciliation වෙත යවයි.
 - Explicit reservation සහ settlement helpers read/allowance/receipt transition
   එක caller-owned transaction එකකට බැඳීමට contract කරයි; concurrent write lock
   එක final store implementation එකේ වගකීම ලෙස පැහැදිලිව තබයි.
 
 ## Actual checks
 
-- Focused usage-boundary checks — **10/10 PASS**.
-- Full bundled-runtime repository suite — **387/387 PASS**.
+- Focused usage-boundary checks — **12/12 PASS**.
+- Latest full bundled-runtime repository suite — **1193/1193 PASS**.
 - TypeScript `--noEmit` — **PASS**.
 - Affected-file ESLint — **PASS**.
 - Docs checker — **PASS**.

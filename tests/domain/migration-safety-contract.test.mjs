@@ -35,3 +35,22 @@ test('every migration that creates a private table enables RLS and revokes clien
     assert.doesNotMatch(sql, /grant\s+[^;]+\s+to\s+(?:public|anon|authenticated)\b/i, name);
   }
 });
+
+test('every migration that creates a private table grants database access only to the server role', async () => {
+  for (const name of await files()) {
+    const sql = await readFile(new URL(name, migrationsUrl), 'utf8');
+    if (!/create\s+table(?:\s+if\s+not\s+exists)?\s+df_private\./i.test(sql)) continue;
+    assert.match(sql, /grant\s+[^;]*\bto\s+service_role\b/i, name);
+    assert.doesNotMatch(sql, /grant\s+[^;]*\bto\s+(?:public|anon|authenticated)\b/i, name);
+  }
+});
+
+test('private migrations do not use unsafe authorization claims or public definer code', async () => {
+  for (const name of await files()) {
+    const sql = await readFile(new URL(name, migrationsUrl), 'utf8');
+    assert.doesNotMatch(sql, /auth\.role\s*\(/i, name);
+    assert.doesNotMatch(sql, /(?:user_metadata|raw_user_meta_data)/i, name);
+    assert.doesNotMatch(sql, /security\s+definer/i, name);
+    assert.doesNotMatch(sql, /grant\s+[^;]+\s+to\s+(?:public|anon|authenticated)\b/i, name);
+  }
+});

@@ -37,3 +37,9 @@ test('factory rejects weak secrets and invalid expiry before materialization', (
   assert.throws(() => createSnapshotPageCursorFactory({ ownerId: OWNER, snapshotId: SNAPSHOT, expiresAt: EXPIRES, secret: 'short' }), /SNAPSHOT_CURSOR_FACTORY_INVALID/);
   assert.throws(() => createSnapshotPageCursorFactory({ ownerId: OWNER, snapshotId: SNAPSHOT, expiresAt: 'bad', secret: SECRET }), /SNAPSHOT_CURSOR_FACTORY_INVALID/);
 });
+
+test('factory rejects unsafe identity, expiry and secret runtime types before signing', () => {
+  assert.throws(() => createSnapshotPageCursorFactory({ ownerId: Symbol('owner'), snapshotId: SNAPSHOT, expiresAt: EXPIRES, secret: SECRET }), /SNAPSHOT_CURSOR_FACTORY_INVALID/);
+  assert.throws(() => createSnapshotPageCursorFactory({ ownerId: OWNER, snapshotId: SNAPSHOT, expiresAt: Symbol('expiry'), secret: SECRET }), /SNAPSHOT_CURSOR_FACTORY_INVALID/);
+  assert.throws(() => createSnapshotPageCursorFactory({ ownerId: OWNER, snapshotId: SNAPSHOT, expiresAt: EXPIRES, secret: Symbol('secret') }), /SNAPSHOT_CURSOR_FACTORY_INVALID/);
+});

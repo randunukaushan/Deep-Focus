@@ -70,6 +70,13 @@ test('server sync accepts a canonical delete change with a null payload', async 
   assert.equal((await hashSyncChange(deleted)).length, 64);
 });
 
+test('server sync replays a stored delete with its canonical null payload', async () => {
+  const store = makeStore();
+  const deleted = { sequence: '1', entityKind: 'goal', entityId: TASK, operation: 'delete', payload: null };
+  assert.deepEqual(await commitAuthorizedSyncPage({ ...page([deleted]), store }), { applied: 1, replayed: 0, lastSequence: '1', nextCursor: 'cursor-1' });
+  assert.deepEqual(await commitAuthorizedSyncPage({ ...page([deleted], '1'), store }), { applied: 0, replayed: 1, lastSequence: '1', nextCursor: 'cursor-1' });
+});
+
 test('server sync accepts an owner settings upsert change', async () => {
   const settings = { sequence: '1', entityKind: 'settings', entityId: TASK, operation: 'upsert', payload: { id: TASK, theme: 'system', version: 1 } };
   const store = makeStore();
@@ -99,6 +106,51 @@ test('server sync rejects foreign cursor and malformed ordering before opening a
   await assert.rejects(commitAuthorizedSyncPage({ ...page([{ sequence: '1', entityKind: 'task', entityId: TASK, operation: 'upsert', payload: {} }]), cursorOwnerId: '33333333-3333-4333-8333-333333333333', store }), /SYNC_PAGE_INVALID/);
   await assert.rejects(commitAuthorizedSyncPage({ ...page([{ sequence: '2', entityKind: 'task', entityId: TASK, operation: 'upsert', payload: {} }, { sequence: '1', entityKind: 'task', entityId: TASK, operation: 'upsert', payload: {} }]), store }), /SYNC_SEQUENCE_ORDER_INVALID/);
   assert.equal(store.transactions, 0);
+});
+
+test('server sync rejects an oversized upsert payload before opening a transaction', async () => {
+  const store = makeStore();
+  await assert.rejects(commitAuthorizedSyncPage({ ...page([{ sequence: '1', entityKind: 'task', entityId: TASK, operation: 'upsert', payload: { payload: 'x'.repeat(65537) } }]), store }), /SYNC_CHANGE_INVALID/);
+  assert.equal(store.transactions, 0);
+});
+
+test('server sync rejects non-finite nested payload values instead of coercing them to null', async () => {
+  let opened = false;
+  const store = { async withTransaction() { opened = true; throw new Error('must not open'); } };
+  await assert.rejects(() => commitAuthorizedSyncPage({ ...page([{ sequence: '1', entityKind: 'task', entityId: TASK, operation: 'upsert', payload: { nested: { value: Number.NaN } } }]), store }), /SYNC_CHANGE_INVALID/);
+  assert.equal(opened, false);
+});
+
+test('server sync rejects non-plain JSON payload objects before hashing or storage', async () => {
+  let opened = false;
+  const store = { async withTransaction() { opened = true; throw new Error('must not open'); } };
+  await assert.rejects(() => commitAuthorizedSyncPage({
+    ...page([{ sequence: '1', entityKind: 'task', entityId: TASK, operation: 'upsert', payload: new Date('2026-10-10T00:00:00.000Z') }]),
+    store,
+  }), /SYNC_CHANGE_INVALID/);
+  await assert.rejects(() => hashSyncChange({ sequence: '1', entityKind: 'task', entityId: TASK, operation: 'upsert', payload: new Date('2026-10-10T00:00:00.000Z') }), /SYNC_UNHASHABLE_PAYLOAD/);
+  assert.equal(opened, false);
+});
+
+test('server sync rejects sparse, symbol-bearing, or extra-property arrays before hashing or storage', async () => {
+  let opened = false;
+  const store = { async withTransaction() { opened = true; throw new Error('must not open'); } };
+  const sparse = []; sparse[1] = 'gap';
+  const symbolBearing = []; symbolBearing.push('value'); symbolBearing[Symbol('metadata')] = 'hidden';
+  const extraProperty = []; extraProperty.push('value'); extraProperty.note = 'hidden';
+  for (const payload of [{ values: sparse }, { values: symbolBearing }, { values: extraProperty }]) {
+    await assert.rejects(() => commitAuthorizedSyncPage({ ...page([{ sequence: '1', entityKind: 'task', entityId: TASK, operation: 'upsert', payload }]), store }), /SYNC_CHANGE_INVALID/);
+  }
+  assert.equal(opened, false);
+});
+
+test('server sync rejects unsafe runtime page and change values before opening a transaction', async () => {
+  let opened = false;
+  const store = { async withTransaction() { opened = true; throw new Error('must not open'); } };
+  await assert.rejects(() => commitAuthorizedSyncPage({ ...page([]), actorId: Symbol('owner'), store }), /SYNC_PAGE_INVALID/);
+  await assert.rejects(() => commitAuthorizedSyncPage({ ...page([null]), store }), /SYNC_CHANGE_INVALID/);
+  await assert.rejects(() => commitAuthorizedSyncPage({ actorId: OWNER, cursorOwnerId: OWNER, cursorLastSequence: '0', nextCursor: 'cursor-invalid', changes: [{ sequence: Symbol('sequence'), entityKind: 'task', entityId: TASK, operation: 'upsert', payload: {} }], store }), /SYNC_CHANGE_INVALID/);
+  assert.equal(opened, false);
 });
 
 test('server change hash is stable across object key order', async () => {

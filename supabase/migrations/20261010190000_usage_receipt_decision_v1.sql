@@ -5,7 +5,7 @@
 begin;
 
 alter table df_private.usage_reservation_receipts
-  add column remaining_units integer
+  add column if not exists remaining_units integer
   check (remaining_units is null or remaining_units >= 0);
 
 commit;

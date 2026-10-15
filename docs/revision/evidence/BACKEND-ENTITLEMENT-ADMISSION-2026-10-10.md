@@ -30,6 +30,17 @@ ledger එකක් නොවේ; ඒවා owner/provider decisions සහ inde
 - Price/catalog decision, payment/ads activation, independent security review
   and deployment — **REVIEW_PENDING**.
 
+## Runtime capability validation follow-up — 2026-10-11
+
+The admission boundary now rejects an untrusted runtime capability value before
+reading entitlement state. The TypeScript union remains a compile-time aid;
+the server boundary also validates the value at runtime.
+
+- Entitlement, PostgreSQL entitlement, usage boundary and usage adapter focused
+  checks: **41/41 PASS**.
+- TypeScript and affected ESLint: **PASS**.
+- Live billing/provider integration and remote RLS execution: **NOT_RUN**.
+
 ## Hardened metadata follow-up
 
 The direct server admission helper now rejects malformed `verifiedBy` and
@@ -53,3 +64,14 @@ execution.
 - TypeScript, affected ESLint and documentation checker — **PASS**.
 - Remote RLS execution, independent security review and device verification —
   **NOT_RUN / REVIEW_PENDING**.
+
+## Canonical state reconciliation follow-up — 2026-10-11
+
+The local entitlement migration and PostgreSQL adapter now preserve the
+canonical `pending | active | grace | expired | revoked` state set. `grace`
+remains non-active at the capability admission boundary; no offline grace
+duration or provider policy was invented.
+
+- Entitlement, adapter and migration focused checks: **41/41 PASS**.
+- TypeScript and affected ESLint: **PASS**.
+- Live provider/RLS execution and independent security review: **NOT_RUN / REVIEW_PENDING**.

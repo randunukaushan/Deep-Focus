@@ -11,7 +11,7 @@ const { outputText } = ts.transpileModule(readFileSync(new URL('../../src/app/ta
 
 const storedTask = { id: 'task-1', title: 'Real task', status: 'pending', createdAt: '2026-10-06T00:00:00.000Z', updatedAt: '2026-10-06T00:00:00.000Z' };
 
-function fixture({ tasks = [storedTask], goals = [], goalLoadFailures = 0, loadFailures = 0, saveFailures = 0, editFailures = 0, editConflict = false, deleteFailures = 0, deleteConflict = false, archiveFailures = 0, archiveConflict = false, save } = {}) {
+function fixture({ tasks = [storedTask], goals = [], goalLoadFailures = 0, loadFailures = 0, saveFailures = 0, completionFailures = 0, editFailures = 0, editConflict = false, deleteFailures = 0, deleteConflict = false, archiveFailures = 0, archiveConflict = false, save, complete } = {}) {
   const slots = [];
   let cursor = 0, effect, mounted = false, tree, writes = 0;
   const pushes = [], replacements = [];
@@ -35,6 +35,17 @@ function fixture({ tasks = [storedTask], goals = [], goalLoadFailures = 0, loadF
     '@/features/tasks/task-storage': {
       async loadTasks() { if (loadFailures-- > 0) throw Error('private task storage detail'); return tasks; },
       async saveTasks(next) { writes++; if (saveFailures-- > 0) throw Error('private task write detail'); if (save) await save(); tasks = next; },
+      async completeTask(id, expectedUpdatedAt) {
+        writes++;
+        if (completionFailures-- > 0) throw Error('private completion failure');
+        if (complete) await complete();
+        const existing = tasks.find(task => task.id === id);
+        if (!existing || (existing.status !== 'completed' && existing.updatedAt !== expectedUpdatedAt)) return null;
+        if (existing.status === 'completed') return { task: existing, outcome: 'already_completed' };
+        const task = { ...existing, status: 'completed', completedAt: '2026-10-07T01:00:00.000Z', updatedAt: '2026-10-07T01:00:00.000Z' };
+        tasks = tasks.map(current => current.id === id ? task : current);
+        return { task, outcome: 'completed' };
+      },
       async updateTaskDetails(id, expectedUpdatedAt, title, description, priority, goalId, dueAt) {
         writes++;
         if (editFailures-- > 0) throw Error('private title update detail');
@@ -178,7 +189,7 @@ test('stale task archive asks for reload instead of changing a newer record', as
 });
 
 test('failed task completion remains pending and allows a successful retry', async () => {
-  const app = fixture({ saveFailures: 1 }); app.render(); await app.settle();
+  const app = fixture({ completionFailures: 1 }); app.render(); await app.settle();
   app.find('Complete task').props.onPress(); await app.settle();
   assert.ok(app.find('Complete task'));
   assert.equal(app.alerts().length, 1);
@@ -189,7 +200,7 @@ test('failed task completion remains pending and allows a successful retry', asy
 
 test('Task detail rejects duplicate completion while the write is pending', async () => {
   let resolve;
-  const app = fixture({ save: () => new Promise(done => { resolve = done; }) }); app.render(); await app.settle();
+  const app = fixture({ complete: () => new Promise(done => { resolve = done; }) }); app.render(); await app.settle();
   const complete = app.find('Complete task').props.onPress;
   complete(); complete(); await new Promise(setImmediate); app.render();
   assert.equal(app.writes(), 1);

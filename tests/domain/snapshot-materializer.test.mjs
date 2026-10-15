@@ -57,3 +57,20 @@ test('invalid page or manifest digest and invalid cursor fail closed', async () 
   const many = Array.from({ length: 101 }, (_, index) => entity('task', `${String(index + 1).padStart(8, '0')}-1111-4111-8111-111111111111`));
   await assert.rejects(() => materializeSnapshot(options(many, { nextCursor: () => null })), /SNAPSHOT_CURSOR_INVALID/);
 });
+
+test('oversized page payload is rejected before digesting or staging', async () => {
+  let digests = 0;
+  const huge = entity('task', ID_A);
+  huge.payload.title = 'x'.repeat(262144);
+  await assert.rejects(() => materializeSnapshot(options([huge], { digestPage: async () => { digests += 1; return DIGEST; } })), /SNAPSHOT_PAGE_PAYLOAD_INVALID/);
+  assert.equal(digests, 0);
+});
+
+test('materializer rejects unsafe input identities before digest callbacks', async () => {
+  let digests = 0;
+  const base = options([entity('task', ID_A)], { digestPage: async () => { digests += 1; return DIGEST; } });
+  await assert.rejects(() => materializeSnapshot({ ...base, snapshotId: Symbol('snapshot') }), /SNAPSHOT_MATERIALIZATION_INVALID/);
+  await assert.rejects(() => materializeSnapshot({ ...base, highWater: Symbol('high-water') }), /SNAPSHOT_MATERIALIZATION_INVALID/);
+  await assert.rejects(() => materializeSnapshot(null), /SNAPSHOT_MATERIALIZATION_INVALID/);
+  assert.equal(digests, 0);
+});

@@ -9,6 +9,8 @@ alter table df_private.app_session_revocation_outbox
   add column lease_until timestamptz;
 
 alter table df_private.app_session_revocation_outbox
+    add constraint app_session_revocation_processing_lease_check
+  check ((lease_id is null) = (lease_until is null)),
   add constraint app_session_revocation_lease_state_check
   check ((state = 'processing') = (lease_id is not null and lease_until is not null));
 

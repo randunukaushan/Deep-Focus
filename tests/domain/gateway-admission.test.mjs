@@ -39,3 +39,17 @@ test('read requests may omit a body but cannot smuggle write metadata', () => {
   assert.throws(() => admitGatewayRequest({ method: 'GET', path: '/v1/tasks', actorId, headers: { 'Idempotency-Key': mutationId } }), /VALIDATION_FAILED/);
   assert.throws(() => admitGatewayRequest({ method: 'GET', path: '/v1/tasks', actorId, headers: {}, bodyText: '{}' }), /VALIDATION_FAILED/);
 });
+
+test('gateway admission rejects unsafe runtime identity and path types safely', () => {
+  assert.throws(() => admitGatewayRequest({ ...base, actorId: Symbol('actor'), bodyText: '{}' }), /AUTH_REQUIRED/);
+  assert.throws(() => admitGatewayRequest({ ...base, headers: { ...base.headers, 'Idempotency-Key': Symbol('mutation') }, bodyText: '{}' }), /VALIDATION_FAILED/);
+  assert.throws(() => admitGatewayRequest({ ...base, path: Symbol('path'), bodyText: '{}' }), /NOT_FOUND/);
+  assert.throws(() => admitGatewayRequest({ ...base, bodyText: Symbol('body') }), /VALIDATION_FAILED/);
+});
+
+test('gateway admission rejects malformed composition before reading headers', () => {
+  assert.throws(() => admitGatewayRequest(null), /VALIDATION_FAILED/);
+  assert.throws(() => admitGatewayRequest([]), /VALIDATION_FAILED/);
+  assert.throws(() => admitGatewayRequest({ ...base, headers: null }), /VALIDATION_FAILED/);
+  assert.throws(() => admitGatewayRequest({ ...base, headers: [] }), /VALIDATION_FAILED/);
+});

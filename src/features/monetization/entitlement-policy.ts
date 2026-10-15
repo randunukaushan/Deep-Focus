@@ -13,7 +13,7 @@ export type VerifiedEntitlement = {
 
 export type EntitlementDecision = {
   allowed: boolean;
-  reason: 'core_capability' | 'server_verified' | 'missing_entitlement' | 'owner_mismatch' | 'not_server_verified' | 'not_active' | 'expired' | 'invalid_clock';
+  reason: 'core_capability' | 'server_verified' | 'missing_entitlement' | 'owner_mismatch' | 'capability_mismatch' | 'not_server_verified' | 'not_active' | 'expired' | 'invalid_clock';
 };
 
 function validTimestamp(value: unknown): value is string {
@@ -35,6 +35,7 @@ export function decideCapabilityAccess(
   if (!validTimestamp(now)) return { allowed: false, reason: 'invalid_clock' };
   if (!entitlement) return { allowed: false, reason: 'missing_entitlement' };
   if (entitlement.ownerId !== verifiedOwnerId) return { allowed: false, reason: 'owner_mismatch' };
+  if (entitlement.capability !== capability) return { allowed: false, reason: 'capability_mismatch' };
   if (entitlement.verifiedBy !== 'server') return { allowed: false, reason: 'not_server_verified' };
   if (entitlement.status !== 'active') return { allowed: false, reason: 'not_active' };
   if (entitlement.expiresAt !== null && (!validTimestamp(entitlement.expiresAt) || Date.parse(entitlement.expiresAt) <= Date.parse(now))) {

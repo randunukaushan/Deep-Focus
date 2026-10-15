@@ -41,6 +41,11 @@ test('snapshot page reader fails closed on an invalid entity payload', async () 
   await assert.rejects(() => createPostgresSnapshotPageReader({ runner: h.runner }).readPage({ ownerId: OWNER, snapshotId: SNAPSHOT, pageIndex: 0, now: NOW, sessionId: SESSION }), /DEPENDENCY_UNAVAILABLE/);
 });
 
+test('snapshot page reader fails closed on an oversized stored payload', async () => {
+  const h = harness({ ...row, payload: { data: [{ ...row.payload.data[0], payload: { title: 'x'.repeat(262144) } }] } });
+  await assert.rejects(() => createPostgresSnapshotPageReader({ runner: h.runner }).readPage({ ownerId: OWNER, snapshotId: SNAPSHOT, pageIndex: 0, now: NOW, sessionId: SESSION }), /DEPENDENCY_UNAVAILABLE/);
+});
+
 test('snapshot page reader accepts PostgreSQL bigint text and preserves it as a decimal string', async () => {
   const h = harness({ ...row, high_water: '9007199254740993', snapshot_high_water: '9007199254740993' });
   const result = await createPostgresSnapshotPageReader({ runner: h.runner }).readPage({ ownerId: OWNER, snapshotId: SNAPSHOT, pageIndex: 0, now: NOW, sessionId: SESSION });
@@ -66,4 +71,23 @@ test('snapshot page reader rejects a missing session before page data access', a
   const h = harness(row);
   await assert.rejects(() => createPostgresSnapshotPageReader({ runner: h.runner }).readPage({ ownerId: OWNER, snapshotId: SNAPSHOT, pageIndex: 0, now: NOW, sessionId: undefined }), /VALIDATION_FAILED/);
   assert.equal(h.calls.length, 0);
+});
+
+test('snapshot page reader rejects unsafe request identity and clock types before storage', async () => {
+  const h = harness(row);
+  const reader = createPostgresSnapshotPageReader({ runner: h.runner });
+  await assert.rejects(() => reader.readPage({ ownerId: Symbol('owner'), snapshotId: SNAPSHOT, pageIndex: 0, now: NOW, sessionId: SESSION }), /VALIDATION_FAILED/);
+  await assert.rejects(() => reader.readPage({ ownerId: OWNER, snapshotId: SNAPSHOT, pageIndex: 0, now: NOW, sessionId: Symbol('session') }), /VALIDATION_FAILED/);
+  await assert.rejects(() => reader.readPage({ ownerId: OWNER, snapshotId: SNAPSHOT, pageIndex: 0, now: Symbol('clock'), sessionId: SESSION }), /VALIDATION_FAILED/);
+  assert.equal(h.calls.length, 0);
+});
+
+test('snapshot page reader fails closed on sparse result rows', async () => {
+  const sparse = [];
+  sparse[1] = row;
+  await assert.rejects(() => createPostgresSnapshotPageReader({ runner: harness(sparse).runner }).readPage({ ownerId: OWNER, snapshotId: SNAPSHOT, pageIndex: 0, now: NOW, sessionId: SESSION }), /DEPENDENCY_UNAVAILABLE/);
+});
+
+test('snapshot page reader fails closed on duplicate result rows', async () => {
+  await assert.rejects(() => createPostgresSnapshotPageReader({ runner: harness([row, row]).runner }).readPage({ ownerId: OWNER, snapshotId: SNAPSHOT, pageIndex: 0, now: NOW, sessionId: SESSION }), /DEPENDENCY_UNAVAILABLE/);
 });

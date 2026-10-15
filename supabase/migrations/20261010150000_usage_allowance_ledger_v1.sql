@@ -23,6 +23,7 @@ create table df_private.usage_reservation_receipts (
   capability text not null check (capability in ('ai','cloud_resources')),
   period_key text not null,
   units integer not null check (units between 1 and 1000),
+  remaining_units integer not null check (remaining_units >= 0),
   policy_version text not null check (char_length(policy_version) between 1 and 64),
   status text not null default 'reserved' check (status in ('reserved','consumed','released')),
   created_at timestamptz not null default now(),

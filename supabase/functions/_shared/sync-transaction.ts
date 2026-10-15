@@ -9,7 +9,7 @@
 
 export type ServerSyncChange = {
   sequence: string;
-  entityKind: 'profile' | 'goal' | 'task' | 'session' | 'focus_session' | 'settings' | 'break';
+  entityKind: 'profile' | 'goal' | 'task' | 'session' | 'focus_session' | 'settings' | 'break' | 'reminder';
   entityId: string;
   operation: 'upsert' | 'delete';
   payload: Record<string, unknown> | null;
@@ -37,20 +37,48 @@ export type SyncPageCommitResult = {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DECIMAL = /^(?:0|[1-9][0-9]*)$/;
+const MAX_SYNC_PAYLOAD_BYTES = 65536;
 // Keep legacy opaque cursors valid while accepting the signed payload.signature
 // cursor emitted by the server pull boundary. The transaction layer only
 // validates the opaque shape; signature/owner/expiry verification belongs to
 // the pull boundary before this value is passed here.
 const CURSOR = /^(?=.{1,4096}$)[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?$/;
 
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID.test(value);
+}
+
+function isDecimal(value: unknown): value is string {
+  return typeof value === 'string' && DECIMAL.test(value);
+}
+
+function isCursor(value: unknown): value is string {
+  return typeof value === 'string' && CURSOR.test(value);
+}
+
 function compareDecimal(left: string, right: string): number {
   return left.length === right.length ? left.localeCompare(right) : left.length - right.length;
 }
 
 function canonicalJson(value: unknown): string {
-  if (value === null || typeof value === 'string' || typeof value === 'boolean' || typeof value === 'number') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new TypeError('SYNC_UNHASHABLE_PAYLOAD');
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    const keys = Object.keys(value);
+    if (Object.getOwnPropertySymbols(value).length > 0
+      || keys.length !== value.length
+      || keys.some((key) => !/^(?:0|[1-9][0-9]*)$/.test(key) || Number(key) >= value.length)) {
+      throw new TypeError('SYNC_UNHASHABLE_PAYLOAD');
+    }
+    return `[${value.map(canonicalJson).join(',')}]`;
+  }
   if (!value || typeof value !== 'object') throw new TypeError('SYNC_UNHASHABLE_PAYLOAD');
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) throw new TypeError('SYNC_UNHASHABLE_PAYLOAD');
+  if (Object.getOwnPropertySymbols(value).length > 0) throw new TypeError('SYNC_UNHASHABLE_PAYLOAD');
   const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) => left.localeCompare(right));
   return `{${entries.map(([key, child]) => `${JSON.stringify(key)}:${canonicalJson(child)}`).join(',')}}`;
 }
@@ -70,13 +98,22 @@ export async function hashSyncChange(change: ServerSyncChange): Promise<string> 
 }
 
 function validateChange(change: ServerSyncChange): void {
-  if (!DECIMAL.test(change.sequence) || !UUID.test(change.entityId)
-    || !['profile', 'goal', 'task', 'session', 'focus_session', 'settings', 'break'].includes(change.entityKind)
+  if (!change || typeof change !== 'object'
+    || !isDecimal(change.sequence) || change.sequence === '0' || !isUuid(change.entityId)
+    || !['profile', 'goal', 'task', 'session', 'focus_session', 'settings', 'break', 'reminder'].includes(change.entityKind)
     || !['upsert', 'delete'].includes(change.operation)
     || (change.operation === 'delete'
       ? change.payload !== null
       : !change.payload || typeof change.payload !== 'object' || Array.isArray(change.payload))) {
     throw new Error('SYNC_CHANGE_INVALID');
+  }
+  if (change.operation === 'upsert') {
+    try {
+      const prototype = Object.getPrototypeOf(change.payload);
+      if (prototype !== Object.prototype && prototype !== null) throw new Error('SYNC_CHANGE_INVALID');
+      const serialized = canonicalJson(change.payload);
+      if (new TextEncoder().encode(serialized).byteLength > MAX_SYNC_PAYLOAD_BYTES) throw new Error('SYNC_CHANGE_PAYLOAD_TOO_LARGE');
+    } catch { throw new Error('SYNC_CHANGE_INVALID'); }
   }
 }
 
@@ -89,8 +126,8 @@ export async function commitAuthorizedSyncPage(input: {
   changes: ServerSyncChange[];
   store: SyncTransactionStore;
 }): Promise<SyncPageCommitResult> {
-  if (!UUID.test(input.actorId) || input.actorId !== input.cursorOwnerId
-    || !DECIMAL.test(input.cursorLastSequence) || !CURSOR.test(input.nextCursor)
+  if (!isUuid(input.actorId) || !isUuid(input.cursorOwnerId) || input.actorId !== input.cursorOwnerId
+    || !isDecimal(input.cursorLastSequence) || !isCursor(input.nextCursor)
     || !Array.isArray(input.changes) || input.changes.length > 100) throw new Error('SYNC_PAGE_INVALID');
   for (let index = 0; index < input.changes.length; index += 1) {
     validateChange(input.changes[index]);

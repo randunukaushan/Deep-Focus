@@ -9,8 +9,11 @@ export type ProviderSessionVerifier = (accessToken: string) => Promise<unknown>;
 const CONTROL = /[\u0000-\u001f\u007f]/;
 const MAX_TOKEN_LENGTH = 8192;
 
-function bearer(headers: Record<string, string | undefined>): string | null {
-  const value = headers.Authorization ?? headers.authorization;
+function bearer(headers: unknown): string | null {
+  if (!headers || typeof headers !== 'object' || Array.isArray(headers)) return null;
+  const record = headers as Record<string, unknown>;
+  const value = typeof record.Authorization === 'string' ? record.Authorization
+    : typeof record.authorization === 'string' ? record.authorization : undefined;
   if (!value || CONTROL.test(value) || !/^Bearer\s+\S+$/.test(value)) return null;
   const token = value.slice(value.indexOf(' ') + 1);
   if (!token || token.length > MAX_TOKEN_LENGTH || /\s/.test(token)) return null;
@@ -30,6 +33,7 @@ export async function authorizeRequestSession(input: {
   now: string;
   loadSession: (ownerId: string, sessionId: string) => Promise<AppSessionRecord | null>;
 }): Promise<RequestSessionDecision> {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return { allowed: false, reason: 'invalid_token' };
   const token = bearer(input.headers);
   if (!token) return { allowed: false, reason: 'missing_token' };
   let claims: unknown;

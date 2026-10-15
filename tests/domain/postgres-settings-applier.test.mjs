@@ -27,3 +27,18 @@ test('patchSettings rejects unknown/invalid input and stale or foreign rows', as
   await assert.rejects(applyPatchSettings(client, input({ expectedVersion: 1, theme: 'dark' })), /VERSION_CONFLICT/);
   assert.equal(calls, 1);
 });
+
+test('patchSettings rejects malformed client, actor, body and result containers safely', async () => {
+  await assert.rejects(() => applyPatchSettings({ query: null }, input({ expectedVersion: 1, theme: 'dark' })), /DEPENDENCY_UNAVAILABLE/);
+  await assert.rejects(() => applyPatchSettings({ query: async () => ({ rows: [] }) }, { ...input({ expectedVersion: 1, theme: 'dark' }), actorId: Symbol('actor') }), /VALIDATION_FAILED/);
+  await assert.rejects(() => applyPatchSettings({ query: async () => ({ rows: [] }) }, { ...input({ expectedVersion: 1, theme: 'dark' }), body: 'not-an-object' }), /VALIDATION_FAILED/);
+  await assert.rejects(() => applyPatchSettings({ query: async () => ({ rows: null }) }, input({ expectedVersion: 1, theme: 'dark' })), /DEPENDENCY_UNAVAILABLE/);
+  await assert.rejects(() => applyPatchSettings({ query: async () => ({ rows: [row, { ...row, theme: 'light' }] }) }, input({ expectedVersion: 1, theme: 'dark' })), /DEPENDENCY_UNAVAILABLE/);
+  await assert.rejects(() => applyPatchSettings({ query: async () => ({ rows: [{ ...row, id: 'not-a-uuid' }] }) }, input({ expectedVersion: 1, theme: 'dark' })), /DEPENDENCY_UNAVAILABLE/);
+});
+
+test('patchSettings fails closed on sparse returned rows', async () => {
+  const sparse = [];
+  sparse[1] = row;
+  await assert.rejects(() => applyPatchSettings({ query: async () => ({ rows: sparse }) }, input({ expectedVersion: 1, theme: 'dark' })), /DEPENDENCY_UNAVAILABLE/);
+});

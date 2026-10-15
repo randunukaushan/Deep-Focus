@@ -50,6 +50,32 @@ test('server pull rejects foreign-shaped, out-of-range and unordered store data'
   await assert.rejects(readAuthorizedSyncPage({ ...base, store: { async readPage() { return { highWater: '20', changes: [{ ...change, entityId: 'not-an-id' }] }; } } }), /SYNC_CHANGE_INVALID/);
 });
 
+test('server pull rejects an oversized upsert payload before signing a cursor', async () => {
+  const base = { actorId: OWNER, cursor: null, limit: 50, secret: SECRET, now: NOW, expiresAt: EXPIRY };
+  await assert.rejects(readAuthorizedSyncPage({ ...base, store: { async readPage() { return { highWater: '20', changes: [{ ...change, payload: { payload: 'x'.repeat(65537) } }] }; } } }), /SYNC_CHANGE_INVALID/);
+});
+
+test('server pull rejects non-finite nested payload values before signing a cursor', async () => {
+  const base = { actorId: OWNER, cursor: null, limit: 50, secret: SECRET, now: NOW, expiresAt: EXPIRY };
+  await assert.rejects(readAuthorizedSyncPage({ ...base, store: { async readPage() { return { highWater: '20', changes: [{ ...change, payload: { nested: { value: Number.POSITIVE_INFINITY } } }] }; } } }), /SYNC_CHANGE_INVALID/);
+});
+
+test('server pull rejects JSON-coercible non-plain payload values before signing a cursor', async () => {
+  const base = { actorId: OWNER, cursor: null, limit: 50, secret: SECRET, now: NOW, expiresAt: EXPIRY };
+  class CustomPayload { constructor() { this.value = 'hidden-shape'; } }
+  for (const payload of [{ when: new Date(NOW) }, { custom: new CustomPayload() }, { missing: undefined }]) {
+    await assert.rejects(readAuthorizedSyncPage({ ...base, store: { async readPage() { return { highWater: '20', changes: [{ ...change, payload }] }; } } }), /SYNC_CHANGE_INVALID/);
+  }
+});
+
+test('server pull rejects the zero sequence reserved for the initial cursor', async () => {
+  const base = { actorId: OWNER, cursor: null, limit: 50, secret: SECRET, now: NOW, expiresAt: EXPIRY };
+  await assert.rejects(readAuthorizedSyncPage({
+    ...base,
+    store: { async readPage() { return { highWater: '20', changes: [{ ...change, sequence: '0' }] }; } },
+  }), /SYNC_CHANGE_INVALID/);
+});
+
 test('server pull never hides a store failure as an empty page', async () => {
   await assert.rejects(readAuthorizedSyncPage({ actorId: OWNER, cursor: null, limit: 50, secret: SECRET, now: NOW, expiresAt: EXPIRY, store: { async readPage() { throw new Error('DB_UNAVAILABLE'); } } }), /DB_UNAVAILABLE/);
 });

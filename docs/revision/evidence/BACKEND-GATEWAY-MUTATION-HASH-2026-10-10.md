@@ -14,6 +14,10 @@ identity/authentication නොවන අතර, provider/database transaction �
 
 ## Remaining gates
 
+The canonicalization now rejects `NaN`, positive infinity and negative
+infinity before hashing; these values cannot collapse to JSON `null` and create
+an ambiguous idempotency hash.
+
 - Gateway receipt integration, PostgreSQL canonical transaction execution and
   cross-runtime canonicalization fixtures — **NOT_RUN / REVIEW_PENDING**.
 - Independent security review, remote migration/deployment and Android device

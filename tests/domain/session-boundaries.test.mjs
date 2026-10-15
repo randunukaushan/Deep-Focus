@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { DatabaseSync } from 'node:sqlite';
 import { runInNewContext } from 'node:vm';
 import * as engine from '../../src/features/focus/session-engine.ts';
+import * as completionProcessing from '../../src/features/focus/completion-processing.ts';
 import * as goalProgress from '../../src/features/goals/goal-progress.ts';
 import * as resourceTypes from '../../src/features/resources/resource-types.ts';
 import * as teacherAssignmentDraft from '../../src/features/education/teacher-assignment-draft.ts';
@@ -55,6 +56,7 @@ function sqliteFixture(initialFiles = {}, readError = false) {
     'react-native': { Platform: { OS: 'android' } },
     'expo-crypto': { CryptoDigestAlgorithm: { SHA256: 'SHA-256' }, async digestStringAsync(_algorithm, value) { return `sha256:${value}`; } },
     '@/features/focus/session-engine': engine,
+    '@/features/focus/completion-processing': completionProcessing,
     '@/features/goals/goal-progress': goalProgress,
     '@/features/resources/resource-types': resourceTypes,
     '@/features/education/teacher-assignment-draft': teacherAssignmentDraft,

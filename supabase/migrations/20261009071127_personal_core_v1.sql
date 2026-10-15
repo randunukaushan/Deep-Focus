@@ -57,7 +57,8 @@ create table df_private.goals (
   check ((type = 'focus_time' and target_unit = 'ms') or (type <> 'focus_time' and target_unit = 'count')),
   check ((status = 'completed') = (completed_at is not null)),
   foreign key (owner_id, workspace_id) references df_private.workspaces(owner_id, id) on delete restrict,
-  unique (owner_id, workspace_id, id)
+  unique (owner_id, workspace_id, id),
+  unique (owner_id, id)
 );
 
 create table df_private.tasks (
@@ -84,7 +85,8 @@ create table df_private.tasks (
     or (due_kind = 'instant' and due_date is null and due_at is not null)),
   foreign key (owner_id, workspace_id) references df_private.workspaces(owner_id, id) on delete restrict,
   foreign key (owner_id, workspace_id, goal_id) references df_private.goals(owner_id, workspace_id, id) on delete restrict,
-  unique (owner_id, workspace_id, id)
+  unique (owner_id, workspace_id, id),
+  unique (owner_id, id)
 );
 
 create table df_private.focus_sessions (
@@ -191,6 +193,19 @@ begin
     );
   end loop;
 end $$;
+
+-- Bootstrap runner receipts in the same transaction as the first schema.
+-- This table has no owner column and must not use the owner-policy loop above.
+create table df_private.schema_migration_receipts (
+  migration_id text primary key check (migration_id ~ '^[0-9]{14}_[a-z0-9_]{1,96}$'),
+  checksum_sha256 text not null check (checksum_sha256 ~ '^[a-f0-9]{64}$'),
+  schema_version integer not null check (schema_version > 0),
+  applied_at timestamptz not null default now(),
+  applied_by text not null check (applied_by in ('migration_runner','manual_review'))
+);
+alter table df_private.schema_migration_receipts enable row level security;
+revoke all on table df_private.schema_migration_receipts from public, anon, authenticated;
+grant select, insert, update, delete on table df_private.schema_migration_receipts to service_role;
 
 -- No RPCs, triggers, service credentials or direct-client grants are created.
 -- Business mutations must lock sync_heads, validate the verified actor and write

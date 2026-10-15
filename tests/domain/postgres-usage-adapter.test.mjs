@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-const { createPostgresCapabilityUsageReader, createPostgresUsageService, createPostgresUsageTransactionStore } = await import('../../supabase/functions/_shared/postgres-usage-adapter.ts');
+const { createPostgresCapabilityUsageReader, createPostgresUsageService, createPostgresUsageStore, createPostgresUsageTransactionStore } = await import('../../supabase/functions/_shared/postgres-usage-adapter.ts');
 const { admitServerCapability } = await import('../../supabase/functions/_shared/entitlement-boundary.ts');
 const { reserveUsageTransactionally, settleUsageTransactionally } = await import('../../supabase/functions/_shared/usage-boundary.ts');
 
@@ -11,7 +11,7 @@ const SESSION = '66666666-6666-4666-8666-666666666666';
 const NOW = '2026-10-10T00:00:00.000Z';
 const admission = admitServerCapability({ verifiedActorId: OWNER, capability: 'ai', entitlement: { ownerId: OWNER, capability: 'ai', status: 'active', verifiedBy: 'server', policyVersion: 'v1', expiresAt: null, offerId: null }, now: NOW });
 
-function harness({ receipt = null, settlementUpdated = true, reservationInsertRows = [{ receipt_id: RECEIPT, owner_id: OWNER, capability: 'ai', period_key: '2026-10' }], foreignSettlementRow = null, foreignAllowanceRow = null } = {}) {
+function harness({ receipt = null, settlementUpdated = true, reservationInsertRows = null, foreignSettlementRow = null, foreignAllowanceRow = null } = {}) {
   const calls = [];
   let allowance = { owner_id: OWNER, capability: 'ai', period_key: '2026-10', limit_units: 10, consumed_units: 2, reserved_units: 1, policy_version: 'v1' };
   const client = { query: async (sql, params) => {
@@ -25,8 +25,8 @@ function harness({ receipt = null, settlementUpdated = true, reservationInsertRo
       if (sql.includes('consumed_units = consumed_units +')) { allowance = { ...allowance, reserved_units: allowance.reserved_units - params[3], consumed_units: allowance.consumed_units + params[3] }; return { rows: [foreignAllowanceRow ?? { owner_id: OWNER, capability: 'ai', period_key: '2026-10' }] }; }
       if (sql.includes('reserved_units = reserved_units -')) { allowance = { ...allowance, reserved_units: allowance.reserved_units - params[3] }; return { rows: [foreignAllowanceRow ?? { owner_id: OWNER, capability: 'ai', period_key: '2026-10' }] }; }
     }
-    if (sql.startsWith('insert into df_private.usage_reservation_receipts')) return { rows: reservationInsertRows };
-    if (sql.startsWith('update df_private.usage_reservation_receipts')) return { rows: settlementUpdated ? [foreignSettlementRow ?? { receipt_id: params[1], owner_id: OWNER, capability: 'ai', period_key: '2026-10', status: params[2] }] : [] };
+    if (sql.startsWith('insert into df_private.usage_reservation_receipts')) return { rows: reservationInsertRows ?? [{ receipt_id: params[1], owner_id: params[0], capability: params[2], period_key: params[3], units: params[4], policy_version: params[5], remaining_units: params[6], status: 'reserved' }] };
+    if (sql.startsWith('update df_private.usage_reservation_receipts')) return { rows: settlementUpdated ? [foreignSettlementRow ?? { receipt_id: params[1], owner_id: OWNER, capability: 'ai', period_key: '2026-10', units: 2, policy_version: 'v1', remaining_units: 5, status: params[2] }] : [] };
     return { rows: [] };
   } };
   return { calls, runner: { withTransaction: async (run) => run(client) } };
@@ -84,10 +84,43 @@ test('PostgreSQL usage adapter fails closed on a reservation receipt scope misma
   );
 });
 
+test('PostgreSQL usage adapter fails closed when a reservation receipt returns altered quota fields', async () => {
+  const h = harness({ reservationInsertRows: [{ receipt_id: RECEIPT, owner_id: OWNER, capability: 'ai', period_key: '2026-10', units: 99, policy_version: 'unexpected', remaining_units: 5, status: 'reserved' }] });
+  await assert.rejects(
+    () => reserveUsageTransactionally({ admission, verifiedActorId: OWNER, capability: 'ai', periodKey: '2026-10', units: 2, receiptId: RECEIPT, store: createPostgresUsageTransactionStore({ runner: h.runner }) }),
+    /DEPENDENCY_UNAVAILABLE/,
+  );
+});
+
 test('PostgreSQL usage adapter fails closed on a foreign allowance returned during reservation', async () => {
   const h = harness({ foreignAllowanceRow: { owner_id: '33333333-3333-4333-8333-333333333333', capability: 'ai', period_key: '2026-10' } });
   await assert.rejects(
     () => reserveUsageTransactionally({ admission, verifiedActorId: OWNER, capability: 'ai', periodKey: '2026-10', units: 2, receiptId: RECEIPT, store: createPostgresUsageTransactionStore({ runner: h.runner }) }),
+    /DEPENDENCY_UNAVAILABLE/,
+  );
+});
+
+test('PostgreSQL usage adapter fails closed on malformed stored quota state', async () => {
+  const h = harness({ receipt: { receipt_id: RECEIPT, owner_id: OWNER, capability: 'ai', period_key: '2026-10', units: -2, policy_version: 'v1', remaining_units: 5, status: 'reserved' } });
+  await assert.rejects(
+    () => settleUsageTransactionally({ verifiedActorId: OWNER, receiptId: RECEIPT, action: 'release', store: createPostgresUsageTransactionStore({ runner: h.runner }) }),
+    /DEPENDENCY_UNAVAILABLE/,
+  );
+  assert.equal(h.calls.some((call) => call.sql.includes('update df_private.capability_allowances')), false);
+});
+
+test('PostgreSQL usage adapter fails closed on an inconsistent allowance row', async () => {
+  const h = harness();
+  const base = h.runner.withTransaction;
+  h.runner.withTransaction = async (run) => base((client) => run({
+    query: async (sql, params) => {
+      const result = await client.query(sql, params);
+      if (sql.includes('from df_private.capability_allowances')) result.rows[0].consumed_units = 99;
+      return result;
+    },
+  }));
+  await assert.rejects(
+    () => createPostgresCapabilityUsageReader({ runner: h.runner }).read({ verifiedActorId: OWNER, capability: 'ai', periodKey: '2026-10', now: NOW, sessionId: SESSION }),
     /DEPENDENCY_UNAVAILABLE/,
   );
 });
@@ -139,6 +172,11 @@ test('PostgreSQL usage adapter fails closed when receipt settlement updates no r
 
 test('PostgreSQL usage adapter fails closed on foreign settlement metadata', async () => {
   const h = harness({ receipt: { receipt_id: RECEIPT, owner_id: OWNER, capability: 'ai', period_key: '2026-10', units: 2, policy_version: 'v1', remaining_units: 5, status: 'reserved' }, foreignSettlementRow: { receipt_id: RECEIPT, owner_id: '33333333-3333-4333-8333-333333333333', capability: 'ai', period_key: '2026-10', status: 'consumed' } });
+  await assert.rejects(() => settleUsageTransactionally({ verifiedActorId: OWNER, receiptId: RECEIPT, action: 'consume', store: createPostgresUsageTransactionStore({ runner: h.runner }) }), /DEPENDENCY_UNAVAILABLE/);
+});
+
+test('PostgreSQL usage adapter fails closed when settlement returns altered receipt fields', async () => {
+  const h = harness({ receipt: { receipt_id: RECEIPT, owner_id: OWNER, capability: 'ai', period_key: '2026-10', units: 2, policy_version: 'v1', remaining_units: 5, status: 'reserved' }, foreignSettlementRow: { receipt_id: RECEIPT, owner_id: OWNER, capability: 'ai', period_key: '2026-10', units: 99, policy_version: 'unexpected', remaining_units: 5, status: 'consumed' } });
   await assert.rejects(() => settleUsageTransactionally({ verifiedActorId: OWNER, receiptId: RECEIPT, action: 'consume', store: createPostgresUsageTransactionStore({ runner: h.runner }) }), /DEPENDENCY_UNAVAILABLE/);
 });
 
@@ -194,4 +232,56 @@ test('revoked session blocks usage settlement before receipt access', async () =
   const h = sessionHarness({ revoked: true });
   await assert.rejects(() => createPostgresUsageService({ runner: h.runner }).settle({ verifiedActorId: OWNER, receiptId: RECEIPT, action: 'release', sessionId: SESSION }), /AUTH_REQUIRED/);
   assert.equal(h.calls.length, 1);
+});
+
+test('PostgreSQL usage adapter rejects runtime identity confusion and malformed result containers', async () => {
+  let calls = 0;
+  const malformed = { query: async () => { calls += 1; return { rows: null }; } };
+  const store = createPostgresUsageTransactionStore({ runner: { withTransaction: async (run) => run(malformed) } });
+  await assert.rejects(() => store.withTransaction((usage) => usage.readReceipt(Symbol('owner'), RECEIPT)), /VALIDATION_FAILED/);
+  await assert.rejects(() => store.withTransaction((usage) => usage.readAllowance(OWNER, 'ai', '2026-10')), /DEPENDENCY_UNAVAILABLE/);
+  assert.equal(calls, 1);
+
+  const duplicate = { query: async () => ({ rows: [{ receipt_id: RECEIPT, owner_id: OWNER }, { receipt_id: RECEIPT, owner_id: OWNER }] }) };
+  const duplicateStore = createPostgresUsageTransactionStore({ runner: { withTransaction: async (run) => run(duplicate) } });
+  await assert.rejects(() => duplicateStore.withTransaction((usage) => usage.readReceipt(OWNER, RECEIPT)), /DEPENDENCY_UNAVAILABLE/);
+});
+
+test('PostgreSQL usage adapter rejects malformed runner and client dependencies before quota work', () => {
+  assert.throws(() => createPostgresUsageTransactionStore(null), /VALIDATION_FAILED/);
+  assert.throws(() => createPostgresUsageService({ runner: null }), /VALIDATION_FAILED/);
+  assert.throws(() => createPostgresCapabilityUsageReader({ runner: { withTransaction: 'not-a-function' } }), /VALIDATION_FAILED/);
+  assert.throws(() => createPostgresUsageStore(null), /VALIDATION_FAILED/);
+});
+
+test('PostgreSQL usage service and capability reader fail closed before session access with a malformed client', async () => {
+  const malformed = { withTransaction: async (run) => run({ query: 'not-a-function' }) };
+  const service = createPostgresUsageService({ runner: malformed });
+  const reader = createPostgresCapabilityUsageReader({ runner: malformed });
+  await assert.rejects(() => service.reserve({ verifiedActorId: OWNER, capability: 'ai', periodKey: '2026-10', units: 1, receiptId: RECEIPT, now: NOW, sessionId: SESSION }), /DEPENDENCY_UNAVAILABLE/);
+  await assert.rejects(() => reader.read({ verifiedActorId: OWNER, capability: 'ai', periodKey: '2026-10', now: NOW, sessionId: SESSION }), /DEPENDENCY_UNAVAILABLE/);
+});
+
+test('PostgreSQL usage transaction store rejects a non-callable operation before opening work', async () => {
+  let opened = false;
+  const store = createPostgresUsageTransactionStore({ runner: { withTransaction: async () => { opened = true; } } });
+  assert.throws(() => store.withTransaction(null), /VALIDATION_FAILED/);
+  assert.equal(opened, false);
+});
+
+test('PostgreSQL usage services reject malformed requests before opening a transaction', async () => {
+  let opened = 0;
+  const service = createPostgresUsageService({ runner: { withTransaction: async (run) => { opened += 1; return run({ query: async () => ({ rows: [] }) }); } } });
+  const reader = createPostgresCapabilityUsageReader({ runner: { withTransaction: async (run) => { opened += 1; return run({ query: async () => ({ rows: [] }) }); } } });
+  await assert.rejects(() => service.reserve({ verifiedActorId: Symbol('owner'), capability: 'ai', periodKey: '2026-10', units: 1, receiptId: RECEIPT, now: NOW, sessionId: SESSION }), /VALIDATION_FAILED/);
+  await assert.rejects(() => service.settle({ verifiedActorId: OWNER, receiptId: Symbol('receipt'), action: 'release', sessionId: SESSION }), /VALIDATION_FAILED/);
+  await assert.rejects(() => reader.read({ verifiedActorId: OWNER, capability: 'ai', periodKey: 'bad', now: NOW, sessionId: SESSION }), /VALIDATION_FAILED/);
+  assert.equal(opened, 0);
+});
+
+test('PostgreSQL usage store fails closed on sparse allowance rows before quota decisions', async () => {
+  const sparse = [];
+  sparse[1] = { owner_id: OWNER, capability: 'ai', period_key: '2026-10', limit_units: 10, consumed_units: 2, reserved_units: 1, policy_version: 'v1' };
+  const store = createPostgresUsageStore({ query: async () => ({ rows: sparse }) });
+  await assert.rejects(() => store.readAllowance(OWNER, 'ai', '2026-10'), /DEPENDENCY_UNAVAILABLE/);
 });

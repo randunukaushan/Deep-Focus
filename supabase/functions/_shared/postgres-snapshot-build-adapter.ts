@@ -10,6 +10,18 @@ import type { SnapshotEntity } from '../../../src/features/sync/snapshot-mirror.
 import type { SnapshotStagingResult } from './postgres-snapshot-staging-adapter.ts';
 import type { PostgresTransactionRunner } from './postgres-domain-mutation-adapter.ts';
 
+function invalid(): never {
+  throw new Error('VALIDATION_FAILED');
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object';
+}
+
+function validRunner(value: unknown): value is PostgresTransactionRunner {
+  return isRecord(value) && typeof value.withTransaction === 'function';
+}
+
 export type PostgresSnapshotBuildInput = {
   ownerId: string;
   sessionId: string;
@@ -25,6 +37,7 @@ export type PostgresSnapshotBuildInput = {
 };
 
 export function createPostgresSnapshotBuilder(input: { runner: PostgresTransactionRunner }) {
+  if (!isRecord(input) || !validRunner(input.runner)) invalid();
   const stager = createPostgresSnapshotStager(input);
   return {
     build: async (value: PostgresSnapshotBuildInput): Promise<SnapshotStagingResult> => {

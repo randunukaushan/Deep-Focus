@@ -7,6 +7,8 @@ distributed implementation එක පසුව review කළ යුතුය.
 ## Actual checks
 
 - `node --experimental-strip-types --test tests/domain/gateway-rate-limit.test.mjs` — **4/4 PASS**.
+- Follow-up negative-clock regression: **5/5 PASS** for the gateway admission
+  suite.
 - TypeScript — **PASS**.
 - Affected-file ESLint — **PASS**.
 - Full bundled-runtime repository suite after this slice — **427/427 PASS**.
@@ -18,6 +20,15 @@ distributed implementation එක පසුව review කළ යුතුය.
   configuration — **NOT_RUN / REVIEW_PENDING**.
 - Independent security review, remote migration/deployment and Android device
   verification — **REVIEW_PENDING / NOT_RUN**.
+
+## Follow-up: invalid clock rejection — 2026-10-11
+
+- Gateway admission now rejects negative `nowMs` values before the shared
+  counter is called; the PostgreSQL adapter already enforced the same bound.
+- Gateway and PostgreSQL rate-limit focused checks: **11/11 PASS**.
+- Latest full bundled-runtime suite: **1194/1194 PASS**.
+- Distributed counter/load evidence, independent security review and device
+  verification remain **NOT_RUN / REVIEW_PENDING**.
 
 ## Follow-up: authenticated gateway wiring — 2026-10-10
 

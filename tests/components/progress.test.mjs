@@ -11,7 +11,7 @@ const { outputText } = ts.transpileModule(route, { compilerOptions: { jsx: ts.Js
 function fixture({ sessionFailure = false, sessions = [{ id: 's1', status: 'completed', focusedDurationSeconds: 120, plannedDurationSeconds: 180 }], tasks = [{ id: 't1' }], goals = [{ id: 'g1' }], onSummary, summaryError = false } = {}) {
   const slots = [];
   let cursor = 0, effect, mounted = false, tree;
-  const summary = { focusedSeconds: 120, completedSessions: 1, completedTasks: 1, activityDays: [], goals: [{ id: 'g1', title: 'Read', type: 'focus_time', currentValue: 120, targetValue: 300, progress: 0.4 }] };
+  const summary = { focusedSeconds: 120, completedSessions: 1, averageCompletedFocusSeconds: 120, completedTasks: 1, totalTasks: 1, taskCompletionRate: 1, focusPlanRatio: 2 / 3, streak: { currentStreakDays: 1, longestStreakDays: 1 }, activityDays: [], goals: [{ id: 'g1', title: 'Read', type: 'focus_time', currentValue: 120, targetValue: 300, progress: 0.4 }] };
   const dependencies = {
     react: {
       useState(initial) { const index = cursor++; slots[index] ??= { value: initial }; return [slots[index].value, value => { slots[index].value = value; }]; },
@@ -27,7 +27,7 @@ function fixture({ sessionFailure = false, sessions = [{ id: 's1', status: 'comp
     '@/features/focus/session-storage': { async loadSessionHistory() { if (sessionFailure) throw Error('private session data'); return sessions; } },
     '@/features/focus/progress-analytics': { summarizeProgress: (...args) => { onSummary?.(args[3]); return summary; } },
     '@/features/progress/progress-analytics': { summarizeProgress: (...args) => { onSummary?.(args[3]); if (summaryError) throw Error('conflicting source data'); return summary; } },
-    '@/features/localization/progress-copy': { getProgressCopy: () => ({ eyebrow: 'PROGRESS', title: 'Notice your rhythm.', subtitle: 'A clear view of the focus time you have protected.', loading: 'Loading progress', loadErrorLabel: 'Progress could not be loaded', loadErrorTitle: 'Your progress is still here.', loadErrorDetail: 'We could not read your saved sessions just now. Your data has not been changed.', retry: 'Try again', unavailableLabel: 'Progress summary unavailable', unavailableTitle: 'Your saved progress needs a refresh.', unavailableDetail: 'We found records that could not be safely combined. Your saved data has not been changed.', emptyLabel: 'No progress available yet', emptyTitle: 'Your pattern will appear here.', emptyDetail: 'Complete a focus session to start building a quiet, useful record of your work.', viewHistory: 'View session history', calendar: 'Calendar periods use {zone} time. Weeks begin Monday.', week: 'This week', month: 'This month', allTime: 'All time', focusTime: 'FOCUS TIME', sessions: 'SESSIONS', tasksDone: 'TASKS DONE', insightEyebrow: 'YOUR PROGRESS', oneBlock: 'One block protected.', blocks: 'blocks protected.', insightDetail: 'Focus time includes time actually focused, even in sessions ended early. Session count includes completed sessions only.', weekFocus: 'This week’s focus', goals: 'Your goals', sessionsWord: 'sessions', viewRewards: 'View rewards' }) },
+    '@/features/localization/progress-copy': { getProgressCopy: () => ({ eyebrow: 'PROGRESS', title: 'Notice your rhythm.', subtitle: 'A clear view of the focus time you have protected.', loading: 'Loading progress', loadErrorLabel: 'Progress could not be loaded', loadErrorTitle: 'Your progress is still here.', loadErrorDetail: 'We could not read your saved sessions just now. Your data has not been changed.', retry: 'Try again', unavailableLabel: 'Progress summary unavailable', unavailableTitle: 'Your saved progress needs a refresh.', unavailableDetail: 'We found records that could not be safely combined. Your saved data has not been changed.', emptyLabel: 'No progress available yet', emptyTitle: 'Your pattern will appear here.', emptyDetail: 'Complete a focus session to start building a quiet, useful record of your work.', viewHistory: 'View session history', calendar: 'Calendar periods use {zone} time. Weeks begin Monday.', today: 'Today', week: 'This week', month: 'This month', allTime: 'All time', focusTime: 'FOCUS TIME', sessions: 'SESSIONS', tasksDone: 'TASKS DONE', insightEyebrow: 'YOUR PROGRESS', oneBlock: 'One block protected.', blocks: 'blocks protected.', insightDetail: 'Focus time includes time actually focused, even in sessions ended early. Session count includes completed sessions only.', weekFocus: 'This week’s focus', goals: 'Your goals', sessionsWord: 'sessions', viewRewards: 'View rewards', average: 'AVERAGE', focusPlan: 'FOCUS / PLAN', taskRate: 'TASK RATE' }) },
     '@/features/localization/app-locale-context': { useAppLocale: () => ({ locale: 'en' }) },
     '@/features/goals/goal-storage': { async loadGoals() { return goals; } },
     '@/features/tasks/task-storage': { async loadTasks() { return tasks; } },
@@ -55,7 +55,7 @@ test('Progress period controls select a window and show task, session, focus and
   assert.equal(app.find('SESSIONS: 1') !== undefined, true);
   assert.equal(app.find('TASKS DONE: 1') !== undefined, true);
   assert.equal(app.find('Read, Your goals, 40%') !== undefined, true);
-  const month = app.periods()[1];
+  const month = app.periods()[2];
   month.props.onPress(); app.render();
   assert.deepEqual(windows, ['week', 'month']);
 });

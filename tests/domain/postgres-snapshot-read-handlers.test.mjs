@@ -76,3 +76,12 @@ test('revoked session fails before snapshot metadata or page access', async () =
   await assert.rejects(() => handlers.readPage({ actorId: OWNER, sessionId: SESSION, snapshotId: SNAPSHOT, pageIndex: 0, now: NOW }), /AUTH_REQUIRED/);
   assert.equal(calls.filter((call) => call.sql.includes('sync_snapshot')).length, 0);
 });
+
+test('snapshot read handlers reject unsafe request identity and clock types before storage', async () => {
+  const h = harness();
+  const handlers = createPostgresSnapshotReadHandlers(h);
+  await assert.rejects(() => handlers.readMetadata({ actorId: Symbol('actor'), sessionId: SESSION, snapshotId: SNAPSHOT, now: NOW }), /VALIDATION_FAILED/);
+  await assert.rejects(() => handlers.readPage({ actorId: OWNER, sessionId: SESSION, snapshotId: Symbol('snapshot'), pageIndex: 0, now: NOW }), /VALIDATION_FAILED/);
+  await assert.rejects(() => handlers.readPage({ actorId: OWNER, sessionId: SESSION, snapshotId: SNAPSHOT, pageIndex: 0, now: Symbol('clock') }), /VALIDATION_FAILED/);
+  assert.equal(h.calls.length, 0);
+});

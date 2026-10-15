@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AppState, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -12,6 +12,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { loadSettings } from '@/features/settings/settings-storage';
 import { getBreakCopy } from '@/features/localization/break-copy';
 import { useAppLocale } from '@/features/localization/app-locale-context';
+import { createBreakTimer, projectBreakTimer, type BreakTimer } from '@/features/focus/break-engine';
 
 export default function TrueZenBreakRoute() {
   const router = useRouter();
@@ -20,8 +21,8 @@ export default function TrueZenBreakRoute() {
   const isDark = useColorScheme() === 'dark';
   const theme = useTheme();
   const [duration, setDuration] = useState<5 | 10 | 15>(5);
-  const [started, setStarted] = useState(false);
-  const [remaining, setRemaining] = useState(0);
+  const [breakTimer, setBreakTimer] = useState<BreakTimer | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [settingsError, setSettingsError] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -55,16 +56,22 @@ export default function TrueZenBreakRoute() {
     return () => { mounted = false; retrySettings.current = () => {}; };
   }, []);
 
+  const started = breakTimer !== null;
+  const remaining = breakTimer ? projectBreakTimer(breakTimer, now).remainingSeconds : 0;
+
   useEffect(() => {
-    if (!started || remaining <= 0) return;
-    const interval = setInterval(() => setRemaining((current) => Math.max(0, current - 1)), 1000);
-    return () => clearInterval(interval);
-  }, [remaining, started]);
+    if (!breakTimer || remaining <= 0) return;
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') setNow(Date.now());
+    });
+    return () => { clearInterval(interval); subscription.remove(); };
+  }, [breakTimer, remaining]);
 
   const startBreak = () => {
     if (settingsLoading || (!settingsLoaded && !chosenManually)) return;
-    setRemaining(duration * 60);
-    setStarted(true);
+    setNow(Date.now());
+    setBreakTimer(createBreakTimer(duration));
   };
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
 
