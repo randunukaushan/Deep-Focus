@@ -34,19 +34,19 @@ function getGreeting(hour: number, copy: ReturnType<typeof useAppLocale>['copy']
   return copy.home.evening;
 }
 
-function formatFocusTime(totalSeconds: number) {
+function formatFocusTime(totalSeconds: number, units: { hour: string; minute: string }) {
   const minutes = Math.floor(totalSeconds / 60);
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 60) return `${minutes} ${units.minute}`;
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-  return remainingMinutes === 0 ? `${hours}h` : `${hours}h ${remainingMinutes}m`;
+  return remainingMinutes === 0 ? `${hours} ${units.hour}` : `${hours} ${units.hour} ${remainingMinutes} ${units.minute}`;
 }
 
 export function HomeScreen() {
   const router = useRouter();
   const theme = useTheme();
   const colorScheme = useColorScheme();
-  const { copy } = useAppLocale();
+  const { copy, locale } = useAppLocale();
   const isDark = colorScheme === 'dark';
   const { height } = useWindowDimensions();
   const [now, setNow] = useState(() => new Date());
@@ -70,10 +70,11 @@ export function HomeScreen() {
   const homeSurface = isDark ? theme.surface : Palette.homeLightSurface;
   const homeBorder = isDark ? theme.border : Palette.homeLightBorder;
   const homeAction = isDark ? Palette.mintPrimary : Palette.homeLightAction;
-  const homeActionSoft = isDark ? theme.background : Palette.homeLightActionSoft;
+  const homeActionSoft = isDark ? Palette.navySurfaceElevated : Palette.homeLightActionSoft;
   const greeting = getGreeting(now.getHours(), copy);
   const quickActions = getQuickActions(copy);
-  const dateLabel = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+  const dateLocale = locale === 'si' ? 'si-LK' : locale === 'ta' ? 'ta-LK' : 'en-US';
+  const dateLabel = now.toLocaleDateString(dateLocale, { weekday: 'long', month: 'long', day: 'numeric' });
   const [todayProgress, setTodayProgress] = useState({ focusedSeconds: 0, sessionsCompleted: 0 });
   const [recoverableSession, setRecoverableSession] = useState<Awaited<ReturnType<typeof loadActiveSession>>>(null);
 
@@ -100,7 +101,7 @@ export function HomeScreen() {
 
   const hasProgress = todayProgress.sessionsCompleted > 0;
   const progressLabel = hasProgress
-    ? `${formatFocusTime(todayProgress.focusedSeconds)} · ${todayProgress.sessionsCompleted} ${copy.home.blocks.toLocaleLowerCase()}`
+    ? `${formatFocusTime(todayProgress.focusedSeconds, { hour: copy.home.hoursUnit, minute: copy.home.minutesUnit })} · ${todayProgress.sessionsCompleted} ${copy.home.blocks.toLocaleLowerCase()}`
     : copy.home.noFocus;
 
   return (
@@ -138,7 +139,7 @@ export function HomeScreen() {
                 </View>
               </View>
               <ThemedText style={[styles.heroTitle, compact && styles.heroTitleCompact, { color: isDark ? Palette.darkTextPrimary : Palette.lightTextPrimary }]}>{copy.home.heroTitle}</ThemedText>
-              <ThemedText numberOfLines={compact ? 1 : undefined} style={[styles.heroCopy, { color: isDark ? Palette.darkTextSecondary : Palette.lightTextSecondary }]}>{copy.home.heroCopy}</ThemedText>
+              <ThemedText style={[styles.heroCopy, { color: isDark ? Palette.darkTextSecondary : Palette.lightTextSecondary }]}>{copy.home.heroCopy}</ThemedText>
               <Button
                 accessibilityLabel={copy.home.startFocusAccessibility}
                 fullWidth
@@ -160,7 +161,7 @@ export function HomeScreen() {
             <View style={styles.recoveryCopy}>
               <ThemedText style={[styles.sectionEyebrow, { color: homeAction }]} type="smallBold">{recoverableSession.status === 'paused' ? copy.home.pausedKicker : copy.home.focusSession}</ThemedText>
               <ThemedText type="subtitle">{recoverableSession.taskName || copy.home.focusSession}</ThemedText>
-              <ThemedText themeColor="textSecondary" type="small">{formatFocusTime(Math.max(0, recoverableSession.plannedDurationSeconds - recoverableSession.focusedDurationSeconds))} {copy.home.remaining}</ThemedText>
+              <ThemedText themeColor="textSecondary" type="small">{formatFocusTime(Math.max(0, recoverableSession.plannedDurationSeconds - recoverableSession.focusedDurationSeconds), { hour: copy.home.hoursUnit, minute: copy.home.minutesUnit })} {copy.home.remaining}</ThemedText>
             </View>
             <Button label={copy.home.continue} onPress={() => router.push({ pathname: '/focus/session', params: { durationMinutes: String(recoverableSession.plannedDurationSeconds / 60), taskName: recoverableSession.taskName || '', ...(recoverableSession.status === 'paused' ? { resume: '1' } : {}) } })} />
           </View> : null}
@@ -169,12 +170,12 @@ export function HomeScreen() {
             <View style={styles.cardHeading}>
               <View>
                 <ThemedText style={[styles.sectionEyebrow, { color: homeAction }]} type="smallBold">{copy.home.focusSoFar}</ThemedText>
-                <ThemedText style={compact && styles.cardTitleCompact} type="subtitle">{hasProgress ? formatFocusTime(todayProgress.focusedSeconds) : copy.home.noFocus}</ThemedText>
+                <ThemedText style={compact && styles.cardTitleCompact} type="subtitle">{hasProgress ? formatFocusTime(todayProgress.focusedSeconds, { hour: copy.home.hoursUnit, minute: copy.home.minutesUnit }) : copy.home.noFocus}</ThemedText>
               </View>
               <View style={[styles.statusIcon, { backgroundColor: homeActionSoft }]}><Ionicons color={homeAction} name="leaf-outline" size={20} /></View>
             </View>
             <View style={styles.progressMetrics}>
-              <View style={styles.progressMetric}><ThemedText themeColor="textSecondary" type="smallBold">{copy.home.focusTime}</ThemedText><ThemedText style={compact && styles.metricValueCompact} type="subtitle">{formatFocusTime(todayProgress.focusedSeconds)}</ThemedText></View>
+              <View style={styles.progressMetric}><ThemedText themeColor="textSecondary" type="smallBold">{copy.home.focusTime}</ThemedText><ThemedText style={compact && styles.metricValueCompact} type="subtitle">{formatFocusTime(todayProgress.focusedSeconds, { hour: copy.home.hoursUnit, minute: copy.home.minutesUnit })}</ThemedText></View>
               <View style={[styles.progressDivider, { backgroundColor: homeBorder }]} />
               <View style={styles.progressMetric}><ThemedText themeColor="textSecondary" type="smallBold">{copy.home.blocks}</ThemedText><ThemedText style={compact && styles.metricValueCompact} type="subtitle">{todayProgress.sessionsCompleted}</ThemedText></View>
             </View>
@@ -192,7 +193,7 @@ export function HomeScreen() {
                 <View style={[styles.actionIcon, { backgroundColor: homeActionSoft }]}><Ionicons color={homeAction} name={action.icon} size={22} /></View>
                 <View style={styles.actionCopy}>
                   <ThemedText type="smallBold">{action.label}</ThemedText>
-                  <ThemedText numberOfLines={compact ? 1 : 2} themeColor="textSecondary" type="small">{action.detail}</ThemedText>
+                  <ThemedText numberOfLines={2} themeColor="textSecondary" type="small">{action.detail}</ThemedText>
                 </View>
                 <Ionicons color={theme.textMuted} name="chevron-forward" size={18} style={styles.quickActionChevron} />
               </Pressable>
@@ -219,7 +220,7 @@ const styles = StyleSheet.create({
   contentCompact: { gap: Spacing.sm, justifyContent: 'flex-start' },
   topBar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   brandIdentity: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: Spacing.sm, justifyContent: 'center' },
-  brandBlock: { gap: 2 },
+  brandBlock: { gap: 2, minWidth: 0 },
   brandLogoFrame: { backgroundColor: Palette.deepNavy, borderRadius: 28, borderWidth: 1, height: 56, overflow: 'hidden', width: 56 },
   brandLogoImage: { height: 180, left: -51, position: 'absolute', top: -37, width: 180 },
   topBarSpacer: { height: 48, width: 48 },
@@ -237,7 +238,7 @@ const styles = StyleSheet.create({
   heroGlow: { borderRadius: 180, height: 260, opacity: 0.75, position: 'absolute', right: -90, top: -120, width: 260 },
   heroHeader: { alignItems: 'center', flexDirection: 'row', gap: Spacing.sm },
   heroIcon: { alignItems: 'center', backgroundColor: Palette.mintPrimary, borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
-  heroLabelGroup: { gap: 2 },
+  heroLabelGroup: { gap: 2, minWidth: 0 },
   heroKicker: { color: Palette.darkTextSecondary, fontSize: Typography.caption.fontSize, fontWeight: '700', letterSpacing: 1.3 },
   heroMeta: { color: Palette.mintPrimary, fontSize: Typography.caption.fontSize, fontWeight: '700', letterSpacing: 0.8 },
   heroTitle: { color: Palette.darkTextPrimary, fontSize: 28, fontWeight: '700', lineHeight: 34 },
@@ -245,11 +246,11 @@ const styles = StyleSheet.create({
   heroCopy: { color: Palette.darkTextSecondary, fontSize: Typography.body.fontSize, lineHeight: 24 },
   heroFacts: { alignItems: 'center', borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-between', marginTop: Spacing.xs, paddingTop: Spacing.md },
   heroFactsCompact: { marginTop: 0, paddingTop: Spacing.sm },
-  heroFact: { alignItems: 'center', flex: 1, gap: 2 },
+  heroFact: { alignItems: 'center', flex: 1, gap: 2, minWidth: 0 },
   heroFactDivider: { height: 48, width: 1 },
   progressCard: { borderRadius: Radius.card, borderWidth: 1, elevation: 1, gap: Spacing.md, padding: Spacing.lg, shadowColor: '#6A9DC2', shadowOffset: { height: 3, width: 0 }, shadowOpacity: 0.08, shadowRadius: 8 },
-  recoveryCard: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', gap: Spacing.md, justifyContent: 'space-between', padding: Spacing.md },
-  recoveryCopy: { flex: 1, gap: Spacing.xs },
+  recoveryCard: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, justifyContent: 'space-between', padding: Spacing.md },
+  recoveryCopy: { flex: 1, gap: Spacing.xs, minWidth: 0 },
   progressCardCompact: { gap: Spacing.sm, marginTop: 0, padding: Spacing.md },
   cardTitleCompact: { fontSize: 23, lineHeight: 28 },
   cardHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
@@ -259,12 +260,12 @@ const styles = StyleSheet.create({
   metricValueCompact: { fontSize: 24, lineHeight: 30 },
   progressDivider: { height: 48, width: 1 },
   sectionEyebrow: { color: Palette.mintPrimary, letterSpacing: 1.2 },
-  sectionHeader: { alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'space-between', paddingTop: Spacing.xs },
+  sectionHeader: { alignItems: 'flex-start', flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs, justifyContent: 'space-between', paddingTop: Spacing.xs },
   quickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   quickAction: { borderRadius: Radius.card, borderWidth: 1, flex: 1, gap: Spacing.sm, minHeight: 154, padding: Spacing.md, position: 'relative' },
   quickActionCompact: { flexBasis: '48%', minHeight: 112, padding: Spacing.sm },
   quickActionChevron: { position: 'absolute', right: Spacing.sm, top: Spacing.md },
   actionIcon: { alignItems: 'center', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
-  actionCopy: { flex: 1, gap: 2, justifyContent: 'flex-end' },
+  actionCopy: { flex: 1, gap: 2, justifyContent: 'flex-end', minWidth: 0 },
   pressed: { opacity: 0.8 },
 });

@@ -22,6 +22,7 @@ export default function ForgotPasswordRoute() {
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageIsError, setMessageIsError] = useState(false);
 
   const background = isDark ? theme.background : Palette.homeLightBackground;
   const surface = isDark ? theme.surface : Palette.homeLightSurface;
@@ -45,9 +46,9 @@ export default function ForgotPasswordRoute() {
           <ThemedView style={[styles.card, { backgroundColor: surface, borderColor: border }]}>
             <ThemedText style={styles.label} type="smallBold">{copy.recovery.accountEmail}</ThemedText>
             <TextInput accessibilityLabel={copy.recovery.accountEmail} autoCapitalize="none" autoComplete="email" keyboardType="email-address" onChangeText={(value) => { setEmail(value); setSubmitted(false); }} placeholder={copy.recovery.emailPlaceholder} placeholderTextColor={theme.textMuted} style={[styles.input, { borderColor: invalid ? Palette.error : border, color: theme.text }]} textContentType="emailAddress" value={email} />
-            {invalid ? <ThemedText style={styles.error} type="small">{copy.recovery.emailError}</ThemedText> : null}
-            <Button accentColor={action} disabled={busy || !email.trim()} fullWidth label={busy ? copy.recovery.sending : copy.recovery.sendLink} onPress={() => { setSubmitted(true); if (!email.trim()) return; setBusy(true); setMessage(''); void auth.requestPasswordReset(email).then((result) => { setMessage(result.status === 'error' ? copy.recovery.recoveryError : copy.recovery.resetSent); }).finally(() => setBusy(false)); }} style={{ backgroundColor: action, borderColor: action }} />
-            {message ? <ThemedText accessibilityLiveRegion="polite" themeColor="textSecondary" style={styles.providerNote} type="small">{message}</ThemedText> : null}
+            {invalid ? <ThemedText accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error} type="small">{copy.recovery.emailError}</ThemedText> : null}
+            <Button accentColor={action} disabled={busy || !email.trim()} fullWidth label={busy ? copy.recovery.sending : copy.recovery.sendLink} onPress={() => { setSubmitted(true); if (!email.trim()) return; setBusy(true); setMessage(''); setMessageIsError(false); void auth.requestPasswordReset(email).then((result) => { const failed = result.status === 'error'; setMessageIsError(failed); setMessage(failed ? copy.recovery.recoveryError : copy.recovery.resetSent); }).finally(() => setBusy(false)); }} style={{ backgroundColor: action, borderColor: action }} />
+            {message ? <ThemedText accessibilityLiveRegion={messageIsError ? 'assertive' : 'polite'} accessibilityRole={messageIsError ? 'alert' : undefined} themeColor="textSecondary" style={styles.providerNote} type="small">{message}</ThemedText> : null}
           </ThemedView>
           <Button accentColor={action} fullWidth label={copy.recovery.backToSignIn} onPress={() => router.push('/auth/sign-in')} variant="secondary" />
           <ThemedText style={styles.privacy} themeColor="textMuted" type="small">{copy.recovery.privacy}</ThemedText>

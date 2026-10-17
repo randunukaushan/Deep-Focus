@@ -35,7 +35,7 @@ export default function ActiveSessionRoute() {
   const requestedDuration = durationMinutes === undefined ? 25 : Number(durationMinutes);
   const duration = Number.isInteger(requestedDuration) && requestedDuration >= 5 && requestedDuration <= 180 ? requestedDuration : NaN;
   const task = typeof taskName === 'string' ? taskName : '';
-  const { session, projection, pause, resume: resumeSession, complete, cancel, hydrated, error, canRetrySave, retrySave } = useFocusSession(duration, task, typeof taskId === 'string' ? taskId : undefined);
+  const { session, projection, pause, resume: resumeSession, complete, cancel, hydrated, error, canRetrySave, retrySave } = useFocusSession(duration, task, typeof taskId === 'string' ? taskId : undefined, { recoveryError: text.recoveryError, taskUnavailable: text.taskUnavailable, saveFailure: text.saveFailure });
   const resumedFromBreak = useRef(false);
   const terminalSaveLock = useRef(false);
   const routeMounted = useRef(false);
@@ -119,8 +119,8 @@ export default function ActiveSessionRoute() {
           <ThemedText accessibilityRole="header" type="subtitle">{text.title}</ThemedText>
           <ThemedText themeColor="textSecondary">{session.taskName || text.chosenBlock}</ThemedText>
         </View>
-        <ThemedView accessibilityLabel={`${formatTime(projection.remainingSeconds)} ${text.remaining}, ${sessionStatusLabel}, ${Math.round(projection.progress * 100)}${text.percentOfBlock}`} style={[styles.timerCard, { backgroundColor: homeSurface, borderColor: homeBorder }]}>
-          <View style={[styles.timerIcon, { backgroundColor: Palette.homeLightActionSoft }]}><Ionicons color={homeAction} name="timer-outline" size={24} /></View>
+        <ThemedView accessibilityLabel={`${formatTime(projection.remainingSeconds)} ${text.remaining}, ${sessionStatusLabel}, ${Math.round(projection.progress * 100)}${text.percentOfBlock}`} accessibilityRole="timer" style={[styles.timerCard, { backgroundColor: homeSurface, borderColor: homeBorder }]}>
+          <View style={[styles.timerIcon, { backgroundColor: isDark ? Palette.navySurfaceElevated : Palette.homeLightActionSoft }]}><Ionicons color={homeAction} name="timer-outline" size={24} /></View>
           <ThemedText style={[styles.timer, { color: theme.text }]}>{formatTime(projection.remainingSeconds)}</ThemedText>
           <ThemedText themeColor="textSecondary" type="smallBold">{session.status === 'paused' ? text.paused : session.status === 'completed' ? text.complete : session.status === 'cancelled' ? text.ended : text.inFocus}</ThemedText>
           <View accessibilityElementsHidden style={[styles.track, { backgroundColor: homeBorder }]}><View style={[styles.fill, { backgroundColor: homeAction, width: `${Math.round(projection.progress * 100)}%` }]} /></View>

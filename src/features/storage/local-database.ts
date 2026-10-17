@@ -10,11 +10,14 @@ import type { Task } from '@/features/tasks/task-types';
 import { validateFocusSession } from '@/features/focus/session-engine';
 import { createFinalizedSessionProcessing } from '@/features/focus/completion-processing';
 import type { FocusSession } from '@/features/focus/session-types';
+import { calculateLevelProgress, calculateSessionXp, deriveProgressionFacts, qualifyingAchievementIds, type AchievementId } from '@/features/progress/progression-rules';
+import { calculateStreak } from '@/features/progress/streak';
 import type { SavedPlan } from '@/features/planning/plan-types';
 import {
   validateLinkPosition,
   validateResourceId,
   validateResourceInput,
+  validateResourceTitle,
   validateResourceRevision,
   validateWorkSlice,
   type LocalResource,
@@ -26,7 +29,7 @@ import { createTeacherAssignmentDraft, type TeacherAssignmentDraft } from '@/fea
 const DATABASE_NAME = 'deep-focus-local.db';
 const LOCAL_OWNER_ID = 'local:device';
 const ACCOUNT_OWNER_ID = /^account:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const SCHEMA_VERSION = 14;
+const SCHEMA_VERSION = 18;
 const LEGACY_IMPORT_VERSION = 1;
 
 const SNAPSHOT_LOCAL_SCHEMA_SQL = `
@@ -224,6 +227,40 @@ CREATE TABLE IF NOT EXISTS task_reminders (
 CREATE INDEX IF NOT EXISTS task_reminders_owner_schedule ON task_reminders(owner_id, scheduled_for, id);
 `;
 
+const PROGRESSION_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS reward_progress (
+  owner_id TEXT PRIMARY KEY NOT NULL REFERENCES local_owners(id),
+  total_xp INTEGER NOT NULL DEFAULT 0 CHECK (total_xp >= 0),
+  rules_version TEXT NOT NULL CHECK (rules_version = 'v1'),
+  revision INTEGER NOT NULL DEFAULT 1 CHECK (revision > 0),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS progression_events (
+  owner_id TEXT NOT NULL REFERENCES local_owners(id),
+  consumer TEXT NOT NULL CHECK (consumer = 'rewards:v1'),
+  source_operation_key TEXT NOT NULL CHECK (length(trim(source_operation_key)) BETWEEN 1 AND 200),
+  source_type TEXT NOT NULL CHECK (source_type = 'focus_session'),
+  source_id TEXT NOT NULL CHECK (length(trim(source_id)) BETWEEN 1 AND 120),
+  xp_delta INTEGER NOT NULL CHECK (xp_delta >= 0),
+  rules_version TEXT NOT NULL CHECK (rules_version = 'v1'),
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (owner_id, consumer, source_operation_key)
+);
+CREATE TABLE IF NOT EXISTS user_achievements (
+  owner_id TEXT NOT NULL REFERENCES local_owners(id),
+  achievement_id TEXT NOT NULL CHECK (achievement_id IN ('first_focus_session','focus_sessions_5','focus_minutes_60','focus_sessions_25','focus_minutes_600','streak_3_days','streak_7_days','first_goal_completed')),
+  unlocked_at TEXT NOT NULL,
+  source_operation_key TEXT,
+  rules_version TEXT NOT NULL CHECK (rules_version = 'v1'),
+  backfill_marker INTEGER NOT NULL DEFAULT 0 CHECK (backfill_marker IN (0,1)),
+  summary_presented_at TEXT,
+  PRIMARY KEY (owner_id, achievement_id)
+);
+CREATE INDEX IF NOT EXISTS progression_events_owner_source ON progression_events(owner_id, source_type, source_id);
+CREATE INDEX IF NOT EXISTS user_achievements_owner_unlocked ON user_achievements(owner_id, unlocked_at DESC, achievement_id);
+`;
+
 const INCREMENTAL_SYNC_REMINDER_KIND_MIGRATION_SQL = `
 ALTER TABLE sync_remote_change_receipts RENAME TO sync_remote_change_receipts_v13;
 CREATE TABLE sync_remote_change_receipts (
@@ -365,11 +402,21 @@ CREATE TABLE IF NOT EXISTS user_settings (
     CHECK (default_break_duration_minutes IN (5, 10, 15)),
   ui_locale TEXT NOT NULL DEFAULT 'en'
     CHECK (ui_locale IN ('en', 'si', 'ta')),
+  onboarding_status TEXT NOT NULL DEFAULT 'not_started'
+    CHECK (onboarding_status IN ('not_started', 'in_progress', 'completed', 'skipped')),
+  onboarding_step TEXT NOT NULL DEFAULT 'intro'
+    CHECK (onboarding_step IN ('intro', 'assessment', 'profile')),
+  onboarding_version INTEGER NOT NULL DEFAULT 1 CHECK (onboarding_version = 1),
   theme TEXT NOT NULL DEFAULT 'system' CHECK (theme IN ('system', 'light', 'dark')),
   ai_features_enabled INTEGER NOT NULL DEFAULT 0 CHECK (ai_features_enabled IN (0, 1)),
   version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0),
   updated_at TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z',
   legacy_extra_json TEXT
+);
+CREATE TABLE IF NOT EXISTS pending_summary_handoffs (
+  owner_id TEXT PRIMARY KEY NOT NULL REFERENCES local_owners(id),
+  session_id TEXT NOT NULL,
+  created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS local_migrations (
   version INTEGER PRIMARY KEY NOT NULL,
@@ -669,6 +716,38 @@ export type LocalOutboxMutation = {
   nextAttemptAt: string;
   state: 'pending' | 'in_flight' | 'rejected';
   lastErrorCode: string | null;
+};
+
+export type LocalRewardProgress = {
+  totalXp: number;
+  rulesVersion: 'v1';
+  revision: number;
+  updatedAt: string;
+};
+
+export type OnboardingStatus = 'not_started' | 'in_progress' | 'completed' | 'skipped';
+export type OnboardingStep = 'intro' | 'assessment' | 'profile';
+export type OnboardingState = {
+  status: OnboardingStatus;
+  step: OnboardingStep;
+  version: 1;
+};
+
+export type LocalAchievementUnlock = {
+  achievementId: AchievementId;
+  unlockedAt: string;
+  sourceOperationKey: string | null;
+  rulesVersion: 'v1';
+  backfilled: boolean;
+};
+
+export type TerminalProgressionResult = {
+  operationKey: string;
+  xpEarned: number;
+  totalXp: number;
+  level: number;
+  replayed: boolean;
+  newlyUnlockedAchievementIds: AchievementId[];
 };
 
 export type LocalSnapshotStaging = {
@@ -1356,6 +1435,44 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
           await transaction.execAsync(INCREMENTAL_SYNC_REMINDER_KIND_MIGRATION_SQL);
           await transaction.execAsync('PRAGMA user_version = 14;');
         }
+        if ((latest?.user_version ?? 0) < 15) {
+          await transaction.execAsync(PROGRESSION_SCHEMA_SQL);
+          await transaction.execAsync('PRAGMA user_version = 15;');
+        }
+        if ((latest?.user_version ?? 0) < 16) {
+          const columns = await transaction.getAllAsync<{ name: string }>('PRAGMA table_info(user_settings)');
+          if (!columns.some((column) => column.name === 'onboarding_status')) await transaction.execAsync("ALTER TABLE user_settings ADD COLUMN onboarding_status TEXT NOT NULL DEFAULT 'not_started' CHECK (onboarding_status IN ('not_started', 'in_progress', 'completed', 'skipped')); ");
+          if (!columns.some((column) => column.name === 'onboarding_step')) await transaction.execAsync("ALTER TABLE user_settings ADD COLUMN onboarding_step TEXT NOT NULL DEFAULT 'intro' CHECK (onboarding_step IN ('intro', 'assessment', 'profile')); ");
+          if (!columns.some((column) => column.name === 'onboarding_version')) await transaction.execAsync('ALTER TABLE user_settings ADD COLUMN onboarding_version INTEGER NOT NULL DEFAULT 1 CHECK (onboarding_version = 1);');
+          await transaction.execAsync(`UPDATE user_settings
+            SET onboarding_status = 'completed', onboarding_step = 'intro', onboarding_version = 1
+            WHERE onboarding_status = 'not_started' AND owner_id IN (
+              SELECT owner_id FROM focus_sessions
+              UNION SELECT owner_id FROM tasks
+              UNION SELECT owner_id FROM goals
+              UNION SELECT owner_id FROM assessments WHERE status = 'completed'
+            );`);
+          await transaction.execAsync('PRAGMA user_version = 16;');
+        }
+        if ((latest?.user_version ?? 0) < 17) {
+          await transaction.execAsync(`CREATE TABLE IF NOT EXISTS pending_summary_handoffs (
+            owner_id TEXT PRIMARY KEY NOT NULL REFERENCES local_owners(id),
+            session_id TEXT NOT NULL,
+            created_at TEXT NOT NULL
+          );`);
+          await transaction.execAsync('PRAGMA user_version = 17;');
+        }
+        if ((latest?.user_version ?? 0) < 18) {
+          const columns = await transaction.getAllAsync<{ name: string }>('PRAGMA table_info(user_achievements)');
+          if (!columns.some((column) => column.name === 'summary_presented_at')) {
+            await transaction.execAsync('ALTER TABLE user_achievements ADD COLUMN summary_presented_at TEXT;');
+          }
+          // Rewards that existed before this receipt feature are historical from
+          // the Summary's perspective. Marking them consumed avoids replaying a
+          // celebration after an app update, while newly unlocked rows remain null.
+          await transaction.execAsync('UPDATE user_achievements SET summary_presented_at = unlocked_at WHERE summary_presented_at IS NULL;');
+          await transaction.execAsync('PRAGMA user_version = 18;');
+        }
       });
     }
     if (!marker) {
@@ -1425,6 +1542,7 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
           await transaction.execAsync(REMINDER_SCHEMA_SQL);
           await transaction.execAsync(INCREMENTAL_SYNC_REMINDER_KIND_MIGRATION_SQL);
         }
+        if ((current?.user_version ?? 0) < 15) await transaction.execAsync(PROGRESSION_SCHEMA_SQL);
         await transaction.runAsync('INSERT INTO local_owners (id,kind,created_at) VALUES (?,?,?)', LOCAL_OWNER_ID, 'device_local', now());
 
         for (const legacyGoal of snapshot.goals) {
@@ -1467,6 +1585,8 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
         ownerKind,
         now(),
       );
+      await backfillProgressionInTransaction(transaction, ownerId);
+      await backfillOnboardingInTransaction(transaction, ownerId, ownerKind);
     });
     return db;
   }
@@ -1539,9 +1659,7 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
       await transaction(async (db) => {
         await db.runAsync(
           `INSERT INTO local_resources (owner_id,id,kind,title,reference,revision,lifecycle,created_at,updated_at)
-           VALUES (?,?,?,?,?,?,?,?,?)
-           ON CONFLICT(owner_id,id) DO UPDATE SET kind=excluded.kind,title=excluded.title,reference=excluded.reference,
-             revision=excluded.revision,lifecycle=excluded.lifecycle,created_at=excluded.created_at,updated_at=excluded.updated_at`,
+           VALUES (?,?,?,?,?,?,?,?,?)`,
           ...resourceValues({ ...resource, ...normalized }, ownerId),
         );
       });
@@ -1558,6 +1676,21 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
           updatedAt, ownerId, resourceId, expectedUpdatedAt,
         );
         return result.changes === 1;
+      });
+    },
+
+    async renameResource(resourceId: string, expectedUpdatedAt: string, title: string): Promise<string | null> {
+      validateResourceId(resourceId);
+      if (!validTimestamp(expectedUpdatedAt)) throw new RangeError('INVALID_RESOURCE: revision timestamp is invalid');
+      const normalizedTitle = validateResourceTitle(title);
+      return transaction(async (db) => {
+        const updatedAt = nextRevisionTimestamp(expectedUpdatedAt, now());
+        const result = await db.runAsync(
+          `UPDATE local_resources SET title = ?, updated_at = ?
+           WHERE owner_id = ? AND id = ? AND updated_at = ?`,
+          normalizedTitle, updatedAt, ownerId, resourceId, expectedUpdatedAt,
+        );
+        return result.changes === 1 ? updatedAt : null;
       });
     },
 
@@ -1924,15 +2057,47 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
       await transaction(async (db) => {
         await persistTerminalInTransaction(db, session, now(), false, ownerId);
         await reconcileGoalLifecycleInTransaction(db, ownerId, now());
+        await reconcileGoalCompletionAchievementInTransaction(db, ownerId, null, now());
       });
     },
 
     async persistTerminalSession(session: FocusSession) {
       if (session.status !== 'completed' && session.status !== 'cancelled') throw new RangeError('Only terminal sessions can be finalized');
       validateFocusSession(session);
-      await transaction(async (db) => {
-        await persistTerminalInTransaction(db, session, now(), true, ownerId);
+      return transaction(async (db) => {
+        const result = await persistTerminalInTransaction(db, session, now(), true, ownerId);
         await reconcileGoalLifecycleInTransaction(db, ownerId, now());
+        const unlockedGoalAchievement = await reconcileGoalCompletionAchievementInTransaction(
+          db,
+          ownerId,
+          result?.operationKey ?? null,
+          now(),
+        );
+        if (result) {
+          await db.runAsync(
+            'INSERT INTO pending_summary_handoffs (owner_id,session_id,created_at) VALUES (?,?,?) ON CONFLICT(owner_id) DO UPDATE SET session_id=excluded.session_id,created_at=excluded.created_at',
+            ownerId, session.id, now(),
+          );
+        }
+        if (!result || !unlockedGoalAchievement) return result;
+        return { ...result, newlyUnlockedAchievementIds: [...result.newlyUnlockedAchievementIds, 'first_goal_completed'] };
+      });
+    },
+
+    async loadPendingSummaryHandoff(): Promise<string | null> {
+      return serialize(async () => {
+        const db = await database();
+        const row = await db.getFirstAsync<{ session_id: string }>(
+          'SELECT session_id FROM pending_summary_handoffs WHERE owner_id = ?', ownerId,
+        );
+        return row?.session_id ?? null;
+      });
+    },
+
+    async clearPendingSummaryHandoff(sessionId: string): Promise<void> {
+      if (!sessionId.trim()) throw new RangeError('INVALID_SESSION_ID');
+      await transaction(async (db) => {
+        await db.runAsync('DELETE FROM pending_summary_handoffs WHERE owner_id = ? AND session_id = ?', ownerId, sessionId);
       });
     },
 
@@ -1945,6 +2110,82 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
           ownerId, sessionId,
         );
         return row ? sessionFromRow(row, row.task_id) : null;
+      });
+    },
+
+    async loadRewardProgress(): Promise<LocalRewardProgress> {
+      return serialize(async () => {
+        const db = await database();
+        const row = await db.getFirstAsync<{ total_xp: number; rules_version: 'v1'; revision: number; updated_at: string }>(
+          'SELECT total_xp,rules_version,revision,updated_at FROM reward_progress WHERE owner_id = ?', ownerId,
+        );
+        if (!row) return { totalXp: 0, rulesVersion: 'v1', revision: 0, updatedAt: '1970-01-01T00:00:00.000Z' };
+        if (!Number.isSafeInteger(row.total_xp) || row.total_xp < 0 || row.rules_version !== 'v1' || !Number.isSafeInteger(row.revision) || row.revision < 1 || !validTimestamp(row.updated_at)) {
+          throw new Error('PROGRESSION_DATA_UNAVAILABLE');
+        }
+        return { totalXp: row.total_xp, rulesVersion: row.rules_version, revision: row.revision, updatedAt: row.updated_at };
+      });
+    },
+
+    async loadAchievementUnlocks(): Promise<LocalAchievementUnlock[]> {
+      return serialize(async () => {
+        const db = await database();
+        const rows = await db.getAllAsync<{ achievement_id: AchievementId; unlocked_at: string; source_operation_key: string | null; rules_version: 'v1'; backfill_marker: number }>(
+          'SELECT achievement_id,unlocked_at,source_operation_key,rules_version,backfill_marker FROM user_achievements WHERE owner_id = ? ORDER BY unlocked_at DESC,achievement_id', ownerId,
+        );
+        return rows.map((row) => {
+          if (!validTimestamp(row.unlocked_at) || row.rules_version !== 'v1' || (row.backfill_marker !== 0 && row.backfill_marker !== 1)) throw new Error('PROGRESSION_DATA_UNAVAILABLE');
+          return { achievementId: row.achievement_id, unlockedAt: row.unlocked_at, sourceOperationKey: row.source_operation_key, rulesVersion: row.rules_version, backfilled: row.backfill_marker === 1 };
+        });
+      });
+    },
+
+    async loadTerminalProgression(sessionId: string): Promise<TerminalProgressionResult | null> {
+      if (!sessionId.trim()) throw new RangeError('INVALID_SESSION_ID');
+      return serialize(async () => {
+        const db = await database();
+        const operationKey = `terminal:${sessionId}`;
+        const event = await db.getFirstAsync<{ xp_delta: number }>(
+          'SELECT xp_delta FROM progression_events WHERE owner_id = ? AND consumer = ? AND source_operation_key = ?', ownerId, 'rewards:v1', operationKey,
+        );
+        if (!event) return null;
+        const summary = await db.getFirstAsync<{ total_xp: number }>('SELECT total_xp FROM reward_progress WHERE owner_id = ?', ownerId);
+        if (!summary || !Number.isSafeInteger(summary.total_xp) || summary.total_xp < 0 || !Number.isSafeInteger(event.xp_delta) || event.xp_delta < 0) throw new Error('PROGRESSION_DATA_UNAVAILABLE');
+        const unlockRows = await db.getAllAsync<{ achievement_id: AchievementId }>(
+          'SELECT achievement_id FROM user_achievements WHERE owner_id = ? AND source_operation_key = ? AND backfill_marker = 0 ORDER BY achievement_id', ownerId, operationKey,
+        );
+        return { operationKey, xpEarned: event.xp_delta, totalXp: summary.total_xp, level: calculateLevelProgress(summary.total_xp).level, replayed: false, newlyUnlockedAchievementIds: unlockRows.map(({ achievement_id }) => achievement_id) };
+      });
+    },
+
+    /**
+     * Atomically consumes only non-backfilled achievements that were unlocked
+     * by this terminal operation. It never processes progression or changes XP.
+     */
+    async claimTerminalAchievementPresentation(sessionId: string): Promise<AchievementId[]> {
+      if (!sessionId.trim()) throw new RangeError('INVALID_SESSION_ID');
+      return transaction(async (db) => {
+        const operationKey = `terminal:${sessionId}`;
+        const event = await db.getFirstAsync<{ source_id: string }>(
+          'SELECT source_id FROM progression_events WHERE owner_id = ? AND consumer = ? AND source_operation_key = ?',
+          ownerId, 'rewards:v1', operationKey,
+        );
+        if (!event || event.source_id !== sessionId) return [];
+        const rows = await db.getAllAsync<{ achievement_id: AchievementId }>(
+          `SELECT achievement_id FROM user_achievements
+           WHERE owner_id = ? AND source_operation_key = ? AND backfill_marker = 0 AND summary_presented_at IS NULL
+           ORDER BY achievement_id`,
+          ownerId, operationKey,
+        );
+        if (rows.length === 0) return [];
+        const presentedAt = now();
+        const result = await db.runAsync(
+          `UPDATE user_achievements SET summary_presented_at = ?
+           WHERE owner_id = ? AND source_operation_key = ? AND backfill_marker = 0 AND summary_presented_at IS NULL`,
+          presentedAt, ownerId, operationKey,
+        );
+        if (result.changes !== rows.length) throw new Error('ACHIEVEMENT_PRESENTATION_CONFLICT');
+        return rows.map(({ achievement_id }) => achievement_id);
       });
     },
 
@@ -2462,10 +2703,134 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
         await db.runAsync('INSERT INTO user_settings (owner_id,default_focus_duration_minutes,default_break_duration_minutes,ui_locale) VALUES (?,?,?,?) ON CONFLICT(owner_id) DO UPDATE SET default_focus_duration_minutes=excluded.default_focus_duration_minutes, default_break_duration_minutes=excluded.default_break_duration_minutes, ui_locale=excluded.ui_locale', ownerId, settings.defaultFocusDurationMinutes, settings.defaultBreakDurationMinutes, settings.uiLocale);
       });
     },
+
+    async loadOnboardingState(): Promise<OnboardingState> {
+      return transaction(async (db) => {
+        const row = await db.getFirstAsync<{ onboarding_status: OnboardingStatus; onboarding_step: OnboardingStep; onboarding_version: 1 }>(
+          'SELECT onboarding_status,onboarding_step,onboarding_version FROM user_settings WHERE owner_id = ?', ownerId,
+        );
+        if (row) return { status: row.onboarding_status, step: row.onboarding_step, version: 1 };
+        const meaningful = ownerKind === 'account' && Boolean((await db.getFirstAsync<{ present: number }>(
+          `SELECT CASE WHEN EXISTS (SELECT 1 FROM focus_sessions WHERE owner_id = ?)
+            OR EXISTS (SELECT 1 FROM tasks WHERE owner_id = ?)
+            OR EXISTS (SELECT 1 FROM goals WHERE owner_id = ?)
+            OR EXISTS (SELECT 1 FROM assessments WHERE owner_id = ? AND status = 'completed')
+            THEN 1 ELSE 0 END AS present`, ownerId, ownerId, ownerId, ownerId,
+        ))?.present);
+        const status: OnboardingStatus = meaningful ? 'completed' : 'not_started';
+        await db.runAsync('INSERT INTO user_settings (owner_id,default_break_duration_minutes,onboarding_status,onboarding_step,onboarding_version) VALUES (?,5,?,?,1)', ownerId, status, 'intro');
+        return { status, step: 'intro', version: 1 };
+      });
+    },
+
+    async saveOnboardingState(state: OnboardingState): Promise<void> {
+      if (!['not_started', 'in_progress', 'completed', 'skipped'].includes(state.status)) throw new RangeError('INVALID_ONBOARDING_STATUS');
+      if (!['intro', 'assessment', 'profile'].includes(state.step)) throw new RangeError('INVALID_ONBOARDING_STEP');
+      if (state.version !== 1) throw new RangeError('UNSUPPORTED_ONBOARDING_VERSION');
+      await transaction(async (db) => {
+        await db.runAsync(
+          `INSERT INTO user_settings (owner_id,default_break_duration_minutes,onboarding_status,onboarding_step,onboarding_version)
+           VALUES (?,5,?,?,1)
+           ON CONFLICT(owner_id) DO UPDATE SET onboarding_status=excluded.onboarding_status,onboarding_step=excluded.onboarding_step,onboarding_version=1`,
+          ownerId, state.status, state.step,
+        );
+      });
+    },
   };
 }
 
-async function persistTerminalInTransaction(db: SQLite.SQLiteDatabase, session: FocusSession, now: string, clearPointer: boolean, ownerId = LOCAL_OWNER_ID) {
+async function applyTerminalProgressionInTransaction(
+  db: SQLite.SQLiteDatabase,
+  session: FocusSession,
+  occurredAt: string,
+  ownerId: string,
+  backfill = false,
+): Promise<TerminalProgressionResult> {
+  const operationKey = createFinalizedSessionProcessing(session).idempotencyKey;
+  const xpEarned = calculateSessionXp(session);
+  const existing = await db.getFirstAsync<{ xp_delta: number }>(
+    'SELECT xp_delta FROM progression_events WHERE owner_id = ? AND consumer = ? AND source_operation_key = ?',
+    ownerId, 'rewards:v1', operationKey,
+  );
+  if (existing) {
+    if (existing.xp_delta !== xpEarned) throw new Error('PROGRESSION_OPERATION_CONFLICT');
+    const summary = await db.getFirstAsync<{ total_xp: number }>('SELECT total_xp FROM reward_progress WHERE owner_id = ?', ownerId);
+    if (!summary || !Number.isSafeInteger(summary.total_xp) || summary.total_xp < 0) throw new Error('PROGRESSION_DATA_UNAVAILABLE');
+    return { operationKey, xpEarned, totalXp: summary.total_xp, level: calculateLevelProgress(summary.total_xp).level, replayed: true, newlyUnlockedAchievementIds: [] };
+  }
+
+  await db.runAsync(
+    'INSERT INTO progression_events (owner_id,consumer,source_operation_key,source_type,source_id,xp_delta,rules_version,created_at) VALUES (?,?,?,?,?,?,?,?)',
+    ownerId, 'rewards:v1', operationKey, 'focus_session', session.id, xpEarned, 'v1', occurredAt,
+  );
+  const current = await db.getFirstAsync<{ total_xp: number; revision: number }>('SELECT total_xp,revision FROM reward_progress WHERE owner_id = ?', ownerId);
+  const previousXp = current?.total_xp ?? 0;
+  if (!Number.isSafeInteger(previousXp) || previousXp < 0) throw new Error('PROGRESSION_DATA_UNAVAILABLE');
+  const totalXp = previousXp + xpEarned;
+  if (!Number.isSafeInteger(totalXp)) throw new RangeError('PROGRESSION_XP_OVERFLOW');
+  if (current) {
+    await db.runAsync('UPDATE reward_progress SET total_xp = ?, revision = ?, updated_at = ? WHERE owner_id = ? AND revision = ?', totalXp, current.revision + 1, occurredAt, ownerId, current.revision);
+  } else {
+    await db.runAsync('INSERT INTO reward_progress (owner_id,total_xp,rules_version,revision,created_at,updated_at) VALUES (?,?,?,?,?,?)', ownerId, totalXp, 'v1', 1, occurredAt, occurredAt);
+  }
+
+  const rows = await db.getAllAsync<SessionRow & { task_id: string | null }>("SELECT * FROM focus_sessions WHERE owner_id = ? AND status IN ('completed','cancelled') ORDER BY id", ownerId);
+  const sessions = rows.map((row) => sessionFromRow(row, row.task_id));
+  const completedGoalCount = (await db.getFirstAsync<{ count: number }>("SELECT COUNT(*) AS count FROM goals WHERE owner_id = ? AND status = 'completed'", ownerId))?.count ?? 0;
+  let timeZone = 'UTC';
+  try { timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch { /* UTC is the explicit safe fallback. */ }
+  const streak = calculateStreak(sessions, { now: Date.parse(occurredAt), timeZone });
+  const facts = deriveProgressionFacts(sessions, { longestStreakDays: streak.longestStreakDays, completedGoalCount });
+  const newlyUnlockedAchievementIds: AchievementId[] = [];
+  for (const achievementId of qualifyingAchievementIds(facts)) {
+    const result = await db.runAsync(
+      'INSERT OR IGNORE INTO user_achievements (owner_id,achievement_id,unlocked_at,source_operation_key,rules_version,backfill_marker) VALUES (?,?,?,?,?,?)',
+      ownerId, achievementId, occurredAt, operationKey, 'v1', backfill ? 1 : 0,
+    );
+    if (result.changes === 1) newlyUnlockedAchievementIds.push(achievementId);
+  }
+  return { operationKey, xpEarned, totalXp, level: calculateLevelProgress(totalXp).level, replayed: false, newlyUnlockedAchievementIds };
+}
+
+async function backfillProgressionInTransaction(db: SQLite.SQLiteDatabase, ownerId: string): Promise<void> {
+  const rows = await db.getAllAsync<SessionRow & { task_id: string | null }>(
+    "SELECT * FROM focus_sessions WHERE owner_id = ? AND status = 'completed' ORDER BY completed_at,id", ownerId,
+  );
+  for (const row of rows) {
+    const session = sessionFromRow(row, row.task_id);
+    if (!session.completedAt) throw new Error('PROGRESSION_DATA_UNAVAILABLE');
+    await applyTerminalProgressionInTransaction(db, session, session.completedAt, ownerId, true);
+  }
+}
+
+async function backfillOnboardingInTransaction(
+  db: SQLite.SQLiteDatabase,
+  ownerId: string,
+  ownerKind: 'device_local' | 'account',
+): Promise<void> {
+  const meaningful = ownerKind === 'account' && Boolean((await db.getFirstAsync<{ present: number }>(
+    `SELECT CASE WHEN EXISTS (SELECT 1 FROM focus_sessions WHERE owner_id = ?)
+      OR EXISTS (SELECT 1 FROM tasks WHERE owner_id = ?)
+      OR EXISTS (SELECT 1 FROM goals WHERE owner_id = ?)
+      OR EXISTS (SELECT 1 FROM assessments WHERE owner_id = ? AND status = 'completed')
+      THEN 1 ELSE 0 END AS present`, ownerId, ownerId, ownerId, ownerId,
+  ))?.present);
+  const existing = await db.getFirstAsync<{ onboarding_status: OnboardingStatus }>(
+    'SELECT onboarding_status FROM user_settings WHERE owner_id = ?', ownerId,
+  );
+  if (existing) {
+    if (meaningful && existing.onboarding_status === 'not_started') {
+      await db.runAsync("UPDATE user_settings SET onboarding_status = 'completed', onboarding_step = 'intro', onboarding_version = 1 WHERE owner_id = ?", ownerId);
+    }
+    return;
+  }
+  await db.runAsync(
+    "INSERT INTO user_settings (owner_id,default_break_duration_minutes,onboarding_status,onboarding_step,onboarding_version) VALUES (?,5,?,?,1)",
+    ownerId, meaningful ? 'completed' : 'not_started', 'intro',
+  );
+}
+
+async function persistTerminalInTransaction(db: SQLite.SQLiteDatabase, session: FocusSession, now: string, clearPointer: boolean, ownerId = LOCAL_OWNER_ID): Promise<TerminalProgressionResult | null> {
   const existing = await db.getFirstAsync<SessionRow & { task_id: string | null }>('SELECT * FROM focus_sessions WHERE owner_id = ? AND id = ?', ownerId, session.id);
   if (!existing) await insertSession(db, session, now, ownerId);
   else if (existing.status === 'completed' || existing.status === 'cancelled') {
@@ -2493,7 +2858,11 @@ async function persistTerminalInTransaction(db: SQLite.SQLiteDatabase, session: 
       ownerId, mutationId, 'session.terminal', 'focus_session', session.id, null, 1, payload, payloadHash, now, now, 'pending', null,
     );
   }
+  const progression = session.status === 'completed'
+    ? await applyTerminalProgressionInTransaction(db, session, now, ownerId)
+    : null;
   if (clearPointer) await db.runAsync('DELETE FROM active_focus_sessions WHERE owner_id = ? AND session_id = ?', ownerId, session.id);
+  return progression;
 }
 
 async function readLegacyFiles(): Promise<LegacyFileSet> {
@@ -2535,6 +2904,29 @@ async function reconcileGoalLifecycleInTransaction(db: SQLite.SQLiteDatabase, ow
   }
 }
 
+/**
+ * A goal completion is authoritative only after the persisted lifecycle
+ * reconciliation above.  The uniqueness constraint makes this safe when a
+ * terminal-session retry, a reload, or a later reconciliation sees it again.
+ */
+async function reconcileGoalCompletionAchievementInTransaction(
+  db: SQLite.SQLiteDatabase,
+  ownerId: string,
+  sourceOperationKey: string | null,
+  occurredAt: string,
+): Promise<boolean> {
+  const completedGoals = (await db.getFirstAsync<{ count: number }>(
+    "SELECT COUNT(*) AS count FROM goals WHERE owner_id = ? AND status = 'completed'",
+    ownerId,
+  ))?.count ?? 0;
+  if (!Number.isSafeInteger(completedGoals) || completedGoals < 1) return false;
+  const result = await db.runAsync(
+    'INSERT OR IGNORE INTO user_achievements (owner_id,achievement_id,unlocked_at,source_operation_key,rules_version,backfill_marker) VALUES (?,?,?,?,?,?)',
+    ownerId, 'first_goal_completed', occurredAt, sourceOperationKey, 'v1', 0,
+  );
+  return result.changes === 1;
+}
+
 const storeDependencies: Omit<LocalDatabaseDependencies, 'ownerId' | 'ownerKind'> = {
   platform: Platform.OS,
   openDatabase: () => SQLite.openDatabaseAsync(DATABASE_NAME, { useNewConnection: true }),
@@ -2562,6 +2954,7 @@ export const loadTeacherAssignmentDrafts = (...args: Parameters<typeof deviceLoc
 export const saveTeacherAssignmentDraft = (...args: Parameters<typeof deviceLocalStore.saveTeacherAssignmentDraft>) => owners.current().saveTeacherAssignmentDraft(...args);
 export const saveResource = (...args: Parameters<typeof deviceLocalStore.saveResource>) => owners.current().saveResource(...args);
 export const markResourceMissing = (...args: Parameters<typeof deviceLocalStore.markResourceMissing>) => owners.current().markResourceMissing(...args);
+export const renameResource = (...args: Parameters<typeof deviceLocalStore.renameResource>) => owners.current().renameResource(...args);
 export const loadTaskResourceLinks = (...args: Parameters<typeof deviceLocalStore.loadTaskResourceLinks>) => owners.current().loadTaskResourceLinks(...args);
 export const linkResourceToTask = (...args: Parameters<typeof deviceLocalStore.linkResourceToTask>) => owners.current().linkResourceToTask(...args);
 export const unlinkResourceFromTask = (...args: Parameters<typeof deviceLocalStore.unlinkResourceFromTask>) => owners.current().unlinkResourceFromTask(...args);
@@ -2584,6 +2977,12 @@ export const clearActiveSession = (...args: Parameters<typeof deviceLocalStore.c
 export const appendSessionHistory = (...args: Parameters<typeof deviceLocalStore.appendSessionHistory>) => owners.current().appendSessionHistory(...args);
 export const persistTerminalSession = (...args: Parameters<typeof deviceLocalStore.persistTerminalSession>) => owners.current().persistTerminalSession(...args);
 export const loadFinalizedSession = (...args: Parameters<typeof deviceLocalStore.loadFinalizedSession>) => owners.current().loadFinalizedSession(...args);
+export const loadPendingSummaryHandoff = (...args: Parameters<typeof deviceLocalStore.loadPendingSummaryHandoff>) => owners.current().loadPendingSummaryHandoff(...args);
+export const clearPendingSummaryHandoff = (...args: Parameters<typeof deviceLocalStore.clearPendingSummaryHandoff>) => owners.current().clearPendingSummaryHandoff(...args);
+export const loadRewardProgress = (...args: Parameters<typeof deviceLocalStore.loadRewardProgress>) => owners.current().loadRewardProgress(...args);
+export const loadAchievementUnlocks = (...args: Parameters<typeof deviceLocalStore.loadAchievementUnlocks>) => owners.current().loadAchievementUnlocks(...args);
+export const loadTerminalProgression = (...args: Parameters<typeof deviceLocalStore.loadTerminalProgression>) => owners.current().loadTerminalProgression(...args);
+export const claimTerminalAchievementPresentation = (...args: Parameters<typeof deviceLocalStore.claimTerminalAchievementPresentation>) => owners.current().claimTerminalAchievementPresentation(...args);
 export const beginSnapshotStaging = (...args: Parameters<typeof deviceLocalStore.beginSnapshotStaging>) => owners.current().beginSnapshotStaging(...args);
 export const stageSnapshotPage = (...args: Parameters<typeof deviceLocalStore.stageSnapshotPage>) => owners.current().stageSnapshotPage(...args);
 export const loadSnapshotStaging = (...args: Parameters<typeof deviceLocalStore.loadSnapshotStaging>) => owners.current().loadSnapshotStaging(...args);
@@ -2607,3 +3006,5 @@ export const saveAssessmentDraft = (...args: Parameters<typeof deviceLocalStore.
 export const cancelAssessment = (...args: Parameters<typeof deviceLocalStore.cancelAssessment>) => owners.current().cancelAssessment(...args);
 export const loadSettings = (...args: Parameters<typeof deviceLocalStore.loadSettings>) => owners.current().loadSettings(...args);
 export const saveSettings = (...args: Parameters<typeof deviceLocalStore.saveSettings>) => owners.current().saveSettings(...args);
+export const loadOnboardingState = (...args: Parameters<typeof deviceLocalStore.loadOnboardingState>) => owners.current().loadOnboardingState(...args);
+export const saveOnboardingState = (...args: Parameters<typeof deviceLocalStore.saveOnboardingState>) => owners.current().saveOnboardingState(...args);

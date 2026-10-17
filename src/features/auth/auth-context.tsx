@@ -50,9 +50,10 @@ export function AuthProvider({ children }: React.PropsWithChildren) {
   const service = useMemo(() => supabase ? createAuthService({
     client: supabase as unknown as Parameters<typeof createAuthService>[0]['client'],
     redirectUrl,
+    locale,
     openAuthSession: (url, callbackUrl) => WebBrowser.openAuthSessionAsync(url, callbackUrl),
     ...(Platform.OS === 'ios' ? { apple: AppleAuthentication, crypto: Crypto } : {}),
-  }) : null, []);
+  }) : null, [locale]);
 
   const updateFromSession = useCallback(async (session: { user?: { id?: string; email?: string } } | null, recovery = false) => {
     const generation = ++authGeneration.current;

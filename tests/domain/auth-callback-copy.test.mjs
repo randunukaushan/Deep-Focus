@@ -19,4 +19,5 @@ test('auth callback copy covers all supported locales and states', () => {
     assert.ok(copy.errorTitle.length > 0);
   }
   assert.match(getAuthCallbackCopy('si').errorTitle, /මෙම/);
+  assert.equal(getAuthCallbackCopy('invalid').errorTitle, getAuthCallbackCopy('en').errorTitle);
 });

@@ -18,7 +18,7 @@ const COPY: Record<AppLocale, AuthCallbackCopy> = {
   },
   si: {
     loadingTitle: 'ආරක්ෂිත ඇතුල්වීම සම්පූර්ණ කරමින්…',
-    loadingDetail: 'ඔබේ ගිණුම සහ පෞද්ගලික local දත්ත විවෘත කරමින් පවතී.',
+    loadingDetail: 'ඔබේ ගිණුම සහ පෞද්ගලික දේශීය දත්ත විවෘත කරමින් පවතී.',
     errorTitle: 'මෙම ඇතුල්වීමේ සබැඳිය සම්පූර්ණ කළ නොහැක.',
     errorDetail: 'සබැඳිය කල් ඉකුත් වී තිබිය හැක. අලුත් සබැඳියක් ඉල්ලා නැවත උත්සාහ කරන්න.',
     backToSignIn: 'ඇතුල් වීමට ආපසු',
@@ -33,5 +33,5 @@ const COPY: Record<AppLocale, AuthCallbackCopy> = {
 };
 
 export function getAuthCallbackCopy(locale: AppLocale): AuthCallbackCopy {
-  return COPY[locale];
+  return COPY[locale] ?? COPY.en;
 }

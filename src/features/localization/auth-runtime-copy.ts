@@ -2,6 +2,7 @@ import type { AppLocale } from '@/features/settings/settings-storage';
 
 export type AuthRuntimeCopy = {
   configurationUnavailable: string;
+  genericError: string;
   accountSessionUnsafe: string;
   sessionRestoreFailed: string;
   invalidLink: string;
@@ -13,6 +14,7 @@ export type AuthRuntimeCopy = {
 const COPY: Record<AppLocale, AuthRuntimeCopy> = {
   en: {
     configurationUnavailable: 'Account sign-in is unavailable on this build.',
+    genericError: 'We could not complete that account action. Please try again.',
     accountSessionUnsafe: 'This account session could not be opened safely. Please sign in again.',
     sessionRestoreFailed: 'Secure sign-in could not be restored. Retry sign-in to continue.',
     invalidLink: 'The sign-in link is invalid or has expired. Request a new one and try again.',
@@ -21,8 +23,9 @@ const COPY: Record<AppLocale, AuthRuntimeCopy> = {
     invalidDeepFocusLink: 'This link is not a valid Deep Focus sign-in link.',
   },
   si: {
-    configurationUnavailable: 'මෙම build එකේ ගිණුම් ඇතුල්වීම ලබාගත නොහැක.',
-    accountSessionUnsafe: 'මෙම ගිණුම් session එක ආරක්ෂිතව විවෘත කළ නොහැක. නැවත ඇතුල් වන්න.',
+    configurationUnavailable: 'මෙම නිකුතුවේ ගිණුම් ඇතුල්වීම ලබාගත නොහැක.',
+    genericError: 'එම ගිණුම් ක්‍රියාව සම්පූර්ණ කළ නොහැක. නැවත උත්සාහ කරන්න.',
+    accountSessionUnsafe: 'මෙම ගිණුම් සැසිය ආරක්ෂිතව විවෘත කළ නොහැක. නැවත ඇතුල් වන්න.',
     sessionRestoreFailed: 'ආරක්ෂිත ඇතුල්වීම නැවත ලබාගත නොහැක. ඉදිරියට යාමට නැවත උත්සාහ කරන්න.',
     invalidLink: 'ඇතුල්වීමේ සබැඳිය වැරදියි හෝ කල් ඉකුත් වී ඇත. අලුත් සබැඳියක් ඉල්ලා නැවත උත්සාහ කරන්න.',
     incompleteLink: 'ඇතුල්වීමේ සබැඳිය සම්පූර්ණ නැහැ. අලුත් සබැඳියක් ඉල්ලා නැවත උත්සාහ කරන්න.',
@@ -30,8 +33,9 @@ const COPY: Record<AppLocale, AuthRuntimeCopy> = {
     invalidDeepFocusLink: 'මෙය වලංගු Deep Focus ඇතුල්වීමේ සබැඳියක් නොවේ.',
   },
   ta: {
-    configurationUnavailable: 'இந்த build-இல் கணக்கு உள்நுழைவு கிடைக்கவில்லை.',
-    accountSessionUnsafe: 'இந்தக் கணக்கு session-ஐ பாதுகாப்பாகத் திறக்க முடியவில்லை. மீண்டும் உள்நுழையவும்.',
+    configurationUnavailable: 'இந்த வெளியீட்டில் கணக்கு உள்நுழைவு கிடைக்கவில்லை.',
+    genericError: 'அந்தக் கணக்கு செயல்பாட்டை முடிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
+    accountSessionUnsafe: 'இந்தக் கணக்கு அமர்வை பாதுகாப்பாகத் திறக்க முடியவில்லை. மீண்டும் உள்நுழையவும்.',
     sessionRestoreFailed: 'பாதுகாப்பான உள்நுழைவை மீட்டெடுக்க முடியவில்லை. தொடர மீண்டும் முயற்சிக்கவும்.',
     invalidLink: 'உள்நுழைவு இணைப்பு தவறானது அல்லது காலாவதியானது. புதிய இணைப்பைக் கோரி மீண்டும் முயற்சிக்கவும்.',
     incompleteLink: 'உள்நுழைவு இணைப்பு முழுமையற்றது. புதிய இணைப்பைக் கோரி மீண்டும் முயற்சிக்கவும்.',

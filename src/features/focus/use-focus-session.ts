@@ -5,7 +5,13 @@ import { cancelFocusSession, completeFocusSession, createFocusSession, pauseFocu
 import { loadActiveSession, loadFocusableTask, saveActiveSession } from './session-storage';
 import type { FocusSession } from './session-types';
 
-export function useFocusSession(durationMinutes: number, taskName?: string, taskId?: string) {
+export type FocusSessionRuntimeMessages = {
+  recoveryError: string;
+  taskUnavailable: string;
+  saveFailure: string;
+};
+
+export function useFocusSession(durationMinutes: number, taskName: string | undefined, taskId: string | undefined, messages: FocusSessionRuntimeMessages) {
   const initialRequest = useRef({ durationMinutes, taskName, taskId });
   const currentSession = useRef<FocusSession | null>(null);
   const [session, setSession] = useState<FocusSession | null>(null);
@@ -15,6 +21,11 @@ export function useFocusSession(durationMinutes: number, taskName?: string, task
   const [saveFailed, setSaveFailed] = useState(false);
   const saveRevision = useRef(0);
   const saveFault = useRef(false);
+  const messagesRef = useRef(messages);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => {
     let mounted = true;
@@ -35,7 +46,7 @@ export function useFocusSession(durationMinutes: number, taskName?: string, task
         setSession(next);
         setNow(timestamp);
       } catch (cause) {
-        if (mounted) setError(cause instanceof Error && cause.message === 'TASK_NOT_AVAILABLE' ? TASK_UNAVAILABLE_MESSAGE : RECOVERY_MESSAGE);
+        if (mounted) setError(cause instanceof Error && cause.message === 'TASK_NOT_AVAILABLE' ? messagesRef.current.taskUnavailable : messagesRef.current.recoveryError);
       } finally {
         if (mounted) setHydrated(true);
       }
@@ -47,7 +58,7 @@ export function useFocusSession(durationMinutes: number, taskName?: string, task
     if (!session || error || saveFailed) return null;
     try { return projectFocusSession(session, now); } catch { return null; }
   }, [session, now, error, saveFailed]);
-  const timerError = error ?? (saveFailed ? SAVE_FAILURE_MESSAGE : null) ?? (hydrated && session && !projection ? RECOVERY_MESSAGE : null);
+  const timerError = error ?? (saveFailed ? messages.saveFailure : null) ?? (hydrated && session && !projection ? messages.recoveryError : null);
 
   useEffect(() => {
     if (!hydrated || error || saveFault.current || !session || (session.status !== 'active' && session.status !== 'paused')) return;
@@ -70,7 +81,7 @@ export function useFocusSession(durationMinutes: number, taskName?: string, task
             currentSession.current = paused;
             setSession(paused);
             setNow(timestamp);
-          } catch { setError(RECOVERY_MESSAGE); }
+          } catch { setError(messagesRef.current.recoveryError); }
         }
       }
     });
@@ -97,7 +108,7 @@ export function useFocusSession(durationMinutes: number, taskName?: string, task
       setSession(next);
       return next !== current;
     } catch {
-      setError(RECOVERY_MESSAGE);
+      setError(messagesRef.current.recoveryError);
       return false;
     }
   }, [hydrated, timerError]);
@@ -136,7 +147,3 @@ export function useFocusSession(durationMinutes: number, taskName?: string, task
     retrySave,
   };
 }
-
-const RECOVERY_MESSAGE = 'This session could not be safely read or timed. Your saved data has not been reset. Return home and check your device clock before trying again.';
-const TASK_UNAVAILABLE_MESSAGE = 'That task is no longer available to focus on. Your saved tasks and session history have not been changed. Return to Tasks and choose an active task.';
-const SAVE_FAILURE_MESSAGE = 'This session could not be saved. The timer is paused. Retry saving before leaving; changes since the last successful save may be lost if the app closes.';

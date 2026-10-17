@@ -83,6 +83,9 @@ function fixture({ tasks = [storedTask], goals = [], goalLoadFailures = 0, loadF
     '@/features/goals/goal-storage': {
       async loadGoals() { if (goalLoadFailures-- > 0) throw Error('private goal read detail'); return goals; },
     },
+    '@/features/localization/goal-detail-copy': {
+      getGoalStatusLabel(_locale, status) { return status; },
+    },
     '@/features/resources/resource-storage': {
       async loadResources() { return []; },
       async loadTaskResourceLinks() { return []; },
@@ -90,7 +93,8 @@ function fixture({ tasks = [storedTask], goals = [], goalLoadFailures = 0, loadF
       async unlinkResourceFromTask() { return false; },
     },
     '@/features/localization/app-locale': { getAppLocaleCopy: () => ({ taskDetail: { noPriority: 'No priority', low: 'Low', medium: 'Medium', high: 'High', back: 'Back to Tasks', loadErrorTitle: 'This task could not be loaded.', loadErrorDetail: 'Your saved tasks have not been changed. Try again to reload this task.', retryLoad: 'Retry loading task', unavailableTitle: 'Task unavailable', unavailableDetail: 'This task could not be found on this device.', eyebrow: 'TASK DETAIL', editTitle: 'Edit task title', descriptionPlaceholder: 'Add a note (optional)', dueDateLabel: 'Due date (UTC calendar date, optional)', blankDateHint: 'A blank date means no deadline. The date stays consistent across devices.', priorityLabel: 'Priority (optional)', goalLabel: 'Goal (optional)', loadingGoals: 'Loading your goals…', goalsLoadError: 'Your goals could not be loaded. The current goal link stays unchanged; retry to choose a different goal.', retryGoals: 'Retry loading goals', noGoal: 'No goal', createGoalFirst: 'Create a goal first to link this task.', dueDatePrefix: 'Due', priorityPrefix: 'Priority', archivedStatus: 'Archived.', completedStatus: 'Completed.', cancelledStatus: 'This task was cancelled.', readyStatus: 'Ready to become your next focus block.', pendingSave: 'This task could not be saved. It is still pending; try again.', reload: 'Reload task', deleteTitle: 'Delete this task?', deleteDetail: 'The task will be removed.', deleteConfirm: 'Delete task and keep history', keepTask: 'Keep task', saveDetails: 'Save task details', cancelEditing: 'Cancel editing', editDetails: 'Edit task details', complete: 'Complete task', focus: 'Focus on this task', restore: 'Restore task', archive: 'Archive task', delete: 'Delete task' } }) },
-    '@/features/localization/app-locale-context': { useAppLocale: () => ({ copy: { resourcesPage: { loadError: 'Resources could not be loaded.', taskSection: 'Resources', taskSectionDetail: 'Keep selected local references with this task. Nothing is uploaded.', taskEmpty: 'No local resources yet. Add one from Profile → Resources.', link: 'Link', linked: 'Linked', linkChangedError: 'This resource changed or is unavailable. Reload the task.', linkUnavailableError: 'The resource link could not be changed.' } } }) },
+    '@/features/localization/task-detail-runtime-copy': { getTaskDetailRuntimeCopy: () => ({ invalidDate: 'Enter a valid calendar date as YYYY-MM-DD, or leave it blank to remove the deadline.', conflictSave: 'This task changed elsewhere. Reload it before editing so newer details are not overwritten.', saveError: 'This task could not be saved. Your saved task is unchanged; try again.', conflictDelete: 'This task changed elsewhere. Reload it before deleting so newer details are not removed.', deleteError: 'This task could not be deleted. Your task and focus history are unchanged; try again.', conflictArchive: 'This task changed elsewhere. Reload it before changing its archive state.', archiveError: 'This task could not be updated. Its saved archive state is unchanged; try again.' }) },
+    '@/features/localization/app-locale-context': { useAppLocale: () => ({ locale: 'en', copy: { resourcesPage: { loadError: 'Resources could not be loaded.', taskSection: 'Resources', taskSectionDetail: 'Keep selected local references with this task. Nothing is uploaded.', taskEmpty: 'No local resources yet. Add one from Profile → Resources.', link: 'Link', linked: 'Linked', linkChangedError: 'This resource changed or is unavailable. Reload the task.', linkUnavailableError: 'The resource link could not be changed.' } } }) },
     '@/features/tasks/task-date': {
       parseTaskDueDate(input, existingDueAt) {
         const value = input.trim();
@@ -130,6 +134,14 @@ function fixture({ tasks = [storedTask], goals = [], goalLoadFailures = 0, loadF
     task: () => tasks.find(item => item.id === 'task-1'),
   };
 }
+
+test('Task detail loading state uses localized loading copy', () => {
+  assert.match(outputText, /accessibilityLabel: copy\.historyPage\?\.loading \?\? taskCopy\.eyebrow/);
+});
+
+test('task resources expose a localized checkbox label', () => {
+  assert.match(outputText, /accessibilityLabel: `\$\{resource\.title\}\. \$\{linked \? resourceCopy\.linked : resourceCopy\.link\}`/);
+});
 
 test('Task detail read failure offers retry rather than claiming the task is missing', async () => {
   const app = fixture({ loadFailures: 1 }); app.render(); await app.settle();

@@ -26,7 +26,7 @@ function fixture({ initial = 10, loadFailures = 0, saveFailures = 0, saveGate } 
       async loadSettings() { if (loadFailures-- > 0) throw Error('private settings detail'); return { defaultFocusDurationMinutes: stored.focus, defaultBreakDurationMinutes: stored.break, uiLocale: stored.locale }; },
       async saveSettings(value) { writes++; if (saveGate) await saveGate(); if (saveFailures-- > 0) throw Error('private settings detail'); stored = { focus: value.defaultFocusDurationMinutes, break: value.defaultBreakDurationMinutes, locale: value.uiLocale }; },
     },
-    '@/features/localization/app-locale': { getAppLocaleCopy: () => ({ settingsPage: { back: 'Profile', eyebrow: 'SETTINGS', title: 'Set a calmer default.', subtitle: 'Choose how Deep Focus should support your attention.', loading: 'Loading your saved settings…', loadErrorTitle: 'Your settings are unchanged.', loadErrorDetail: 'Saved preferences could not be read. No default was saved over them.', retry: 'Try again', focusSection: 'FOCUS', focusDuration: 'Default focus duration', focusHint: 'Used for new focus sessions. Changes are confirmed after they save.', saving: 'Saving your choice…', breakDuration: 'Default break duration', breakHint: 'Used for future breaks. Changes are confirmed after they save.', saveError: 'Your change wasn’t saved. Your previous choice is still selected. Try again.', appearanceSection: 'APPEARANCE & ACCESSIBILITY', appearance: 'Appearance', systemTheme: 'System · follows your device theme', reducedMotion: 'Reduced motion', reducedMotionDetail: 'Follows your device accessibility preference', languageDetailSuffix: 'Full translation and accessibility review are still pending.', notificationsSection: 'NOTIFICATIONS & FEEDBACK', notifications: 'Notifications', notificationsDetail: 'Notification scheduling is not configured yet', sound: 'Sound & haptics', soundDetail: 'Feedback controls will be available with session feedback', privacySection: 'PRIVACY & ACCOUNT', localFirst: 'Local-first data', localFirstDetail: 'Your focus sessions remain on this device while sync is not configured.', account: 'Account', accountDetail: 'Sign in when account access is available' } }) },
+    '@/features/localization/app-locale': { getAppLocaleCopy: () => ({ settingsPage: { back: 'Profile', eyebrow: 'SETTINGS', title: 'Set a calmer default.', subtitle: 'Choose how Deep Focus should support your attention.', loading: 'Loading your saved settings…', loadErrorTitle: 'Your settings are unchanged.', loadErrorDetail: 'Saved preferences could not be read. No default was saved over them.', retry: 'Try again', focusSection: 'FOCUS', focusDuration: 'Default focus duration', minuteUnit: 'min', focusHint: 'Used for new focus sessions. Changes are confirmed after they save.', saving: 'Saving your choice…', breakDuration: 'Default break duration', breakHint: 'Used for future breaks. Changes are confirmed after they save.', saveError: 'Your change wasn’t saved. Your previous choice is still selected. Try again.', appearanceSection: 'APPEARANCE & ACCESSIBILITY', appearance: 'Appearance', systemTheme: 'System · follows your device theme', reducedMotion: 'Reduced motion', reducedMotionDetail: 'Follows your device accessibility preference', languageDetailSuffix: 'Full translation and accessibility review are still pending.', notificationsSection: 'NOTIFICATIONS & FEEDBACK', notifications: 'Notifications', notificationsDetail: 'Notification scheduling is not configured yet', sound: 'Sound & haptics', soundDetail: 'Feedback controls will be available with session feedback', privacySection: 'PRIVACY & ACCOUNT', localFirst: 'Local-first data', localFirstDetail: 'Your focus sessions remain on this device while sync is not configured.', account: 'Account', accountDetail: 'Sign in when account access is available' } }) },
     '@/features/localization/app-locale-context': { useAppLocale: () => ({ setLocale() {}, copy: { settings: { language: 'App language', languageHint: 'Choose a saved interface preference.' } } }) },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
     '@/hooks/use-theme': { useTheme: () => ({ background: '#fff', surface: '#fff', border: '#ddd' }) },
@@ -51,38 +51,38 @@ test('Settings loads the saved choice and saves a new choice before marking it s
   const app = fixture(); app.render();
   assert.ok(app.find('Loading your saved settings…'));
   await app.settle();
-  assert.equal(app.find('Default break duration: 10m').props.accessibilityState.selected, true);
-  app.find('Default break duration: 15m').props.onPress(); await app.settle();
+  assert.equal(app.find('Default break duration: 10 min').props.accessibilityState.selected, true);
+  app.find('Default break duration: 15 min').props.onPress(); await app.settle();
   assert.equal(app.stored(), 15);
   assert.equal(app.focusStored(), 25);
-  assert.equal(app.find('Default break duration: 15m').props.accessibilityState.selected, true);
+  assert.equal(app.find('Default break duration: 15 min').props.accessibilityState.selected, true);
   assert.equal(app.writes(), 1);
 });
 
 test('Settings write failure keeps the prior value selected and permits an explicit retry', async () => {
   const app = fixture({ saveFailures: 1 }); app.render(); await app.settle();
-  app.find('Default break duration: 5m').props.onPress(); await app.settle();
+  app.find('Default break duration: 5 min').props.onPress(); await app.settle();
   assert.equal(app.stored(), 10);
-  assert.equal(app.find('Default break duration: 10m').props.accessibilityState.selected, true);
+  assert.equal(app.find('Default break duration: 10 min').props.accessibilityState.selected, true);
   assert.ok(app.hasText('Your change wasn’t saved. Your previous choice is still selected. Try again.'));
-  app.find('Default break duration: 5m').props.onPress(); await app.settle();
+  app.find('Default break duration: 5 min').props.onPress(); await app.settle();
   assert.equal(app.stored(), 5);
-  assert.equal(app.find('Default break duration: 5m').props.accessibilityState.selected, true);
+  assert.equal(app.find('Default break duration: 5 min').props.accessibilityState.selected, true);
   assert.equal(app.writes(), 2);
 });
 
 test('Settings read failure does not show a fabricated default and retries safely', async () => {
   const app = fixture({ loadFailures: 1 }); app.render(); await app.settle();
   assert.ok(app.find('Your settings are unchanged.'));
-  assert.equal(app.find('Default break duration: 5m'), undefined);
+  assert.equal(app.find('Default break duration: 5 min'), undefined);
   app.find('Try again').props.onPress(); await app.settle();
-  assert.equal(app.find('Default break duration: 10m').props.accessibilityState.selected, true);
+  assert.equal(app.find('Default break duration: 10 min').props.accessibilityState.selected, true);
 });
 
 test('duplicate setting writes are ignored while the first save remains pending', async () => {
   let resolve;
   const app = fixture({ saveGate: () => new Promise(done => { resolve = done; }) }); app.render(); await app.settle();
-  const choose = app.find('Default break duration: 15m').props.onPress;
+  const choose = app.find('Default break duration: 15 min').props.onPress;
   const first = choose(); const second = choose();
   assert.equal(app.writes(), 1);
   resolve(); await Promise.all([first, second]); app.render();
@@ -91,11 +91,11 @@ test('duplicate setting writes are ignored while the first save remains pending'
 
 test('Settings saves the default focus duration without changing the break duration', async () => {
   const app = fixture({ initial: 10 }); app.render(); await app.settle();
-  assert.equal(app.find('Default focus duration: 25m').props.accessibilityState.selected, true);
-  app.find('Default focus duration: 45m').props.onPress(); await app.settle();
+  assert.equal(app.find('Default focus duration: 25 min').props.accessibilityState.selected, true);
+  app.find('Default focus duration: 45 min').props.onPress(); await app.settle();
   assert.equal(app.focusStored(), 45);
   assert.equal(app.stored(), 10);
-  assert.equal(app.find('Default focus duration: 45m').props.accessibilityState.selected, true);
+  assert.equal(app.find('Default focus duration: 45 min').props.accessibilityState.selected, true);
 });
 
 test('Settings saves the selected interface locale without changing timer defaults', async () => {

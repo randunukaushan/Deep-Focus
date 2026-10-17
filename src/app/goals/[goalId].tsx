@@ -12,7 +12,7 @@ import { formatGoalValue, getGoalProgress } from '@/features/goals/goal-progress
 import { readGoalData } from '@/features/goals/goal-read-state';
 import { deleteGoal, loadGoals, updateGoalDefinition } from '@/features/goals/goal-storage';
 import type { Goal } from '@/features/goals/goal-types';
-import { getGoalDetailCopy } from '@/features/localization/goal-detail-copy';
+import { getGoalDetailCopy, getGoalStatusLabel } from '@/features/localization/goal-detail-copy';
 import { useAppLocale } from '@/features/localization/app-locale-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
@@ -23,6 +23,7 @@ export default function GoalDetailRoute() {
   const theme = useTheme();
   const isDark = useColorScheme() === 'dark';
   const action = isDark ? Palette.mintPrimary : Palette.homeLightAction;
+  const softAction = isDark ? Palette.navySurfaceElevated : Palette.homeLightActionSoft;
   const { locale } = useAppLocale();
   const text = getGoalDetailCopy(locale);
   const surface = isDark ? theme.surface : Palette.homeLightSurface;
@@ -144,9 +145,9 @@ export default function GoalDetailRoute() {
             <ThemedText themeColor="textSecondary">{text.loadErrorDetail}</ThemedText>
             <Button label={text.retryLoad} onPress={() => retryLoad.current()} />
           </ThemedView>
-            : goal && result ? <ThemedView accessibilityLabel={`${goal.title}. ${Math.round(result.progress * 100)} percent complete`} style={[styles.card, { backgroundColor: surface, borderColor: border }]}>
-              <View style={[styles.icon, { backgroundColor: Palette.homeLightActionSoft }]}><Ionicons color={action} name="flag-outline" size={28} /></View>
-              <ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">{goal.period.toUpperCase()} {text.goalSuffix}</ThemedText>
+            : goal && result ? <ThemedView accessibilityLabel={`${goal.title}. ${Math.round(result.progress * 100)} ${text.percentComplete}`} style={[styles.card, { backgroundColor: surface, borderColor: border }]}>
+              <View style={[styles.icon, { backgroundColor: softAction }]}><Ionicons color={action} name="flag-outline" size={28} /></View>
+              <ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">{goal.period === 'weekly' ? text.weekly : text.monthly} {text.goalSuffix}</ThemedText>
               {editing ? <>
                 <TextInput accessibilityLabel={text.titleLabel} editable={!saving} onChangeText={setDraftTitle} returnKeyType="next" value={draftTitle} style={[styles.titleInput, { borderColor: border, color: theme.text }]} />
                 <ThemedText themeColor="textSecondary" type="small">{goal.type === 'session_count' ? text.sessionTarget : text.focusTarget}</ThemedText>
@@ -159,13 +160,13 @@ export default function GoalDetailRoute() {
                 </View>
               </> : <>
                 <ThemedText accessibilityRole="header" style={styles.title} type="subtitle">{goal.title}</ThemedText>
-                {goal.status === 'completed' ? <ThemedText accessibilityLabel={text.completed} themeColor="textSecondary">{text.completedDetail}</ThemedText> : goal.status !== 'active' ? <ThemedText accessibilityLabel={`${text.statusDetail} ${goal.status}`} themeColor="textSecondary">{text.statusDetail} {goal.status}.</ThemedText> : null}
+                {goal.status === 'completed' ? <ThemedText accessibilityLabel={text.completed} themeColor="textSecondary">{text.completedDetail}</ThemedText> : goal.status !== 'active' ? <ThemedText accessibilityLabel={`${text.statusDetail} ${getGoalStatusLabel(locale, goal.status)}`} themeColor="textSecondary">{text.statusDetail} {getGoalStatusLabel(locale, goal.status)}.</ThemedText> : null}
                 <View style={styles.metrics}>
                   <View style={styles.metric}><ThemedText themeColor="textSecondary" type="smallBold">{text.progress}</ThemedText><ThemedText style={styles.metricValue} type="subtitle">{formatGoalValue(goal, result.currentValue)}</ThemedText></View>
                   <View style={styles.metric}><ThemedText themeColor="textSecondary" type="smallBold">{text.target}</ThemedText><ThemedText style={styles.metricValue} type="subtitle">{formatGoalValue(goal, goal.targetValue)}</ThemedText></View>
                 </View>
                 <View style={styles.progressHeader}><ThemedText themeColor="textSecondary" type="smallBold">{text.completion}</ThemedText><ThemedText style={{ color: action }} type="smallBold">{Math.round(result.progress * 100)}%</ThemedText></View>
-                <View style={[styles.track, { backgroundColor: Palette.homeLightActionSoft }]}><View style={[styles.fill, { backgroundColor: action, width: `${Math.round(result.progress * 100)}%` }]} /></View>
+                <View style={[styles.track, { backgroundColor: softAction }]}><View style={[styles.fill, { backgroundColor: action, width: `${Math.round(result.progress * 100)}%` }]} /></View>
                 <ThemedText themeColor="textSecondary" type="small">{text.progressDetail}</ThemedText>
                 {goal.status === 'active' && !goal.legacyOpenPeriod ? <Button accentColor={action} fullWidth label={text.edit} onPress={beginEdit} variant="secondary" /> : null}
                 {!goal.legacyOpenPeriod ? <>
@@ -195,7 +196,7 @@ const styles = StyleSheet.create({
   loading: { alignItems: 'center', minHeight: 180, justifyContent: 'center' }, card: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.md, padding: Spacing.lg },
   icon: { alignItems: 'center', borderRadius: 26, height: 52, justifyContent: 'center', width: 52 }, eyebrow: { letterSpacing: 1.2 }, title: { fontSize: 30, lineHeight: 38 },
   titleInput: { borderWidth: 1, borderRadius: Radius.card, fontSize: 22, minHeight: 52, paddingHorizontal: Spacing.md }, input: { borderWidth: 1, borderRadius: Radius.card, fontSize: 18, minHeight: 48, paddingHorizontal: Spacing.md },
-  metrics: { flexDirection: 'row', gap: Spacing.md }, metric: { flex: 1, gap: Spacing.xs }, metricValue: { fontSize: 22, lineHeight: 29 }, progressHeader: { flexDirection: 'row', justifyContent: 'space-between' },
+  metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md }, metric: { flexBasis: 140, flexGrow: 1, gap: Spacing.xs }, metricValue: { fontSize: 22, lineHeight: 29 }, progressHeader: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs, justifyContent: 'space-between' },
   track: { borderRadius: 999, height: 8, overflow: 'hidden' }, fill: { borderRadius: 999, height: '100%' }, actions: { gap: Spacing.sm },
   confirmCard: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.sm, padding: Spacing.md },
 });

@@ -1,5 +1,43 @@
 # Changelog
 
+## 2026-10-16
+
+- Connected Plan My Day's local proposal screen to the existing deterministic
+  `ai-planner` mock-provider and explicit confirmation boundary. Saved plans
+  remain local and owner-scoped; live OpenAI transport and allowance handling
+  remain review-pending.
+
+- Made new local-resource ID collisions fail closed instead of overwriting an
+  existing owner record.
+
+- Added Sinhala and Tamil copy for the public Plans status page. It remains an
+  honest no-checkout development notice and does not add prices or billing.
+
+- Added a regression gate against directly rendering caught exception messages
+  or stacks in mobile and portal user-facing source.
+
+- Localized shared public-website review and feature-readiness labels for the
+  selected Sinhala, Tamil or English locale. Untranslated page content remains
+  explicitly marked rather than being represented as translated.
+
+- Localized the Account Portal's downloaded summary note for the selected
+  Sinhala, Tamil or English website locale. The export remains portal-visible
+  status only and does not include private app data.
+
+- Added owner-scoped local-resource rename with optimistic stale-write handling.
+  It preserves resource IDs, revisions and linked task associations; it does not
+  import files, open resources or upload anything.
+
+- Localized persisted goal-status and task-priority labels in the Task and Goal
+  detail flows, and the Progress activity chart's screen-reader duration, so
+  Sinhala and Tamil views do not expose internal status values or raw seconds.
+
+- Added a local-only Supabase reward-progression schema candidate for the
+  approved V1 owner-bound XP ledger, progression summary, achievement catalogue
+  and one-time Summary presentation receipt. It has no direct client table
+  grants and is not applied, deployed or remote-verified; server transaction,
+  Auth/RLS and sync evidence remain review-pending.
+
 ## 2026-10-15
 
 - Added deterministic user-local Streak derivation from owner-scoped terminal

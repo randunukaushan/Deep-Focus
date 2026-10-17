@@ -17,13 +17,16 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { Palette, Radius, Spacing } from '@/theme/tokens';
 import { getAppLocaleCopy } from '@/features/localization/app-locale';
+import { getGoalStatusLabel } from '@/features/localization/goal-detail-copy';
 import { useAppLocale } from '@/features/localization/app-locale-context';
+import { getTaskDetailRuntimeCopy } from '@/features/localization/task-detail-runtime-copy';
 
 export default function TaskDetailRoute() {
   const router = useRouter();
-  const { copy } = useAppLocale();
+  const { copy, locale } = useAppLocale();
   const resourceCopy = copy.resourcesPage;
   const taskCopy = copy.taskDetail ?? getAppLocaleCopy('en').taskDetail!;
+  const runtimeCopy = getTaskDetailRuntimeCopy(locale);
   const priorities = [
     { label: taskCopy.noPriority, value: undefined },
     { label: taskCopy.low, value: 'low' as const },
@@ -33,6 +36,7 @@ export default function TaskDetailRoute() {
   const theme = useTheme();
   const isDark = useColorScheme() === 'dark';
   const action = isDark ? Palette.mintPrimary : Palette.homeLightAction;
+  const softAction = isDark ? Palette.navySurfaceElevated : Palette.homeLightActionSoft;
   const surface = isDark ? theme.surface : Palette.homeLightSurface;
   const border = isDark ? theme.border : Palette.homeLightBorder;
   const [task, setTask] = useState<Task | null>(null);
@@ -153,7 +157,7 @@ export default function TaskDetailRoute() {
     if (!task || savingRef.current || !title || title.length > 120 || task.status === 'completed' || task.status === 'cancelled') return;
     const dueDate = parseTaskDueDate(draftDueDate, task.dueAt);
     if (!dueDate.valid) {
-      setEditError('Enter a valid calendar date as YYYY-MM-DD, or leave it blank to remove the deadline.');
+      setEditError(runtimeCopy.invalidDate);
       return;
     }
     savingRef.current = true;
@@ -162,7 +166,7 @@ export default function TaskDetailRoute() {
     try {
       const updatedAt = await updateTaskDetails(task.id, task.updatedAt, title, draftDescription, draftPriority, draftGoalId, dueDate.dueAt);
       if (!updatedAt) {
-        setEditError('This task changed elsewhere. Reload it before editing so newer details are not overwritten.');
+        setEditError(runtimeCopy.conflictSave);
         return;
       }
       const updatedTask = { ...task, title, description: draftDescription.trim() || undefined, priority: draftPriority, goalId: draftGoalId ?? undefined, updatedAt };
@@ -171,7 +175,7 @@ export default function TaskDetailRoute() {
       setTask(updatedTask);
       setEditing(false);
     } catch {
-      setEditError('This task could not be saved. Your saved task is unchanged; try again.');
+      setEditError(runtimeCopy.saveError);
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -194,13 +198,13 @@ export default function TaskDetailRoute() {
     try {
       const deleted = await deleteTask(task.id, task.updatedAt);
       if (!deleted) {
-        setDeleteError('This task changed elsewhere. Reload it before deleting so newer details are not removed.');
+        setDeleteError(runtimeCopy.conflictDelete);
         return;
       }
       setConfirmDelete(false);
       router.replace('/tasks');
     } catch {
-      setDeleteError('This task could not be deleted. Your task and focus history are unchanged; try again.');
+      setDeleteError(runtimeCopy.deleteError);
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -216,7 +220,7 @@ export default function TaskDetailRoute() {
     try {
       const updatedAt = await updateTaskArchive(task.id, task.updatedAt, archivedAt);
       if (!updatedAt) {
-        setArchiveError('This task changed elsewhere. Reload it before changing its archive state.');
+        setArchiveError(runtimeCopy.conflictArchive);
         return;
       }
       const next = { ...task, updatedAt };
@@ -224,7 +228,7 @@ export default function TaskDetailRoute() {
       else delete next.archivedAt;
       setTask(next);
     } catch {
-      setArchiveError('This task could not be updated. Its saved archive state is unchanged; try again.');
+      setArchiveError(runtimeCopy.archiveError);
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -236,7 +240,7 @@ export default function TaskDetailRoute() {
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.content}>
           <Button accentColor={action} label={taskCopy.back} onPress={() => router.replace('/tasks')} variant="ghost" />
-          {loading ? <View accessibilityLabel={taskCopy.eyebrow} accessibilityLiveRegion="polite" style={styles.loading}><ActivityIndicator color={action} /></View>
+          {loading ? <View accessibilityLabel={copy.historyPage?.loading ?? taskCopy.eyebrow} accessibilityLiveRegion="polite" style={styles.loading}><ActivityIndicator color={action} /></View>
             : loadError ? <ThemedView accessibilityRole="alert" style={[styles.card, { backgroundColor: surface, borderColor: border }]}>
               <ThemedText accessibilityRole="header" type="subtitle">{taskCopy.loadErrorTitle}</ThemedText>
               <ThemedText themeColor="textSecondary">{taskCopy.loadErrorDetail}</ThemedText>
@@ -247,7 +251,7 @@ export default function TaskDetailRoute() {
                 <ThemedText themeColor="textSecondary">{taskCopy.unavailableDetail}</ThemedText>
               </ThemedView>
                 : <ThemedView accessibilityLabel={`${taskCopy.eyebrow}: ${task.title}`} style={[styles.card, { backgroundColor: surface, borderColor: border }]}>
-                  <View style={[styles.icon, { backgroundColor: task.status === 'completed' ? action : Palette.homeLightActionSoft }]}>
+                  <View style={[styles.icon, { backgroundColor: task.status === 'completed' ? action : softAction }]}>
                     <Ionicons color={task.status === 'completed' ? Palette.deepNavy : action} name={task.status === 'completed' ? 'checkmark' : 'checkmark-circle-outline'} size={28} />
                   </View>
                   <ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">{taskCopy.eyebrow}</ThemedText>
@@ -261,7 +265,7 @@ export default function TaskDetailRoute() {
                       <ThemedText type="smallBold">{taskCopy.priorityLabel}</ThemedText>
                       <View style={styles.priorityOptions}>{priorities.map(({ label, value }) => {
                         const selected = draftPriority === value;
-                        return <Pressable accessibilityLabel={label} accessibilityRole="radio" accessibilityState={{ selected }} key={label} onPress={() => setDraftPriority(value)} style={({ pressed }) => [styles.priorityOption, { borderColor: selected ? action : border, backgroundColor: selected ? Palette.homeLightActionSoft : 'transparent' }, pressed && styles.pressed]}>
+                        return <Pressable accessibilityLabel={label} accessibilityRole="radio" accessibilityState={{ selected }} key={label} onPress={() => setDraftPriority(value)} style={({ pressed }) => [styles.priorityOption, { borderColor: selected ? action : border, backgroundColor: selected ? softAction : 'transparent' }, pressed && styles.pressed]}>
                           <ThemedText type="smallBold">{label}</ThemedText>
                         </Pressable>;
                       })}</View>
@@ -274,13 +278,13 @@ export default function TaskDetailRoute() {
                         <Button disabled={goalsLoading} label={taskCopy.retryGoals} onPress={() => retryGoalsLoad.current()} variant="secondary" />
                       </ThemedView> : null}
                       {!goalsLoading && !goalsLoadError ? <View style={styles.priorityOptions}>
-                        <Pressable accessibilityLabel={taskCopy.noGoal} accessibilityRole="radio" accessibilityState={{ selected: draftGoalId === null }} onPress={() => setDraftGoalId(null)} style={({ pressed }) => [styles.priorityOption, { borderColor: draftGoalId === null ? action : border, backgroundColor: draftGoalId === null ? Palette.homeLightActionSoft : 'transparent' }, pressed && styles.pressed]}>
+                        <Pressable accessibilityLabel={taskCopy.noGoal} accessibilityRole="radio" accessibilityState={{ selected: draftGoalId === null }} onPress={() => setDraftGoalId(null)} style={({ pressed }) => [styles.priorityOption, { borderColor: draftGoalId === null ? action : border, backgroundColor: draftGoalId === null ? softAction : 'transparent' }, pressed && styles.pressed]}>
                           <ThemedText type="smallBold">{taskCopy.noGoal}</ThemedText>
                         </Pressable>
                         {goals.filter((goal) => goal.status === 'active' || goal.id === task.goalId).map((goal) => {
                           const selected = draftGoalId === goal.id;
-                          const label = goal.status === 'active' ? goal.title : `${goal.title} (${goal.status})`;
-                          return <Pressable accessibilityLabel={label} accessibilityRole="radio" accessibilityState={{ selected }} key={goal.id} onPress={() => setDraftGoalId(goal.id)} style={({ pressed }) => [styles.priorityOption, { borderColor: selected ? action : border, backgroundColor: selected ? Palette.homeLightActionSoft : 'transparent' }, pressed && styles.pressed]}>
+                          const label = goal.status === 'active' ? goal.title : `${goal.title} (${getGoalStatusLabel(locale, goal.status)})`;
+                          return <Pressable accessibilityLabel={label} accessibilityRole="radio" accessibilityState={{ selected }} key={goal.id} onPress={() => setDraftGoalId(goal.id)} style={({ pressed }) => [styles.priorityOption, { borderColor: selected ? action : border, backgroundColor: selected ? softAction : 'transparent' }, pressed && styles.pressed]}>
                             <ThemedText type="smallBold">{label}</ThemedText>
                           </Pressable>;
                         })}
@@ -291,7 +295,7 @@ export default function TaskDetailRoute() {
                     <ThemedText accessibilityRole="header" type="subtitle" style={styles.title}>{task.title}</ThemedText>
                     {task.description ? <ThemedText themeColor="textSecondary">{task.description}</ThemedText> : null}
                     {task.dueAt ? <ThemedText accessibilityLabel={`${taskCopy.dueDatePrefix}: ${formatTaskDueDate(task.dueAt)}`} themeColor="textSecondary">{taskCopy.dueDatePrefix} {formatTaskDueDate(task.dueAt)}</ThemedText> : null}
-                    {task.priority ? <ThemedText accessibilityLabel={`${taskCopy.priorityPrefix}: ${task.priority}`} themeColor="textSecondary" type="small">{taskCopy.priorityPrefix}: {task.priority}</ThemedText> : null}
+                    {task.priority ? <ThemedText accessibilityLabel={`${taskCopy.priorityPrefix}: ${getPriorityLabel(taskCopy, task.priority)}`} themeColor="textSecondary" type="small">{taskCopy.priorityPrefix}: {getPriorityLabel(taskCopy, task.priority)}</ThemedText> : null}
                   </>}
                   <ThemedText themeColor="textSecondary">{task.archivedAt ? taskCopy.archivedStatus : task.status === 'completed' ? taskCopy.completedStatus : task.status === 'cancelled' ? taskCopy.cancelledStatus : taskCopy.readyStatus}</ThemedText>
                   {saveError ? <ThemedText accessibilityRole="alert" themeColor="textSecondary">{taskCopy.pendingSave}</ThemedText> : null}
@@ -304,11 +308,11 @@ export default function TaskDetailRoute() {
                     {resourceError ? <ThemedText accessibilityRole="alert" themeColor="textSecondary">{resourceError}</ThemedText> : null}
                     {resources.length === 0 ? <ThemedText themeColor="textSecondary" type="small">{resourceCopy.taskEmpty}</ThemedText> : resources.map((resource) => {
                       const linked = resourceLinks.some((link) => link.resourceId === resource.id);
-                      return <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: linked, disabled: resource.lifecycle !== 'active' || resourceBusy }} disabled={resource.lifecycle !== 'active' || resourceBusy} key={resource.id} onPress={() => void toggleResource(resource)} style={({ pressed }) => [styles.resourceRow, { borderColor: linked ? action : border }, pressed && styles.pressed]}><View style={styles.resourceText}><ThemedText type="smallBold">{resource.title}</ThemedText><ThemedText numberOfLines={1} themeColor="textSecondary" type="small">{resource.reference}</ThemedText></View><ThemedText style={{ color: action }} type="smallBold">{linked ? resourceCopy.linked : resourceCopy.link}</ThemedText></Pressable>;
+                      return <Pressable accessibilityLabel={`${resource.title}. ${linked ? resourceCopy.linked : resourceCopy.link}`} accessibilityRole="checkbox" accessibilityState={{ checked: linked, disabled: resource.lifecycle !== 'active' || resourceBusy }} disabled={resource.lifecycle !== 'active' || resourceBusy} key={resource.id} onPress={() => void toggleResource(resource)} style={({ pressed }) => [styles.resourceRow, { borderColor: linked ? action : border }, pressed && styles.pressed]}><View style={styles.resourceText}><ThemedText type="smallBold">{resource.title}</ThemedText><ThemedText numberOfLines={2} themeColor="textSecondary" type="small">{resource.reference}</ThemedText></View><ThemedText style={[styles.resourceState, { color: action }]} type="smallBold">{linked ? resourceCopy.linked : resourceCopy.link}</ThemedText></Pressable>;
                     })}
                   </ThemedView>
-                  {deleteError?.startsWith('This task changed elsewhere') ? <Button disabled={saving} fullWidth label={taskCopy.reload} onPress={reloadTask} variant="secondary" /> : null}
-                  {archiveError?.startsWith('This task changed elsewhere') ? <Button disabled={saving} fullWidth label={taskCopy.reload} onPress={reloadTask} variant="secondary" /> : null}
+                  {deleteError === runtimeCopy.conflictDelete ? <Button disabled={saving} fullWidth label={taskCopy.reload} onPress={reloadTask} variant="secondary" /> : null}
+                  {archiveError === runtimeCopy.conflictArchive ? <Button disabled={saving} fullWidth label={taskCopy.reload} onPress={reloadTask} variant="secondary" /> : null}
                   {confirmDelete ? <ThemedView accessibilityRole="alert" style={[styles.confirmCard, { borderColor: border }]}>
                     <ThemedText type="smallBold">{taskCopy.deleteTitle}</ThemedText>
                     <ThemedText themeColor="textSecondary">{taskCopy.deleteDetail}</ThemedText>
@@ -319,7 +323,7 @@ export default function TaskDetailRoute() {
                     {editing ? <>
                       <Button accentColor={action} disabled={!draftTitle.trim()} fullWidth label={taskCopy.saveDetails} loading={saving} onPress={() => void saveDetails()} style={{ backgroundColor: action, borderColor: action }} />
                       <Button disabled={saving} fullWidth label={taskCopy.cancelEditing} onPress={() => setEditing(false)} variant="ghost" />
-                      {editError?.startsWith('This task changed elsewhere') ? <Button disabled={saving} fullWidth label={taskCopy.reload} onPress={reloadTask} variant="secondary" /> : null}
+                      {editError === runtimeCopy.conflictSave ? <Button disabled={saving} fullWidth label={taskCopy.reload} onPress={reloadTask} variant="secondary" /> : null}
                     </> : <>
                       {!task.archivedAt && task.status !== 'completed' && task.status !== 'cancelled' ? <Button accentColor={action} fullWidth label={taskCopy.editDetails} onPress={beginEdit} variant="secondary" /> : null}
                       {!task.archivedAt && task.status !== 'completed' ? <Button accentColor={action} fullWidth label={taskCopy.complete} loading={saving} onPress={() => void complete()} style={{ backgroundColor: action, borderColor: action }} /> : null}
@@ -335,11 +339,15 @@ export default function TaskDetailRoute() {
   );
 }
 
+function getPriorityLabel(copy: NonNullable<ReturnType<typeof getAppLocaleCopy>['taskDetail']>, priority: TaskPriority): string {
+  return priority === 'low' ? copy.low : priority === 'medium' ? copy.medium : copy.high;
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1 }, scroll: { flexGrow: 1, justifyContent: 'center', padding: Spacing.lg }, content: { alignSelf: 'center', gap: Spacing.lg, maxWidth: 560, width: '100%' },
   loading: { alignItems: 'center', minHeight: 180, justifyContent: 'center' }, card: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.md, padding: Spacing.lg },
   icon: { alignItems: 'center', borderRadius: 26, height: 52, justifyContent: 'center', width: 52 }, eyebrow: { letterSpacing: 1.2 }, title: { fontSize: 30, lineHeight: 38 },
   titleInput: { borderWidth: 1, borderRadius: Radius.card, fontSize: 22, minHeight: 52, paddingHorizontal: Spacing.md }, descriptionInput: { borderWidth: 1, borderRadius: Radius.card, minHeight: 92, padding: Spacing.md, textAlignVertical: 'top' }, input: { borderWidth: 1, borderRadius: Radius.card, fontSize: 18, minHeight: 48, paddingHorizontal: Spacing.md },
   priorityGroup: { gap: Spacing.sm }, priorityOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs }, priorityOption: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, justifyContent: 'center', minHeight: 44, paddingHorizontal: Spacing.md },
-  actions: { gap: Spacing.sm }, confirmCard: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.sm, padding: Spacing.md }, goalError: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.sm, padding: Spacing.sm }, resourceCard: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.sm, padding: Spacing.md }, resourceRow: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', gap: Spacing.sm, minHeight: 56, padding: Spacing.sm }, resourceText: { flex: 1, gap: 2 }, pressed: { opacity: 0.78 },
+  actions: { gap: Spacing.sm }, confirmCard: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.sm, padding: Spacing.md }, goalError: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.sm, padding: Spacing.sm }, resourceCard: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.sm, padding: Spacing.md }, resourceRow: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', gap: Spacing.sm, minHeight: 56, padding: Spacing.sm }, resourceText: { flex: 1, gap: 2, minWidth: 0 }, resourceState: { flexShrink: 1, maxWidth: '35%', textAlign: 'right' }, pressed: { opacity: 0.78 },
 });

@@ -10,9 +10,9 @@ import {
 } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
+import { Fonts } from '@/constants/theme';
 import {
     LetterSpacingEm,
-    LineHeightRatio,
     Palette,
     Radius,
     Spacing,
@@ -67,7 +67,7 @@ export function Button({
   return (
     <Pressable
       {...pressableProps}
-      accessibilityLabel={loading ? loadingAccessibilityLabel ?? `${accessibleName}, loading` : accessibleName}
+      accessibilityLabel={loading ? loadingAccessibilityLabel ?? accessibleName : accessibleName}
       accessibilityRole="button"
       accessibilityState={{
         ...accessibilityState,
@@ -174,11 +174,13 @@ const styles = StyleSheet.create({
     opacity: 0.82,
   },
   label: {
+    fontFamily: Fonts.sans,
     flexShrink: 1,
+    minWidth: 0,
     textAlign: 'center',
     fontSize: Typography.button.fontSize,
     fontWeight: Typography.button.fontWeight,
-    lineHeight: Typography.button.fontSize * LineHeightRatio.body,
+    lineHeight: 24,
     letterSpacing:
       Typography.button.fontSize * LetterSpacingEm.button,
   },

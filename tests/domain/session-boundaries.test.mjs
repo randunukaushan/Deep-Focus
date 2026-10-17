@@ -9,6 +9,8 @@ import * as completionProcessing from '../../src/features/focus/completion-proce
 import * as goalProgress from '../../src/features/goals/goal-progress.ts';
 import * as resourceTypes from '../../src/features/resources/resource-types.ts';
 import * as teacherAssignmentDraft from '../../src/features/education/teacher-assignment-draft.ts';
+import * as progressionRules from '../../src/features/progress/progression-rules.ts';
+import * as streak from '../../src/features/progress/streak.ts';
 
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
@@ -60,6 +62,8 @@ function sqliteFixture(initialFiles = {}, readError = false) {
     '@/features/goals/goal-progress': goalProgress,
     '@/features/resources/resource-types': resourceTypes,
     '@/features/education/teacher-assignment-draft': teacherAssignmentDraft,
+    '@/features/progress/progression-rules': progressionRules,
+    '@/features/progress/streak': streak,
     './local-owner': {
       accountOwnerId: (authenticatedId) => `account:${authenticatedId}`,
       createLocalOwnerRegistry(deviceStore) {
@@ -281,7 +285,16 @@ function hookFixture(load, duration = 25, saveFailures = 0) {
     clearTimeout(id) { timers.delete(id); },
   });
   return {
-    render: function HookProbe(taskId, taskName) { cursor = 0; const result = useFocusSession(duration, taskName, taskId); const effects = pending; pending = []; effects.forEach(fn => fn()); return result; },
+    render: function HookProbe(taskId, taskName) {
+      cursor = 0;
+      const result = useFocusSession(duration, taskName, taskId, {
+        recoveryError: 'Recovery unavailable', taskUnavailable: 'This task is no longer available', saveFailure: 'Session could not be saved',
+      });
+      const effects = pending;
+      pending = [];
+      effects.forEach(fn => fn());
+      return result;
+    },
     // Let cross-realm promises settle; no elapsed-time timer oracle is used.
     async settle() { await new Promise(setImmediate); return this.render(); },
     tick(timestamp) { clock = timestamp; [...timers.values()].forEach(fn => fn()); },

@@ -11,12 +11,15 @@ import { useTheme } from '@/hooks/use-theme';
 import { Palette, Radius, Spacing } from '@/theme/tokens';
 import { useAppLocale } from '@/features/localization/app-locale-context';
 import { getSessionCopy } from '@/features/localization/session-copy';
-import { loadFinalizedSession, loadSessionHistory } from '@/features/focus/session-storage';
+import { getAchievementCopy } from '@/features/localization/rewards-copy';
+import { claimTerminalAchievementPresentation, clearPendingSummaryHandoff, loadFinalizedSession, loadSessionHistory, loadTerminalProgression } from '@/features/focus/session-storage';
 import { loadPersistedFinalizedSession } from '@/features/focus/session-summary-data';
 import type { FocusSession } from '@/features/focus/session-types';
 import { completeTask, loadTasks } from '@/features/tasks/task-storage';
 import type { Task } from '@/features/tasks/task-types';
 import { calculateStreak, type StreakSummary } from '@/features/progress/streak';
+import type { AchievementId } from '@/features/progress/progression-rules';
+import type { TerminalProgressionResult } from '@/features/storage/local-database';
 
 function formatMinutes(seconds: number, minuteLabel: string) {
   const minutes = Math.floor(seconds / 60);
@@ -42,6 +45,8 @@ export default function SessionSummaryRoute() {
   const [taskCompleting, setTaskCompleting] = useState(false);
   const [taskCompleteError, setTaskCompleteError] = useState(false);
   const [streak, setStreak] = useState<StreakSummary | null>(null);
+  const [progression, setProgression] = useState<TerminalProgressionResult | null>(null);
+  const [newlyPresentedAchievements, setNewlyPresentedAchievements] = useState<AchievementId[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -50,6 +55,35 @@ export default function SessionSummaryRoute() {
         if (!mounted) return;
         setSession(saved);
         setLoadError(false);
+        if (saved) {
+          await clearPendingSummaryHandoff(saved.id).catch(() => undefined);
+        }
+        if (saved?.status === 'completed') {
+          try {
+            const savedProgression = await loadTerminalProgression(saved.id);
+            if (mounted) {
+              setProgression(savedProgression);
+              setNewlyPresentedAchievements([]);
+            }
+            if (savedProgression) {
+              try {
+                const claimedAchievements = await claimTerminalAchievementPresentation(saved.id);
+                if (mounted) setNewlyPresentedAchievements(claimedAchievements);
+              } catch {
+                // A failed receipt remains unconsumed and is safe to retry later.
+                if (mounted) setNewlyPresentedAchievements([]);
+              }
+            }
+          } catch {
+            if (mounted) {
+              setProgression(null);
+              setNewlyPresentedAchievements([]);
+            }
+          }
+        } else if (mounted) {
+          setProgression(null);
+          setNewlyPresentedAchievements([]);
+        }
         if (saved?.taskId) {
           try {
             const task = (await loadTasks()).find((item) => item.id === saved.taskId) ?? null;
@@ -119,7 +153,7 @@ export default function SessionSummaryRoute() {
           <ThemedText accessibilityRole="header" type="title">{completed ? text.sessionComplete : text.sessionEnded}</ThemedText>
           <ThemedText themeColor="textSecondary">{completed ? text.focusedWork : text.endedBeforePlan}</ThemedText>
         </View>
-        <ThemedView accessibilityLabel={`${completed ? text.completed : text.cancelled} session. ${formatMinutes(focused, text.minutes)} focused of ${formatMinutes(planned, text.minutes)} planned${session.taskName ? ` ${text.task} ${session.taskName}` : ''}.`} style={[styles.card, { backgroundColor: homeSurface, borderColor: homeBorder }]}>
+        <ThemedView accessibilityLabel={`${completed ? text.completed : text.cancelled}. ${text.focusTime}: ${formatMinutes(focused, text.minutes)}. ${text.planned}: ${formatMinutes(planned, text.minutes)}${session.taskName ? `. ${text.task} ${session.taskName}` : ''}.`} style={[styles.card, { backgroundColor: homeSurface, borderColor: homeBorder }]}>
           <ThemedText style={[styles.cardEyebrow, { color: homeAction }]} type="smallBold">{text.focusSummary}</ThemedText>
           <View style={styles.metricRow}>
             <View style={styles.metric}>
@@ -134,9 +168,12 @@ export default function SessionSummaryRoute() {
           </View>
           <View style={[styles.statusRow, { borderTopColor: homeBorder }]}>
             <ThemedText themeColor="textSecondary" type="smallBold">{text.status}</ThemedText>
-            <ThemedText style={{ color: completed ? homeAction : Palette.error }} type="smallBold">{completed ? text.completed : text.cancelled}</ThemedText>
+            <ThemedText style={[styles.statusValue, { color: completed ? homeAction : Palette.error }]} type="smallBold">{completed ? text.completed : text.cancelled}</ThemedText>
           </View>
           {session.taskName ? <ThemedText themeColor="textSecondary">{text.task} {session.taskName}</ThemedText> : null}
+          {completed && progression?.xpEarned && progression.xpEarned > 0 ? <View accessibilityLabel={`${sessionText.xpEarned}: ${progression.xpEarned}`} style={[styles.statusRow, { borderTopColor: homeBorder }]}><ThemedText themeColor="textSecondary" type="smallBold">{sessionText.xpEarned}</ThemedText><ThemedText style={{ color: homeAction }} type="smallBold">+{progression.xpEarned}</ThemedText></View> : null}
+          {completed && progression ? <ThemedText accessibilityLabel={`${sessionText.currentLevel}: ${progression.level}`} themeColor="textSecondary">{sessionText.currentLevel}: {progression.level}</ThemedText> : null}
+          {completed && newlyPresentedAchievements.length > 0 ? <View accessibilityLiveRegion="polite" accessibilityLabel={`${sessionText.achievementsUnlocked}: ${newlyPresentedAchievements.map((id) => getAchievementCopy(locale, id).title).join(', ')}`} style={[styles.statusRow, { borderTopColor: homeBorder }]}><ThemedText themeColor="textSecondary" type="smallBold">{sessionText.achievementsUnlocked}</ThemedText><ThemedText style={[styles.statusValue, { color: homeAction }]} type="smallBold">{newlyPresentedAchievements.map((id) => getAchievementCopy(locale, id).title).join(', ')}</ThemedText></View> : null}
           {linkedTask && linkedTask.status !== 'completed' && completed ? <Button accentColor={homeAction} fullWidth label={sessionText.markTaskComplete} loading={taskCompleting} onPress={() => { void markTaskComplete(); }} style={{ backgroundColor: homeAction, borderColor: homeAction }} /> : null}
           {linkedTask?.status === 'completed' ? <ThemedText accessibilityLiveRegion="polite" themeColor="textSecondary">{sessionText.taskCompleted}</ThemedText> : null}
           {taskCompleteError ? <ThemedText accessibilityRole="alert" themeColor="textSecondary">{sessionText.taskCompleteError}</ThemedText> : null}
@@ -159,9 +196,10 @@ const styles = StyleSheet.create({
   card: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.md, padding: Spacing.lg },
   cardEyebrow: { letterSpacing: 1.2 },
   metricRow: { alignItems: 'center', flexDirection: 'row', gap: Spacing.md },
-  metric: { flex: 1, gap: Spacing.xs },
+  metric: { flex: 1, gap: Spacing.xs, minWidth: 0 },
   metricValue: { fontSize: 20, fontWeight: '700', lineHeight: 26 },
   metricDivider: { height: 48, width: 1 },
-  statusRow: { borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingTop: Spacing.md },
+  statusRow: { borderTopWidth: 1, flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs, justifyContent: 'space-between', paddingTop: Spacing.md },
+  statusValue: { flexShrink: 1, textAlign: 'right' },
   actions: { gap: Spacing.sm },
 });

@@ -12,4 +12,7 @@ test('session summary accepts only a session ID and loads its persisted terminal
   assert.match(source, /completeTask\(linkedTask\.id, linkedTask\.updatedAt\)/);
   assert.match(source, /linkedTask\.status !== 'completed'/);
   assert.match(source, /session\.taskName/);
+  assert.match(source, /claimTerminalAchievementPresentation\(saved\.id\)/);
+  assert.match(source, /newlyPresentedAchievements/);
+  assert.match(source, /getAchievementCopy/);
 });

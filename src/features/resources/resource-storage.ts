@@ -5,6 +5,7 @@ import {
   loadResources as loadLocalResources,
   loadTaskResourceLinks as loadLocalTaskResourceLinks,
   markResourceMissing as markLocalResourceMissing,
+  renameResource as renameLocalResource,
   saveResource as saveLocalResource,
   unlinkResourceFromTask as unlinkLocalResourceFromTask,
 } from '@/features/storage/local-database';
@@ -23,6 +24,11 @@ export async function saveResource(resource: LocalResource): Promise<void> {
 export async function markResourceMissing(resourceId: string, expectedUpdatedAt: string): Promise<boolean> {
   if (Platform.OS === 'web') throw new Error('RESOURCE_STORAGE_UNAVAILABLE: local SQLite resources are not available on web');
   return markLocalResourceMissing(resourceId, expectedUpdatedAt);
+}
+
+export async function renameResource(resourceId: string, expectedUpdatedAt: string, title: string): Promise<string | null> {
+  if (Platform.OS === 'web') throw new Error('RESOURCE_STORAGE_UNAVAILABLE: local SQLite resources are not available on web');
+  return renameLocalResource(resourceId, expectedUpdatedAt, title);
 }
 
 export async function loadTaskResourceLinks(taskId: string): Promise<TaskResourceLink[]> {

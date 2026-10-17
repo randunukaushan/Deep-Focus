@@ -19,13 +19,15 @@ export default function SessionHistoryRoute() {
   const router = useRouter();
   const { copy } = useAppLocale();
   const text = copy.historyPage;
+  const formatDuration = (seconds: number): string => formatSessionDuration(seconds, { hour: text.hoursUnit, minute: text.minutesUnit });
   const theme = useTheme();
   const isDark = useColorScheme() === 'dark';
   const background = isDark ? theme.background : Palette.homeLightBackground;
   const surface = isDark ? theme.surface : Palette.homeLightSurface;
   const border = isDark ? theme.border : Palette.homeLightBorder;
   const action = isDark ? Palette.mintPrimary : Palette.homeLightAction;
-  const softAction = isDark ? theme.background : Palette.homeLightActionSoft;
+  const warning = isDark ? Palette.warning : Palette.warningText;
+  const softAction = isDark ? Palette.navySurfaceElevated : Palette.homeLightActionSoft;
   const [sessions, setSessions] = useState<ReturnType<typeof getHistoricalSessions>>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -64,7 +66,7 @@ export default function SessionHistoryRoute() {
             <ThemedText themeColor="textSecondary">{text.subtitle}</ThemedText>
           </View>
           {loading ? (
-            <View accessibilityLabel={text.loading} style={styles.state}><ActivityIndicator color={Palette.mintPrimary} /></View>
+            <View accessibilityLabel={text.loading} accessibilityLiveRegion="polite" style={styles.state}><ActivityIndicator color={Palette.mintPrimary} /></View>
           ) : loadError ? (
             <ThemedView accessibilityRole="alert" style={[styles.emptyCard, { backgroundColor: surface, borderColor: border }]}>
               <ThemedText accessibilityRole="header" type="smallBold">{text.loadErrorTitle}</ThemedText>
@@ -80,11 +82,11 @@ export default function SessionHistoryRoute() {
             </ThemedView>
           ) : (
             <>
-              <ThemedView accessibilityLabel={`${formatSessionDuration(totalFocusedSeconds)} ${text.focusTime}, ${completedSessions.length} ${text.focusSession}`} style={styles.summaryCard}>
+              <ThemedView accessibilityLabel={`${formatDuration(totalFocusedSeconds)} ${text.focusTime}, ${completedSessions.length} ${text.focusSession}`} style={styles.summaryCard}>
                 <View style={styles.summaryIcon}><Ionicons color={Palette.deepNavy} name="time-outline" size={22} /></View>
                 <View style={styles.summaryMetric}>
                   <ThemedText style={styles.summaryLabel} type="smallBold">{text.focusTime}</ThemedText>
-                  <ThemedText style={styles.summaryValue} type="subtitle">{formatSessionDuration(totalFocusedSeconds)}</ThemedText>
+                  <ThemedText style={styles.summaryValue} type="subtitle">{formatDuration(totalFocusedSeconds)}</ThemedText>
                 </View>
                 <View style={styles.summaryMetric}>
                   <ThemedText style={styles.summaryLabel} type="smallBold">{text.completed}</ThemedText>
@@ -95,7 +97,7 @@ export default function SessionHistoryRoute() {
                 {(['all', 'completed', 'cancelled'] as const).map((value) => {
                   const selected = filter === value;
                   const label = value === 'all' ? text.allSessions : value === 'completed' ? text.completedFilter : text.cancelledFilter;
-                  return <Pressable accessibilityRole="button" accessibilityState={{ selected }} key={value} onPress={() => setFilter(value)} style={[styles.filterChip, { backgroundColor: selected ? action : surface, borderColor: selected ? action : border }]}><ThemedText style={{ color: selected ? Palette.deepNavy : theme.text }} type="smallBold">{label}</ThemedText></Pressable>;
+                  return <Pressable accessibilityLabel={label} accessibilityRole="tab" accessibilityState={{ selected }} key={value} onPress={() => setFilter(value)} style={[styles.filterChip, { backgroundColor: selected ? action : surface, borderColor: selected ? action : border }]}><ThemedText style={{ color: selected ? Palette.deepNavy : theme.text }} type="smallBold">{label}</ThemedText></Pressable>;
                 })}
               </ScrollView>
               {filteredSessions.length === 0 ? (
@@ -110,20 +112,20 @@ export default function SessionHistoryRoute() {
                 return (
                   <Pressable
                     accessibilityHint={text.openDetailsHint}
-                    accessibilityLabel={`${session.taskName || text.focusSession}, ${formatSessionDuration(session.focusedDurationSeconds)}, ${cancelled ? text.cancelled.toLowerCase() : text.completedStatus.toLowerCase()}`}
+                    accessibilityLabel={`${session.taskName || text.focusSession}, ${formatDuration(session.focusedDurationSeconds)}, ${cancelled ? text.cancelled.toLowerCase() : text.completedStatus.toLowerCase()}`}
                     accessibilityRole="button"
                     key={session.id}
                     onPress={() => router.push({ pathname: '/progress/history/[sessionId]', params: { sessionId: session.id } })}
                     style={({ pressed }) => [styles.sessionCard, { backgroundColor: surface, borderColor: border }, pressed && styles.pressed]}>
-                    <View style={styles.sessionIcon}><Ionicons color={cancelled ? Palette.warning : Palette.success} name={cancelled ? 'close-circle-outline' : 'checkmark-circle-outline'} size={22} /></View>
+                    <View style={styles.sessionIcon}><Ionicons color={cancelled ? warning : Palette.success} name={cancelled ? 'close-circle-outline' : 'checkmark-circle-outline'} size={22} /></View>
                     <View style={styles.sessionBody}>
                       <View style={styles.sessionHeader}>
-                        <ThemedText numberOfLines={1} style={styles.sessionTitle}>{session.taskName || text.focusSession}</ThemedText>
-                        <View style={[styles.statusPill, { backgroundColor: cancelled ? theme.background : Palette.mintPrimary, borderColor: cancelled ? Palette.warning : Palette.mintPrimary }]}><ThemedText style={{ color: cancelled ? Palette.warning : Palette.deepNavy }} type="smallBold">{cancelled ? text.cancelled : text.completedStatus}</ThemedText></View>
+                        <ThemedText numberOfLines={2} style={styles.sessionTitle}>{session.taskName || text.focusSession}</ThemedText>
+                        <View style={[styles.statusPill, { backgroundColor: cancelled ? theme.background : Palette.mintPrimary, borderColor: cancelled ? warning : Palette.mintPrimary }]}><ThemedText style={{ color: cancelled ? warning : Palette.deepNavy }} type="smallBold">{cancelled ? text.cancelled : text.completedStatus}</ThemedText></View>
                       </View>
                       <View style={styles.sessionMeta}>
-                        <ThemedText type="smallBold">{formatSessionDuration(session.focusedDurationSeconds)} {text.focused}</ThemedText>
-                        <ThemedText themeColor="textSecondary" type="small">{text.of} {formatSessionDuration(session.plannedDurationSeconds)}</ThemedText>
+                        <ThemedText type="smallBold">{formatDuration(session.focusedDurationSeconds)} {text.focused}</ThemedText>
+                        <ThemedText themeColor="textSecondary" type="small">{text.of} {formatDuration(session.plannedDurationSeconds)}</ThemedText>
                       </View>
                       <ThemedText themeColor="textSecondary" type="small">{formatSessionDate(session)}</ThemedText>
                     </View>
@@ -155,16 +157,16 @@ const styles = StyleSheet.create({
   summaryLabel: { color: Palette.darkTextSecondary },
   summaryValue: { color: Palette.darkTextPrimary },
   filters: { gap: Spacing.sm, paddingVertical: Spacing.xs },
-  filterChip: { borderRadius: 999, borderWidth: 1, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
+  filterChip: { alignItems: 'center', borderRadius: 999, borderWidth: 1, minHeight: 44, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
   emptyFilterCard: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.sm, padding: Spacing.lg },
   list: { gap: Spacing.sm },
   sectionLabel: { letterSpacing: 1.1, marginTop: Spacing.sm },
   sessionCard: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', gap: Spacing.md, padding: Spacing.lg },
   sessionIcon: { alignItems: 'center', height: 32, justifyContent: 'center', width: 32 },
-  sessionBody: { flex: 1, gap: Spacing.xs },
-  sessionHeader: { alignItems: 'center', flexDirection: 'row', gap: Spacing.sm, justifyContent: 'space-between' },
+  sessionBody: { flex: 1, gap: Spacing.xs, minWidth: 0 },
+  sessionHeader: { alignItems: 'flex-start', flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, justifyContent: 'space-between' },
   statusPill: { borderRadius: 999, borderWidth: 1, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
-  sessionMeta: { alignItems: 'baseline', flexDirection: 'row', gap: Spacing.xs },
-  sessionTitle: { flex: 1 },
+  sessionMeta: { alignItems: 'baseline', flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs },
+  sessionTitle: { flex: 1, minWidth: 0 },
   pressed: { opacity: 0.8 },
 });

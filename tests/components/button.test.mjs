@@ -22,6 +22,7 @@ const dependencies = {
     Text: 'Text',
   },
   '@/hooks/use-theme': { useTheme: () => ({ backgroundElement: '#ddd', text: '#222', textSecondary: '#555' }) },
+  '@/constants/theme': { Fonts: { sans: 'sans' } },
   '@/theme/tokens': {
     LetterSpacingEm: { button: 0 },
     LineHeightRatio: { body: 1.5 },
@@ -41,10 +42,10 @@ runInNewContext(outputText, {
 });
 const { Button } = exports;
 
-test('loading button keeps its action context and exposes one accessible loading name', () => {
+test('loading button keeps its localized action name and exposes busy state', () => {
   const element = Button({ label: 'Save changes', loading: true, onPress() {} });
   assert.equal(element.type, 'Pressable');
-  assert.equal(element.props.accessibilityLabel, 'Save changes, loading');
+  assert.equal(element.props.accessibilityLabel, 'Save changes');
   assert.equal(element.props.accessibilityState.busy, true);
   assert.equal(element.props.accessibilityState.disabled, true);
   assert.equal(element.props.disabled, true);

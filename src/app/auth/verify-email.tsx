@@ -11,17 +11,20 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/features/auth/auth-context';
 import { useAppLocale } from '@/features/localization/app-locale-context';
+import { getAuthRuntimeCopy } from '@/features/localization/auth-runtime-copy';
 
 export default function VerifyEmailRoute() {
   const router = useRouter();
   const isDark = useColorScheme() === 'dark';
   const theme = useTheme();
   const auth = useAuth();
-  const { copy } = useAppLocale();
+  const { copy, locale } = useAppLocale();
+  const runtimeCopy = getAuthRuntimeCopy(locale);
   const params = useLocalSearchParams<{ email?: string }>();
   const email = typeof params.email === 'string' ? params.email : auth.snapshot.email ?? '';
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageIsError, setMessageIsError] = useState(false);
 
   const background = isDark ? theme.background : Palette.homeLightBackground;
   const surface = isDark ? theme.surface : Palette.homeLightSurface;
@@ -45,8 +48,8 @@ export default function VerifyEmailRoute() {
             <View style={[styles.statusIcon, { backgroundColor: softAction }]}><Ionicons color={action} name="mail-outline" size={24} /></View>
             <ThemedText type="subtitle">{copy.recovery.waitingTitle}</ThemedText>
             <ThemedText themeColor="textSecondary">{copy.recovery.waitingBody}</ThemedText>
-            <Button accentColor={action} disabled={busy || !email} fullWidth label={busy ? copy.recovery.sending : copy.recovery.resend} onPress={() => { setBusy(true); setMessage(''); void auth.resendVerification(email).then((result) => { setMessage(result.status === 'error' ? result.message : 'If this address can receive a verification link, it has been sent.'); }).finally(() => setBusy(false)); }} variant="secondary" />
-            {message ? <ThemedText accessibilityLiveRegion="polite" themeColor="textSecondary" style={styles.note} type="small">{message}</ThemedText> : null}
+            <Button accentColor={action} disabled={busy || !email} fullWidth label={busy ? copy.recovery.sending : copy.recovery.resend} onPress={() => { setBusy(true); setMessage(''); setMessageIsError(false); void auth.resendVerification(email).then((result) => { const failed = result.status === 'error'; setMessageIsError(failed); setMessage(failed ? runtimeCopy.genericError : copy.recovery.verificationSent); }).finally(() => setBusy(false)); }} variant="secondary" />
+            {message ? <ThemedText accessibilityLiveRegion={messageIsError ? 'assertive' : 'polite'} accessibilityRole={messageIsError ? 'alert' : undefined} themeColor="textSecondary" style={styles.note} type="small">{message}</ThemedText> : null}
           </ThemedView>
           <Button accentColor={action} fullWidth label={copy.recovery.backToSignIn} onPress={() => router.replace('/auth/sign-in')} style={{ backgroundColor: action, borderColor: action }} />
           <ThemedText style={styles.privacy} themeColor="textMuted" type="small">{copy.recovery.verifiedPrivacy}</ThemedText>

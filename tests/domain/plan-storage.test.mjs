@@ -42,7 +42,7 @@ test('confirmed plans persist in SQLite and reopen with ordered items', async (t
   await store.saveConfirmedPlan(plan('plan-one', 'plan-task'));
   assert.deepEqual(await store.loadActivePlan(), plan('plan-one', 'plan-task'));
   assert.ok(db.database.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='saved_plans'").get());
-  assert.equal(db.database.prepare('PRAGMA user_version').get().user_version, 14);
+  assert.equal(db.database.prepare('PRAGMA user_version').get().user_version, 18);
 });
 
 test('saving another confirmed plan retires the old plan atomically', async (t) => {

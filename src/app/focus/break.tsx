@@ -70,8 +70,9 @@ export default function TrueZenBreakRoute() {
 
   const startBreak = () => {
     if (settingsLoading || (!settingsLoaded && !chosenManually)) return;
-    setNow(Date.now());
-    setBreakTimer(createBreakTimer(duration));
+    const timestamp = Date.now();
+    setNow(timestamp);
+    setBreakTimer(createBreakTimer(duration, timestamp));
   };
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
 
@@ -101,8 +102,8 @@ export default function TrueZenBreakRoute() {
   );
 }
 
-function Guidance({ action, icon, text }: { action: string; icon: keyof typeof Ionicons.glyphMap; text: string }) { return <View style={styles.guidanceRow}><Ionicons color={action} name={icon} size={20} /><ThemedText themeColor="textSecondary" type="small">{text}</ThemedText></View>; }
+function Guidance({ action, icon, text }: { action: string; icon: keyof typeof Ionicons.glyphMap; text: string }) { return <View style={styles.guidanceRow}><Ionicons color={action} name={icon} size={20} /><ThemedText style={styles.guidanceText} themeColor="textSecondary" type="small">{text}</ThemedText></View>; }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 }, scrollContent: { flexGrow: 1, alignItems: 'center', padding: Spacing.lg }, content: { width: '100%', maxWidth: 560, gap: Spacing.md }, back: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }, icon: { alignItems: 'center', borderRadius: 40, borderWidth: 1, height: 72, justifyContent: 'center', marginTop: Spacing.sm, width: 72 }, title: { marginTop: Spacing.sm }, subtitle: { lineHeight: Typography.body.fontSize * 1.5 }, card: { marginTop: Spacing.sm, borderRadius: Radius.card, borderWidth: 1, gap: Spacing.md, padding: Spacing.lg }, settingsNotice: { borderWidth: 1, borderRadius: Radius.card, gap: Spacing.sm, padding: Spacing.md }, eyebrow: { letterSpacing: 1.1 }, durationRow: { flexDirection: 'row', gap: Spacing.sm }, duration: { alignItems: 'center', borderRadius: 12, borderWidth: 1, flex: 1, justifyContent: 'center', minHeight: 48 }, timer: { fontSize: 48, fontWeight: '700', lineHeight: 56, textAlign: 'center' }, guidance: { gap: Spacing.sm, marginTop: Spacing.sm }, guidanceRow: { alignItems: 'center', flexDirection: 'row', gap: Spacing.sm }, pressed: { opacity: 0.78 }, note: { marginTop: Spacing.sm, textAlign: 'center' },
+  screen: { flex: 1 }, scrollContent: { flexGrow: 1, alignItems: 'center', padding: Spacing.lg }, content: { width: '100%', maxWidth: 560, gap: Spacing.md }, back: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }, icon: { alignItems: 'center', borderRadius: 40, borderWidth: 1, height: 72, justifyContent: 'center', marginTop: Spacing.sm, width: 72 }, title: { marginTop: Spacing.sm }, subtitle: { lineHeight: Typography.body.fontSize * 1.5 }, card: { marginTop: Spacing.sm, borderRadius: Radius.card, borderWidth: 1, gap: Spacing.md, padding: Spacing.lg }, settingsNotice: { borderWidth: 1, borderRadius: Radius.card, gap: Spacing.sm, padding: Spacing.md }, eyebrow: { letterSpacing: 1.1 }, durationRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }, duration: { alignItems: 'center', borderRadius: 12, borderWidth: 1, flexBasis: 84, flexGrow: 1, justifyContent: 'center', minHeight: 48, minWidth: 84 }, timer: { fontSize: 48, fontWeight: '700', lineHeight: 56, textAlign: 'center' }, guidance: { gap: Spacing.sm, marginTop: Spacing.sm }, guidanceRow: { alignItems: 'flex-start', flexDirection: 'row', gap: Spacing.sm }, guidanceText: { flex: 1, minWidth: 0 }, pressed: { opacity: 0.78 }, note: { marginTop: Spacing.sm, textAlign: 'center' },
 });

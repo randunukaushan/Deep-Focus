@@ -1,9 +1,29 @@
 import type { PublicPage } from './public-pages';
 import type { Locale } from './locale';
 
-type LocalizedSlug = 'solutions/personal' | 'solutions/education' | 'roadmap' | 'updates' | 'help';
+type LocalizedSlug = 'solutions/personal' | 'solutions/education' | 'plans' | 'roadmap' | 'updates' | 'help';
 
 const localizedPages: Record<LocalizedSlug, Record<Exclude<Locale, 'en'>, PublicPage>> = {
+  plans: {
+    si: {
+      eyebrow: 'සැලසුම්', title: 'මිලදී ගැනීම ලබාගත නොහැක.',
+      description: 'මෙම සංවර්ධන පෙරදසුනේ මිල, subscription offer හෝ checkout සක්‍රිය නැත.',
+      reviewPending: true,
+      sections: [
+        { kicker: 'CHECKOUT නැත', heading: 'මෙහි මිලදී ගැනීමට කිසිවක් නැත', body: 'වාණිජ විස්තර, provider eligibility සහ billing safeguards තවම අවසන් කර නැත. මෙම පිටුව placeholder මිලක් නොපෙන්වන අතර ගෙවීම් තොරතුරු එකතු නොකරයි.' },
+        { kicker: 'මූලික ප්‍රවේශය', heading: 'නිකුත් කිරීමේ ප්‍රවේශය තවම තීරණය කරමින් පවතී', body: 'මිලදී ගැනීමකින් තොර launch access path එක තවම තහවුරු කර නැත. මිලදී ගැනීමේ තීරණයක් ගැනීමට පෙර reviewed offer matrix එකක් බලා සිටින්න.' },
+      ],
+    },
+    ta: {
+      eyebrow: 'திட்டங்கள்', title: 'கொள்முதல் கிடைக்கவில்லை.',
+      description: 'இந்த மேம்பாட்டு முன்னோட்டத்தில் விலை, சந்தா சலுகை அல்லது கட்டணப் பக்கம் செயல்பாட்டில் இல்லை.',
+      reviewPending: true,
+      sections: [
+        { kicker: 'கட்டணப் பக்கம் இல்லை', heading: 'இங்கே வாங்க எதுவும் இல்லை', body: 'வணிக விவரங்கள், வழங்குநர் தகுதி மற்றும் கட்டணப் பாதுகாப்புகள் இன்னும் இறுதிப்படுத்தப்படவில்லை. இந்தப் பக்கம் மாதிரி விலையைக் காட்டாது; கட்டணத் தகவலையும் சேகரிக்காது.' },
+        { kicker: 'முக்கிய அணுகல்', heading: 'வெளியீட்டு அணுகல் இன்னும் தீர்மானிக்கப்படுகிறது', body: 'கொள்முதல் இல்லாத வெளியீட்டு அணுகல் பாதை இன்னும் உறுதிப்படுத்தப்படவில்லை. வாங்கும் முடிவு எடுப்பதற்கு முன் மதிப்பாய்வு செய்யப்பட்ட சலுகை அட்டவணையை காத்திருக்கவும்.' },
+      ],
+    },
+  },
   'solutions/personal': {
     si: {
       eyebrow: 'පුද්ගලික වැඩ', title: 'ඊළඟ පියවරට ටිකක් ඉඩක් වෙන්කරගන්න.',

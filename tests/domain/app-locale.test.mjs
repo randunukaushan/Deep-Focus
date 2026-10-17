@@ -72,7 +72,7 @@ test('entry and sign-in copy is available in every approved locale', () => {
   assert.equal(getAppLocaleCopy('si').signIn.signIn, 'ඇතුල් වන්න');
   assert.equal(getAppLocaleCopy('ta').welcome.signIn, 'உள்நுழைக');
   assert.equal(getAppLocaleCopy('si').home.tasks, 'කාර්ය');
-  assert.equal(getAppLocaleCopy('si').focus.start, 'අවධානම් සැසිය ආරම්භ කරන්න');
+  assert.equal(getAppLocaleCopy('si').focus.start, 'අවධානයේ සැසිය ආරම්භ කරන්න');
   assert.equal(getAppLocaleCopy('ta').plan.goals, 'இலக்குகள்');
   assert.equal(getAppLocaleCopy('si').profile.signOut, 'ඉවත් වන්න');
   assert.equal(getAppLocaleCopy('si').planner.confirm, 'මෙම යෝජනාව තහවුරු කරන්න');
@@ -82,4 +82,27 @@ test('entry and sign-in copy is available in every approved locale', () => {
   assert.equal(getAppLocaleCopy('si').resourcesPage.save, 'සම්පත සුරකින්න');
   assert.equal(getAppLocaleCopy('si').historyPage.title, 'සැසි ඉතිහාසය');
   assert.equal(getAppLocaleCopy('ta').historyPage.title, 'அமர்வு வரலாறு');
+  assert.equal(getAppLocaleCopy('si').onboarding.profile.savedDetail.includes('local app database'), false);
+  assert.equal(getAppLocaleCopy('si').onboarding.profile.applied.includes('local '), false);
+  assert.equal(getAppLocaleCopy('ta').tasks.saveError.includes('draft'), false);
+  assert.equal(getAppLocaleCopy('ta').tasks.saveError.includes('வரைவும்'), true);
+  assert.equal(getAppLocaleCopy('ta').profile.cardDetail.includes('onboarding'), false);
+  assert.equal(getAppLocaleCopy('ta').profile.offlineAccount.includes('offline'), false);
+});
+
+test('assessment prompts, options, profile suggestions and notes exist in EN/SI/TA', () => {
+  for (const locale of ['en', 'si', 'ta']) {
+    const copy = getAppLocaleCopy(locale);
+    const data = getAppLocaleCopy(locale).assessmentData;
+    assert.ok(data);
+    assert.equal(Object.keys(data.questions).length, 7);
+    for (const question of Object.values(data.questions)) {
+      assert.ok(question.prompt);
+      assert.equal(Object.keys(question.options).length, 4);
+      for (const label of Object.values(question.options)) assert.ok(label);
+    }
+    assert.equal(data.profile.suggestionTitles.length, 3);
+    assert.ok(data.profile.note);
+    if (locale !== 'en') assert.notEqual(copy.onboarding.assessment.backOnboarding, 'Onboarding');
+  }
 });

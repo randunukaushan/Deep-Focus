@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Palette, Radius, Spacing, Typography } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+import { useOnboarding } from '@/features/onboarding/onboarding-context';
 import { useAssessmentFlow } from '@/features/assessment/assessment-flow-context';
 import { getAppLocaleCopy } from '@/features/localization/app-locale';
 import { useAppLocale } from '@/features/localization/app-locale-context';
@@ -19,6 +20,7 @@ export default function OnboardingRoute() {
   const { copy, locale, setLocale } = useAppLocale();
   const introCopy = copy.onboarding?.intro ?? getAppLocaleCopy('en').onboarding!.intro;
   const settingsPageCopy = copy.settingsPage ?? getAppLocaleCopy('en').settingsPage!;
+  const { beginAssessment, skip } = useOnboarding();
   const { clearAnswers } = useAssessmentFlow();
   const isDark = useColorScheme() === 'dark';
   const theme = useTheme();
@@ -49,7 +51,7 @@ export default function OnboardingRoute() {
     <ThemedView style={[styles.screen, { backgroundColor: background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
-          <Pressable accessibilityLabel="Back to welcome" accessibilityRole="button" onPress={() => router.back()} style={styles.back}>
+          <Pressable accessibilityLabel={introCopy.back} accessibilityRole="button" onPress={() => router.back()} style={styles.back}>
             <Ionicons color={action} name="arrow-back" size={20} />
             <ThemedText style={{ color: action }} type="smallBold">{introCopy.back}</ThemedText>
           </Pressable>
@@ -58,9 +60,9 @@ export default function OnboardingRoute() {
           <ThemedText themeColor="textSecondary" style={styles.subtitle}>{introCopy.subtitle}</ThemedText>
 
           <View style={styles.steps}>
-            <Step action={action} border={border} icon="create-outline" number="01" title={introCopy.stepOneTitle} detail={introCopy.stepOneDetail} surface={surface} />
-            <Step action={action} border={border} icon="options-outline" number="02" title={introCopy.stepTwoTitle} detail={introCopy.stepTwoDetail} surface={surface} />
-            <Step action={action} border={border} icon="leaf-outline" number="03" title={introCopy.stepThreeTitle} detail={introCopy.stepThreeDetail} surface={surface} />
+            <Step action={action} border={border} icon="create-outline" number="01" title={introCopy.stepOneTitle} detail={introCopy.stepOneDetail} softAction={softAction} surface={surface} />
+            <Step action={action} border={border} icon="options-outline" number="02" title={introCopy.stepTwoTitle} detail={introCopy.stepTwoDetail} softAction={softAction} surface={surface} />
+            <Step action={action} border={border} icon="leaf-outline" number="03" title={introCopy.stepThreeTitle} detail={introCopy.stepThreeDetail} softAction={softAction} surface={surface} />
           </View>
           <ThemedView accessibilityLabel={`${copy.settings.language}: ${locale}`} style={[styles.languageCard, { backgroundColor: surface, borderColor: border }]}>
             <ThemedText type="smallBold">{copy.settings.language}</ThemedText>
@@ -73,8 +75,8 @@ export default function OnboardingRoute() {
             </View>
             {languageSaveError ? <ThemedText accessibilityRole="alert" themeColor="textSecondary" type="small">{settingsPageCopy.saveError}</ThemedText> : null}
           </ThemedView>
-          <Button accentColor={action} fullWidth label={introCopy.start} onPress={() => { clearAnswers(); router.push('/onboarding/assessment'); }} style={{ backgroundColor: action, borderColor: action }} />
-          <Button label={introCopy.skip} onPress={() => router.replace('/(tabs)/home')} variant="ghost" />
+          <Button accentColor={action} fullWidth label={introCopy.start} onPress={() => { void beginAssessment().then(() => router.push('/onboarding/assessment')); }} style={{ backgroundColor: action, borderColor: action }} />
+          <Button label={introCopy.skip} onPress={() => { clearAnswers(); void skip().then(() => router.replace('/(tabs)/home')); }} variant="ghost" />
           <ThemedText style={styles.privacy} themeColor="textMuted" type="small">{introCopy.privacy}</ThemedText>
         </View>
       </ScrollView>
@@ -82,8 +84,8 @@ export default function OnboardingRoute() {
   );
 }
 
-function Step({ action, border, detail, icon, number, surface, title }: { action: string; border: string; detail: string; icon: keyof typeof Ionicons.glyphMap; number: string; surface: string; title: string }) {
-  return <ThemedView style={[styles.step, { backgroundColor: surface, borderColor: border }]}><View style={[styles.stepIcon, { backgroundColor: Palette.homeLightActionSoft }]}><Ionicons color={action} name={icon} size={22} /></View><View style={styles.stepCopy}><ThemedText style={{ color: action }} type="smallBold">{number}</ThemedText><ThemedText type="smallBold">{title}</ThemedText><ThemedText themeColor="textSecondary" type="small">{detail}</ThemedText></View></ThemedView>;
+function Step({ action, border, detail, icon, number, softAction, surface, title }: { action: string; border: string; detail: string; icon: keyof typeof Ionicons.glyphMap; number: string; softAction: string; surface: string; title: string }) {
+  return <ThemedView style={[styles.step, { backgroundColor: surface, borderColor: border }]}><View style={[styles.stepIcon, { backgroundColor: softAction }]}><Ionicons color={action} name={icon} size={22} /></View><View style={styles.stepCopy}><ThemedText style={{ color: action }} type="smallBold">{number}</ThemedText><ThemedText type="smallBold">{title}</ThemedText><ThemedText themeColor="textSecondary" type="small">{detail}</ThemedText></View></ThemedView>;
 }
 
 const styles = StyleSheet.create({
@@ -97,9 +99,9 @@ const styles = StyleSheet.create({
   steps: { gap: Spacing.sm, marginTop: Spacing.sm },
   step: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', gap: Spacing.md, minHeight: 88, padding: Spacing.md },
   stepIcon: { alignItems: 'center', borderRadius: 24, height: 48, justifyContent: 'center', width: 48 },
-  stepCopy: { flex: 1, gap: 2 },
+  stepCopy: { flex: 1, gap: 2, minWidth: 0 },
   languageCard: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.xs, padding: Spacing.md },
-  languageOptions: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.xs },
+  languageOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.xs },
   languageOption: { alignItems: 'center', borderRadius: 10, borderWidth: 1, justifyContent: 'center', minHeight: 44, minWidth: 78, paddingHorizontal: Spacing.sm },
   pressed: { opacity: 0.78 },
   privacy: { marginTop: Spacing.sm, textAlign: 'center' },

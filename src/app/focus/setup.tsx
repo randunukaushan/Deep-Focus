@@ -92,7 +92,7 @@ export default function SessionSetupRoute() {
             {custom ? <TextInput accessibilityLabel={`${text.custom} ${text.minutes}`} keyboardType="number-pad" maxLength={3} onChangeText={setCustomDuration} placeholder={text.minutes} placeholderTextColor={theme.textMuted} style={[styles.input, { backgroundColor: homeSurface, borderColor: homeBorder, color: theme.text }]} value={customDuration} /> : null}
             <ThemedText themeColor="textSecondary" type="small">{text.durationHint}</ThemedText>
             {settingsError ? <ThemedText accessibilityRole="alert" themeColor="textSecondary">{text.settingsError}</ThemedText> : null}
-            {submitted && !valid ? <ThemedText accessibilityLiveRegion="polite" style={styles.error}>{text.durationError}</ThemedText> : null}
+          {submitted && !valid ? <ThemedText accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error}>{text.durationError}</ThemedText> : null}
           </View>
           <View style={styles.actions}>
             <Button accentColor={homeAction} accessibilityLabel={text.startSession} disabled={settingsLoading || taskLoading || taskError} fullWidth label={text.startSession} onPress={start} style={{ backgroundColor: homeAction, borderColor: homeAction }} />
@@ -108,6 +108,6 @@ const styles = StyleSheet.create({
   screen: { flex: 1 }, flex: { flex: 1 }, scroll: { flexGrow: 1, padding: Spacing.lg },
   content: { width: '100%', maxWidth: 560, alignSelf: 'center', gap: Spacing.xl }, header: { gap: Spacing.sm }, group: { gap: Spacing.sm },
   input: { minHeight: 48, borderWidth: 1, borderRadius: Radius.card, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, fontSize: Typography.body.fontSize },
-  options: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }, option: { minHeight: 48, minWidth: 84, borderWidth: 1, borderRadius: Radius.card, paddingHorizontal: Spacing.md, justifyContent: 'center', alignItems: 'center' },
+  options: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }, option: { flexBasis: 84, flexGrow: 1, minHeight: 48, minWidth: 84, borderWidth: 1, borderRadius: Radius.card, paddingHorizontal: Spacing.md, justifyContent: 'center', alignItems: 'center' },
   selected: { color: Palette.deepNavy }, pressed: { opacity: 0.8 }, error: { color: Palette.error }, actions: { gap: Spacing.sm },
 });

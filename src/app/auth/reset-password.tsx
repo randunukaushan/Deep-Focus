@@ -31,8 +31,8 @@ export default function ResetPasswordRoute() {
       <ThemedText themeColor="textSecondary">{copy.recovery.newPasswordSubtitle}</ThemedText>
       <TextInput accessibilityLabel={copy.recovery.newPassword} autoCapitalize="none" autoComplete="new-password" onChangeText={setPassword} placeholder={copy.recovery.newPassword} placeholderTextColor={theme.textMuted} secureTextEntry style={[styles.input, { borderColor: theme.border, color: theme.text }]} textContentType="newPassword" value={password} />
       <TextInput accessibilityLabel={copy.recovery.confirmNewPassword} autoCapitalize="none" autoComplete="new-password" onChangeText={setConfirmation} placeholder={copy.recovery.confirmNewPassword} placeholderTextColor={theme.textMuted} secureTextEntry style={[styles.input, { borderColor: mismatch ? Palette.error : theme.border, color: theme.text }]} textContentType="newPassword" value={confirmation} />
-      {mismatch ? <ThemedText style={styles.error}>{copy.recovery.mismatch}</ThemedText> : null}
-      {message ? <ThemedText accessibilityLiveRegion="polite" style={styles.error}>{message}</ThemedText> : null}
+      {mismatch ? <ThemedText accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error}>{copy.recovery.mismatch}</ThemedText> : null}
+      {message ? <ThemedText accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error}>{message}</ThemedText> : null}
       <Button accentColor={action} disabled={busy || !password || password !== confirmation} fullWidth label={busy ? copy.recovery.saving : copy.recovery.savePassword} onPress={() => { setSubmitted(true); if (!password || password !== confirmation) return; setBusy(true); setMessage(''); void auth.updatePassword(password).then((result) => { if (result.status === 'signed_in') router.replace('/(tabs)/home'); else if (result.status === 'error') setMessage(copy.recovery.recoveryError); }).finally(() => setBusy(false)); }} style={{ backgroundColor: action, borderColor: action }} />
     </ScrollView>
   </ThemedView>;

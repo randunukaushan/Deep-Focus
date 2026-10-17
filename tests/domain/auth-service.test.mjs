@@ -1,7 +1,30 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 
-import { authRedirectCode, createAuthService, exchangeAuthCodeOnce } from '../../src/features/auth/auth-service.ts';
+const ts = createRequire(import.meta.url)('typescript');
+
+function compile(path) {
+  return ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+}
+
+const copyExports = {};
+runInNewContext(compile('../../src/features/localization/auth-service-copy.ts'), { exports: copyExports });
+const serviceExports = {};
+runInNewContext(compile('../../src/features/auth/auth-service.ts'), {
+  exports: serviceExports,
+  URL,
+  require(name) {
+    if (name === '@/features/localization/auth-service-copy') return copyExports;
+    throw new Error(`Unexpected dependency ${name}`);
+  },
+});
+const { authRedirectCode, createAuthService, exchangeAuthCodeOnce } = serviceExports;
+const plain = (value) => JSON.parse(JSON.stringify(value));
 
 function makeClient(overrides = {}) {
   const calls = [];
@@ -29,7 +52,7 @@ test('email sign-in validates input and only reports success with a session', as
   const { client, calls } = makeClient();
   const service = createAuthService({ client, redirectUrl, openAuthSession: async () => ({ type: 'cancel' }) });
   assert.equal((await service.signInWithPassword(' user@example.com ', 'secret')).status, 'signed_in');
-  assert.deepEqual(calls[0].args[0], { email: 'user@example.com', password: 'secret' });
+  assert.deepEqual(plain(calls[0].args[0]), { email: 'user@example.com', password: 'secret' });
 
   const noSession = makeClient({ signInWithPassword: async () => ({ data: { session: null }, error: null }) });
   assert.equal((await createAuthService({ client: noSession.client, redirectUrl, openAuthSession: async () => ({ type: 'cancel' }) }).signInWithPassword('user@example.com', 'secret')).status, 'error');
@@ -39,10 +62,10 @@ test('email sign-in validates input and only reports success with a session', as
 test('email registration distinguishes verification and immediate authenticated sessions', async () => {
   const awaiting = makeClient();
   const service = createAuthService({ client: awaiting.client, redirectUrl, openAuthSession: async () => ({ type: 'cancel' }) });
-  assert.deepEqual(await service.signUpWithPassword('user@example.com', 'pass'), { status: 'verification_required' });
+  assert.deepEqual(plain(await service.signUpWithPassword('user@example.com', 'pass')), { status: 'verification_required' });
   assert.equal(awaiting.calls[0].args[0].options.emailRedirectTo, redirectUrl);
   const immediate = makeClient({ signUp: async () => ({ data: { session: { user: { id: 'user-1' } } }, error: null }) });
-  assert.deepEqual(await createAuthService({ client: immediate.client, redirectUrl, openAuthSession: async () => ({ type: 'cancel' }) }).signUpWithPassword('user@example.com', 'pass'), { status: 'signed_in' });
+  assert.deepEqual(plain(await createAuthService({ client: immediate.client, redirectUrl, openAuthSession: async () => ({ type: 'cancel' }) }).signUpWithPassword('user@example.com', 'pass')), { status: 'signed_in' });
 });
 
 test('provider errors and SecureStore write failures become safe user-facing errors', async () => {
@@ -56,7 +79,7 @@ test('provider errors and SecureStore write failures become safe user-facing err
 
 test('Google OAuth uses PKCE redirect and rejects cancellation or missing exchange session', async () => {
   const canceled = makeClient();
-  assert.deepEqual(await createAuthService({ client: canceled.client, redirectUrl, openAuthSession: async () => ({ type: 'cancel' }) }).signInWithGoogle(), { status: 'cancelled' });
+  assert.deepEqual(plain(await createAuthService({ client: canceled.client, redirectUrl, openAuthSession: async () => ({ type: 'cancel' }) }).signInWithGoogle()), { status: 'cancelled' });
   assert.equal(canceled.calls[0].args[0].options.redirectTo, redirectUrl);
 
   const missingSession = makeClient({ exchangeCodeForSession: async () => ({ data: { session: null }, error: null }) });
@@ -81,16 +104,16 @@ test('Apple exchanges a hashed nonce credential with the original raw nonce', as
     apple: { AppleAuthenticationScope: { EMAIL: 1, FULL_NAME: 2 }, signInAsync: async ({ nonce }) => { assert.equal(nonce, 'sha256-hash'); return { identityToken: 'identity-token' }; } },
     crypto: { randomUUID: () => 'raw-nonce', digestStringAsync: async (_algorithm, nonce) => { assert.equal(nonce, 'raw-nonce'); return 'sha256-hash'; }, CryptoDigestAlgorithm: { SHA256: 'SHA-256' } },
   });
-  assert.deepEqual(await service.signInWithApple(), { status: 'signed_in' });
-  assert.deepEqual(calls[0].args[0], { provider: 'apple', token: 'identity-token', nonce: 'raw-nonce' });
+  assert.deepEqual(plain(await service.signInWithApple()), { status: 'signed_in' });
+  assert.deepEqual(plain(calls[0].args[0]), { provider: 'apple', token: 'identity-token', nonce: 'raw-nonce' });
 });
 
 test('password recovery responses do not disclose account existence and redirect parsing is strict', async () => {
   const { client, calls } = makeClient();
   const service = createAuthService({ client, redirectUrl, openAuthSession: async () => ({ type: 'cancel' }) });
-  assert.deepEqual(await service.requestPasswordReset('user@example.com'), { status: 'sent' });
+  assert.deepEqual(plain(await service.requestPasswordReset('user@example.com')), { status: 'sent' });
   assert.equal(calls[0].args[1].redirectTo, redirectUrl);
-  assert.deepEqual(authRedirectCode(`${redirectUrl}?code=abc&type=recovery`, redirectUrl), { code: 'abc', error: false, recovery: true });
+  assert.deepEqual(plain(authRedirectCode(`${redirectUrl}?code=abc&type=recovery`, redirectUrl)), { code: 'abc', error: false, recovery: true });
   assert.equal(authRedirectCode('https://attacker.example/auth/callback?code=abc', redirectUrl), null);
   assert.equal(authRedirectCode('deepfocus://auth/other?code=abc', redirectUrl), null);
 });
@@ -104,5 +127,5 @@ test('a callback code delivered by browser and deep-link listeners is exchanged 
   assert.strictEqual(deepLinkDelivery, browserDelivery);
   assert.deepEqual(calls, ['single-use-code']);
   release({ data: { session: { user: { id: 'user-1' } } }, error: null });
-  assert.deepEqual(await browserDelivery, { data: { session: { user: { id: 'user-1' } } }, error: null });
+  assert.deepEqual(plain(await browserDelivery), { data: { session: { user: { id: 'user-1' } } }, error: null });
 });

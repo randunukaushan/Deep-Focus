@@ -42,7 +42,7 @@ test('SQLite v8 creates resource, saved-plan and teacher-draft tables and persis
   const db = makeDatabaseAdapter(); t.after(() => db.close());
   const first = createAccountLocalDatabaseStore(USER_A, dependencies(db));
   await first.saveResource(resource('study-book'));
-  assert.equal(db.database.prepare('PRAGMA user_version').get().user_version, 14);
+  assert.equal(db.database.prepare('PRAGMA user_version').get().user_version, 18);
   assert.ok(db.database.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='local_resources'").get());
   assert.deepEqual((await createAccountLocalDatabaseStore(USER_A, dependencies(db)).loadResources()).map(({ id, reference }) => ({ id, reference })), [{ id: 'study-book', reference: 'Book:study-book' }]);
 });
@@ -61,6 +61,14 @@ test('resources and links remain isolated by owner, including same IDs', async (
   assert.equal((await a.loadResources())[0].title, 'A private reference');
   assert.equal((await b.loadResources())[0].title, 'B private reference');
   assert.equal(await a.linkResourceToTask('missing-task', 'shared-resource', 1), false);
+});
+
+test('a duplicate new-resource ID fails closed without overwriting the existing resource', async (t) => {
+  const db = makeDatabaseAdapter(); t.after(() => db.close());
+  const store = createAccountLocalDatabaseStore(USER_A, dependencies(db));
+  await store.saveResource(resource('collision', { title: 'Original private reference' }));
+  await assert.rejects(store.saveResource(resource('collision', { title: 'Replacement must not overwrite' })));
+  assert.equal((await store.loadResources())[0].title, 'Original private reference');
 });
 
 test('resource revisions are required for links and missing resources cannot be linked', async (t) => {
@@ -86,6 +94,22 @@ test('links update idempotently, unlink independently, and cascade only with the
   assert.equal(await store.unlinkResourceFromTask('task-a', 'resource-a'), true);
   assert.deepEqual(await store.loadTaskResourceLinks('task-a'), []);
   assert.equal((await store.loadTaskResourceLinks('task-b'))[0].resourceId, 'resource-a');
+});
+
+test('renaming an owned resource preserves its ID, revision and existing task links', async (t) => {
+  const db = makeDatabaseAdapter(); t.after(() => db.close());
+  const a = createAccountLocalDatabaseStore(USER_A, dependencies(db, '2026-10-09T02:01:00.000Z'));
+  const b = createAccountLocalDatabaseStore(USER_B, dependencies(db));
+  await a.saveTasks([task('task-a')]); await a.saveResource(resource('resource-a'));
+  assert.equal(await a.linkResourceToTask('task-a', 'resource-a', 1), true);
+  const updatedAt = await a.renameResource('resource-a', NOW, 'Renamed reference');
+  assert.equal(updatedAt, '2026-10-09T02:01:00.000Z');
+  assert.deepEqual(await a.loadTaskResourceLinks('task-a'), [{ taskId: 'task-a', resourceId: 'resource-a', resourceRevision: 1, position: 0 }]);
+  const [renamed] = await a.loadResources();
+  assert.equal(renamed.title, 'Renamed reference'); assert.equal(renamed.revision, 1);
+  assert.equal(await a.renameResource('resource-a', NOW, 'Stale rename'), null);
+  assert.equal(await b.renameResource('resource-a', NOW, 'Wrong owner'), null);
+  assert.equal((await a.loadResources())[0].title, 'Renamed reference');
 });
 
 test('resource writes roll back together and corrupted rows fail closed on read', async (t) => {

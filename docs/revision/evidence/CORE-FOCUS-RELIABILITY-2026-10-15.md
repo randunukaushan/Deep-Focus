@@ -52,6 +52,10 @@ Additional checks:
 - TypeScript no-emit check: **passed** (`TSC_EXIT=0`).
 - Targeted ESLint with `--max-warnings=0`: **passed** (`ESLINT_EXIT=0`).
 - `git diff --check`: **passed**; existing line-ending warnings only.
+- Break start now captures one timestamp for both the displayed clock and the
+  persisted break timer, preventing a `CLOCK_UNCERTAIN` race if the device
+  clock moves backwards between adjacent `Date.now()` calls. The focused break
+  component test passed 20 repeated runs after this fix.
 
 ## Device lifecycle execution protocol — NOT_RUN
 
@@ -86,3 +90,28 @@ simulator result as physical-device evidence.
   and push: not performed.
 
 The passing local tests do not by themselves establish production readiness.
+
+## Android offline build check — 2026-10-16
+
+- `android\\gradlew.bat assembleDebug --offline` completed successfully in
+  11m 44s: 662 actionable tasks, 55 executed and 607 up-to-date. The offline
+  flag prevented dependency download; no source or production-data change was
+  made by this verification.
+- Gradle reported an Android SDK XML tooling-version warning and deprecated
+  Gradle-feature warning. Neither failed the build. They remain maintenance
+  observations, not a substitute for platform validation.
+- ADB was available locally but reported no attached Android device or emulator.
+  Therefore active-session restart, paused-session restart, background focus and
+  break timing, duplicate completion, TalkBack and real rendering remain
+  **NOT_RUN** on Android. iOS remains **NOT_RUN**.
+- Fresh current-tree verification: `android\\gradlew.bat assembleDebug --offline`
+  completed successfully on 2026-10-16 (662 actionable tasks; 55 executed,
+  607 up-to-date). This confirms the debug Android package builds locally; it
+  does not establish device lifecycle or accessibility behavior.
+- Local analytics, streak and XP/reward consumers are covered separately by
+  `STREAK-XP-REWARDS-V1-RELIABILITY-2026-10-15.md`; this build check neither
+  proves live Supabase synchronization nor replaces its review gates.
+- Direct source lint verification completed after the Expo wrapper's bounded
+  invocation had remained unfinished: `node node_modules/eslint/bin/eslint.js
+  src --max-warnings=0` exited **0**. This verifies the current application
+  source; it does not replace device, backend, or independent-review evidence.

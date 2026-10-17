@@ -47,6 +47,10 @@ export function validateResourceInput(input: { kind: LocalResourceKind; title: s
   return { kind: input.kind, title, reference };
 }
 
+export function validateResourceTitle(title: unknown): string {
+  return cleanText(title, 'title', MAX_TITLE);
+}
+
 export function validateResourceId(id: unknown): string {
   return cleanText(id, 'id', 128);
 }

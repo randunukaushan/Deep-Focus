@@ -24,6 +24,12 @@ export async function resolve(specifier, context, nextResolve) {
   if (specifier === '@/features/education/teacher-assignment-draft') {
     return nextResolve(new URL('../../src/features/education/teacher-assignment-draft.ts', import.meta.url).href, context);
   }
+  if (specifier === '@/features/progress/progression-rules') {
+    return nextResolve(new URL('../../src/features/progress/progression-rules.ts', import.meta.url).href, context);
+  }
+  if (specifier === '@/features/progress/streak') {
+    return nextResolve(new URL('../../src/features/progress/streak.ts', import.meta.url).href, context);
+  }
   if (specifier === '@/features/monetization/entitlement-policy') {
     return nextResolve(new URL('../../src/features/monetization/entitlement-policy.ts', import.meta.url).href, context);
   }

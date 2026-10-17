@@ -103,7 +103,7 @@ export function AccountPortal({ locale = 'en' }: { locale?: Locale }) {
       exportedAt: new Date().toISOString(),
       accountEmail: email || null,
       privateDataSync: 'not_enabled',
-      note: 'This preview exports portal-visible account status only; private app data is not included.',
+      note: privacyCopy.summaryExportNote,
     }, null, 2);
     const url = URL.createObjectURL(new Blob([body], { type: 'application/json' }));
     const link = document.createElement('a');

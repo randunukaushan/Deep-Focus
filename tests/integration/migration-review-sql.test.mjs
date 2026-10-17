@@ -230,3 +230,38 @@ isolatedTest('migration advisory lock is held inside the transaction and release
     assert.equal((await db.query(lockSQL)).rows[0].n, 0);
   }
 });
+
+isolatedTest('reward progression tables preserve owner binding, terminal eligibility and one-time receipts', async (t) => {
+  const db = await fixture(t);
+  await runMigrations({ files, schemaVersion: 1, store: store(db) });
+  const ownerA = '30000000-0000-4000-8000-000000000001';
+  const ownerB = '30000000-0000-4000-8000-000000000002';
+  const workspaceA = '30000000-0000-4000-8000-000000000003';
+  const workspaceB = '30000000-0000-4000-8000-000000000004';
+  const completedA = '30000000-0000-4000-8000-000000000005';
+  const cancelledB = '30000000-0000-4000-8000-000000000006';
+  for (const [owner, workspace] of [[ownerA, workspaceA], [ownerB, workspaceB]]) {
+    await db.query('insert into auth.users(id) values($1)', [owner]);
+    await db.query('insert into df_private.profiles(owner_id,display_name) values($1,$2)', [owner, 'Fixture']);
+    await db.query('insert into df_private.workspaces(id,owner_id) values($1,$2)', [workspace, owner]);
+  }
+  await db.query(`insert into df_private.focus_sessions(id,owner_id,workspace_id,status,contract_version,planned_ms,focused_ms,paused_ms,started_at,ended_at,recorded_at)
+    values($1,$2,$3,'completed',2,60000,60000,0,now()-interval '1 minute',now(),now())`, [completedA, ownerA, workspaceA]);
+  await db.query(`insert into df_private.focus_sessions(id,owner_id,workspace_id,status,contract_version,planned_ms,focused_ms,paused_ms,started_at,ended_at,recorded_at)
+    values($1,$2,$3,'cancelled',2,60000,0,0,now()-interval '1 minute',now(),now())`, [cancelledB, ownerB, workspaceB]);
+  const operationKey = `terminal:${completedA}`;
+  await db.query(`insert into df_private.progression_events(owner_id,consumer,source_operation_key,source_type,source_id,xp_delta,rules_version)
+    values($1,'rewards:v1',$2,'focus_session',$3,1,'v1')`, [ownerA, operationKey, completedA]);
+  await assert.rejects(() => db.query(`insert into df_private.progression_events(owner_id,consumer,source_operation_key,source_type,source_id,xp_delta,rules_version)
+    values($1,'rewards:v1',$2,'focus_session',$3,1,'v1')`, [ownerA, operationKey, completedA]), (error) => error.code === '23505');
+  await assert.rejects(() => db.query(`insert into df_private.progression_events(owner_id,consumer,source_operation_key,source_type,source_id,xp_delta,rules_version)
+    values($1,'rewards:v1',$2,'focus_session',$3,0,'v1')`, [ownerA, `terminal:${cancelledB}`, cancelledB]), (error) => error.code === '23503');
+  await assert.rejects(() => db.query(`insert into df_private.progression_events(owner_id,consumer,source_operation_key,source_type,source_id,xp_delta,rules_version)
+    values($1,'rewards:v1',$2,'focus_session',$3,0,'v1')`, [ownerB, `terminal:${cancelledB}`, cancelledB]), (error) => error.code === '23514');
+  await db.query(`insert into df_private.user_achievements(owner_id,achievement_id,unlocked_at,source_operation_key,rules_version)
+    values($1,'first_focus_session',now(),$2,'v1')`, [ownerA, operationKey]);
+  await db.query(`update df_private.user_achievements set summary_presented_at = unlocked_at where owner_id=$1 and achievement_id='first_focus_session'`, [ownerA]);
+  await assert.rejects(() => db.query(`update df_private.user_achievements set summary_presented_at = now() where owner_id=$1 and achievement_id='first_focus_session'`, [ownerA]), (error) => error.code === '23514');
+  await assert.rejects(() => db.query(`insert into df_private.user_achievements(owner_id,achievement_id,unlocked_at,rules_version,backfill_marker)
+    values($1,'focus_sessions_5',now(),'v1',true)`, [ownerA]), (error) => error.code === '23514');
+});

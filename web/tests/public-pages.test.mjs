@@ -7,12 +7,24 @@ import { accountCopy, isLocale, resolveLocale, safeLocalReturnPath, sharedCopy }
 import { homeCopy } from '../src/content/home-copy.ts';
 import { getLocalizedPublicPage } from '../src/content/localized-public-pages.ts';
 import { accountPrivacyCopy } from '../src/content/account-privacy-copy.ts';
+import { getContentPageCopy } from '../src/content/content-page-copy.ts';
 
 test('website locale preference accepts only approved locales and safely falls back', () => {
   assert.deepEqual(['en', 'si', 'ta'].map(resolveLocale), ['en', 'si', 'ta']);
   for (const invalid of [undefined, null, '', 'fr', 'si;admin', 3]) assert.equal(resolveLocale(invalid), 'en');
   assert.equal(isLocale('ta'), true);
   assert.equal(isLocale('fr'), false);
+});
+
+test('content-page review and readiness UI has Sinhala and Tamil copy', () => {
+  const component = readFileSync(new URL('../src/components/content-page.tsx', import.meta.url), 'utf8');
+  assert.match(component, /getContentPageCopy\(locale\)/);
+  for (const locale of ['si', 'ta']) {
+    const copy = getContentPageCopy(locale);
+    assert.ok(copy.reviewPending);
+    assert.ok(copy.statusLabels.in_development);
+    assert.ok(copy.readinessNote);
+  }
 });
 
 test('website locale return path stays local and rejects redirect-shaped input', () => {
@@ -61,13 +73,22 @@ test('public-safe information pages have translated copy and untranslated pages 
     assert.ok(getLocalizedPublicPage(slug, 'si'), `${slug} has Sinhala copy`);
     assert.ok(getLocalizedPublicPage(slug, 'ta'), `${slug} has Tamil copy`);
   }
-  for (const slug of ['features', 'plans', 'contact', 'privacy', 'terms', 'data-deletion', 'accessibility']) {
+  for (const slug of ['features', 'contact', 'privacy', 'terms', 'data-deletion', 'accessibility']) {
     assert.equal(getLocalizedPublicPage(slug, 'si'), undefined, `${slug} waits for translation/review`);
   }
   assert.match(sharedCopy.si.pageEnglishNotice, /ඉංග්‍රීසියෙන්/);
   assert.match(sharedCopy.ta.pageEnglishNotice, /ஆங்கிலத்தில்/);
   const component = readFileSync(new URL('../src/components/content-page.tsx', import.meta.url), 'utf8');
   assert.match(component, /translation-note/);
+});
+
+test('plans page has truthful Sinhala and Tamil no-checkout copy', () => {
+  for (const locale of ['si', 'ta']) {
+    const page = getLocalizedPublicPage('plans', locale);
+    assert.ok(page?.reviewPending);
+    assert.equal(page?.sections.length, 2);
+    assert.doesNotMatch(`${page?.description}\n${page?.sections.map((section) => section.body).join('\n')}`, /\$\d|https?:\/\//i);
+  }
 });
 
 test('account portal uses provider verification without exposing privileged credentials or private data', () => {
@@ -98,6 +119,8 @@ test('account portal has complete Sinhala and Tamil copy and receives the select
   const component = readFileSync(new URL('../src/components/account-portal.tsx', import.meta.url), 'utf8');
   assert.match(page, /resolveLocale\(cookieStore\.get\(LOCALE_COOKIE\)\?\.value\)/);
   assert.match(page, /<AccountPortal locale=/);
+  assert.ok(accountPrivacyCopy.si.summaryExportNote);
+  assert.ok(accountPrivacyCopy.ta.summaryExportNote);
   assert.match(component, /accountCopy\[locale\]/);
 });
 
@@ -183,7 +206,7 @@ test('feature status registry is current, evidenced, and makes no unreleased ava
   const component = readFileSync(new URL('../src/components/content-page.tsx', import.meta.url), 'utf8');
   const styles = readFileSync(new URL('../src/app/globals.css', import.meta.url), 'utf8');
   assert.match(component, /aria-labelledby="feature-readiness-title"/);
-  assert.match(component, /Release version: \{feature\.releaseVersion \?\? 'Not released'\}/);
+  assert.match(component, /\{copy\.releaseVersion\}: \{feature\.releaseVersion \?\? copy\.notReleased\}/);
   assert.match(styles, /\.feature-status-grid\s*\{[^}]*grid-template-columns/);
   assert.match(styles, /@media \(max-width: 800px\)[\s\S]*?\.feature-status-grid \{ grid-template-columns: 1fr; \}/);
 });

@@ -4,8 +4,12 @@ import {
   clearActiveSession as clearLocalActiveSession,
   loadActiveSession as loadLocalActiveSession,
   loadFinalizedSession as loadLocalFinalizedSession,
+  loadPendingSummaryHandoff as loadLocalPendingSummaryHandoff,
+  clearPendingSummaryHandoff as clearLocalPendingSummaryHandoff,
+  claimTerminalAchievementPresentation as claimLocalTerminalAchievementPresentation,
   loadTasks as loadLocalTasks,
   loadSessionHistory as loadLocalSessionHistory,
+  loadTerminalProgression as loadLocalTerminalProgression,
   persistTerminalSession as persistLocalTerminalSession,
   saveActiveSession as saveLocalActiveSession,
 } from '@/features/storage/local-database';
@@ -37,6 +41,33 @@ export async function loadFinalizedSession(sessionId: string) {
   if (Platform.OS === 'web') throw new Error('Session history storage is unavailable on web');
   if (!sessionId.trim()) throw new RangeError('INVALID_SESSION_ID');
   return loadLocalFinalizedSession(sessionId);
+}
+
+/** Reads the owner-scoped terminal session that still needs a Summary handoff. */
+export async function loadPendingSummaryHandoff() {
+  if (Platform.OS === 'web') throw new Error('Session summary storage is unavailable on web');
+  return loadLocalPendingSummaryHandoff();
+}
+
+/** Clears only the matching Summary handoff; it never touches progression or history. */
+export async function clearPendingSummaryHandoff(sessionId: string) {
+  if (Platform.OS === 'web') throw new Error('Session summary storage is unavailable on web');
+  if (!sessionId.trim()) throw new RangeError('INVALID_SESSION_ID');
+  await clearLocalPendingSummaryHandoff(sessionId);
+}
+
+/** Reads only the persisted progression event owned by this terminal session. */
+export async function loadTerminalProgression(sessionId: string) {
+  if (Platform.OS === 'web') throw new Error('Session progression storage is unavailable on web');
+  if (!sessionId.trim()) throw new RangeError('INVALID_SESSION_ID');
+  return loadLocalTerminalProgression(sessionId);
+}
+
+/** Claims one calm, owner-scoped Summary presentation without replaying progression. */
+export async function claimTerminalAchievementPresentation(sessionId: string) {
+  if (Platform.OS === 'web') throw new Error('Session progression storage is unavailable on web');
+  if (!sessionId.trim()) throw new RangeError('INVALID_SESSION_ID');
+  return claimLocalTerminalAchievementPresentation(sessionId);
 }
 
 export async function clearActiveSession() {

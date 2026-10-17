@@ -6,5 +6,6 @@ const source = fs.readFileSync(new URL('../../src/app/resources/index.tsx', impo
 
 test('resource mutations use localized safe error copy instead of exposing raw error messages', () => {
   assert.equal(source.includes('error.message'), false);
-  assert.equal((source.match(/copy\.resourcesPage\.saveError/g) ?? []).length, 2);
+  assert.equal((source.match(/copy\.resourcesPage\.saveError/g) ?? []).length, 3);
+  assert.match(source, /async function saveRename/);
 });

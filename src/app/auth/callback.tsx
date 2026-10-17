@@ -21,7 +21,7 @@ export default function AuthCallbackRoute() {
     <View style={styles.content}>
       {failed ? null : <ActivityIndicator accessibilityLabel={copy.loadingTitle} />}
       <ThemedText accessibilityRole="header" type="subtitle">{failed ? copy.errorTitle : copy.loadingTitle}</ThemedText>
-      <ThemedText accessibilityLiveRegion="polite" themeColor="textSecondary">{failed ? snapshot.message ?? copy.errorDetail : copy.loadingDetail}</ThemedText>
+      <ThemedText accessibilityLiveRegion={failed ? 'assertive' : 'polite'} accessibilityRole={failed ? 'alert' : undefined} themeColor="textSecondary">{failed ? snapshot.message ?? copy.errorDetail : copy.loadingDetail}</ThemedText>
       {failed ? <Button accentColor={action} fullWidth label={copy.backToSignIn} onPress={() => router.replace('/auth/sign-in')} /> : null}
     </View>
   </ThemedView>;

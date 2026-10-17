@@ -39,6 +39,19 @@ function fixture({ tasks = [], loadFailures = 0, loadTasks, router = {}, savePla
     },
     '@/features/planning/plan-types': {},
     '@/features/planning/planning-config': { getConfiguredPlanningModel: () => 'local-heuristic-v1' },
+    '@/features/planning/ai-planner': {
+      createMockAiPlanningProvider: () => ({ createProposal: async request => ({
+        id: `mock-plan:${request.createdAt}:${request.tasks.map(task => task.id).join(',')}`,
+        provider: 'mock', model: request.model, createdAt: request.createdAt,
+        items: request.tasks.slice(0, Math.max(1, Math.min(request.tasks.length, Math.floor(request.availableMinutes / 30)))).map((task, index) => ({ taskId: task.id, position: index, focusDurationSeconds: 1500, breakDurationSeconds: 300 })),
+        requiresConfirmation: true,
+      }) }),
+      confirmationToken: proposal => proposal.id,
+      confirmPlanProposal: (proposal, token, confirmedAt) => {
+        if (token !== proposal.id) throw Error('invalid confirmation');
+        return { ...proposal, confirmedAt, confirmed: true };
+      },
+    },
     '@/features/localization/app-locale-context': { useAppLocale: () => ({ copy: { planner: { back: 'Home', eyebrow: 'PLAN MY DAY', title: 'Start with what matters.', subtitle: 'Choose the tasks and time you have. We will suggest a simple starting point for your day.', timeAvailable: 'TIME AVAILABLE', availableMinutes: 'Available minutes', minutes: 'minutes', minError: 'Enter at least 25 minutes to plan.', numberError: 'Enter a smaller whole number of minutes.', breakHint: 'Each suggestion leaves space for a short break.', chooseTasks: 'CHOOSE TASKS', loading: 'Loading your tasks…', loadError: 'We could not load your tasks. Your saved tasks have not been changed.', retry: 'Retry loading tasks', empty: 'Add a task first, then come back to build a plan.', addTask: 'Add a task', selected: 'selected', notSelected: 'not selected', suggest: 'Suggest a plan', suggestion: 'YOUR SUGGESTION', included: 'Included in your suggestion', startingPoint: 'A clear starting point.', blockDuration: '25 min focus · 5 min break', moveEarlier: 'Move', moveEarlierSuffix: 'earlier', moveLater: 'Move', moveLaterSuffix: 'later', start: 'Start', proposalNote: 'This is a proposal only. Your tasks and schedule have not been changed.', confirmed: 'You confirmed this exact selection. Starting a task still uses the normal focus flow.', confirm: 'Confirm this proposal', adjust: 'Adjust selection' } } }) },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
     '@/hooks/use-theme': { useTheme: () => ({}) },
@@ -100,7 +113,7 @@ test('Plan My Day ignores a task read that resolves after the route loses focus'
 test('Plan My Day lets the user reorder the preview without changing stored tasks', async () => {
   const tasks = [task, { id: 'task-2', title: 'Read notes', status: 'pending' }];
   const app = fixture({ tasks }); app.render(); await app.settle();
-  app.find('Suggest a plan').props.onPress(); app.render();
+  await app.find('Suggest a plan').props.onPress(); await app.settle();
   assert.equal(app.find('Move Study chapter earlier').props.accessibilityState.disabled, true);
   assert.equal(app.find('Move Study chapter later').props.accessibilityState.disabled, false);
   app.find('Move Read notes earlier').props.onPress(); app.render();
@@ -116,7 +129,7 @@ test('reordering a visible plan block does not promote a task hidden by the time
   const tasks = [task, { id: 'task-2', title: 'Read notes', status: 'pending' }, { id: 'task-3', title: 'Practice questions', status: 'pending' }];
   const app = fixture({ tasks }); app.render(); await app.settle();
   app.find('Available minutes').props.onChangeText('60'); app.render();
-  app.find('Suggest a plan').props.onPress(); app.render();
+  await app.find('Suggest a plan').props.onPress(); await app.settle();
   app.find('Move Study chapter later').props.onPress(); app.render();
   assert.equal(app.find('Move Study chapter later').props.accessibilityState.disabled, true);
   assert.equal(app.find('Move Read notes earlier').props.accessibilityState.disabled, true);
@@ -141,7 +154,7 @@ test('available minutes explains the minimum and rejects integers outside the sa
 
 test('confirmed plan save failure stays visible and an explicit retry can succeed', async () => {
   const app = fixture({ tasks: [task], savePlanFailures: 1 }); app.render(); await app.settle();
-  app.find('Suggest a plan').props.onPress(); app.render();
+  await app.find('Suggest a plan').props.onPress(); await app.settle();
   app.find('Confirm this proposal').props.onPress(); await app.settle();
   assert.ok(app.status().some(node => node.props.accessibilityRole === 'alert'));
   assert.equal(app.find('Start').props.disabled, true);

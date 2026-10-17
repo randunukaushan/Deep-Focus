@@ -11,13 +11,15 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/features/auth/auth-context';
 import { useAppLocale } from '@/features/localization/app-locale-context';
+import { getAuthRuntimeCopy } from '@/features/localization/auth-runtime-copy';
 
 export default function SignUpRoute() {
   const router = useRouter();
   const isDark = useColorScheme() === 'dark';
   const theme = useTheme();
   const auth = useAuth();
-  const { copy } = useAppLocale();
+  const { copy, locale } = useAppLocale();
+  const runtimeCopy = getAuthRuntimeCopy(locale);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
@@ -50,19 +52,19 @@ export default function SignUpRoute() {
           <ThemedView style={[styles.card, { backgroundColor: surface, borderColor: border }]}>
             <ThemedText style={styles.label} type="smallBold">{copy.signUp.email}</ThemedText>
             <TextInput accessibilityLabel={copy.signUp.email} autoCapitalize="none" autoComplete="email" keyboardType="email-address" onChangeText={setEmail} placeholder={copy.signUp.emailPlaceholder} placeholderTextColor={theme.textMuted} style={[styles.input, { borderColor: emailInvalid ? Palette.error : border, color: theme.text }]} textContentType="emailAddress" value={email} />
-            {emailInvalid ? <ThemedText style={styles.error} type="small">{copy.signUp.emailError}</ThemedText> : null}
+            {emailInvalid ? <ThemedText accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error} type="small">{copy.signUp.emailError}</ThemedText> : null}
             <ThemedText style={[styles.label, styles.nextLabel]} type="smallBold">{copy.signUp.password}</ThemedText>
             <View style={styles.passwordWrap}>
               <TextInput accessibilityLabel={copy.signUp.password} autoCapitalize="none" autoComplete="new-password" onChangeText={setPassword} placeholder={copy.signUp.passwordPlaceholder} placeholderTextColor={theme.textMuted} secureTextEntry={!showPassword} style={[styles.input, styles.passwordInput, { borderColor: passwordInvalid ? Palette.error : border, color: theme.text }]} textContentType="newPassword" value={password} />
               <Pressable accessibilityLabel={showPassword ? copy.signUp.hidePassword : copy.signUp.showPassword} accessibilityRole="button" onPress={() => setShowPassword((visible) => !visible)} style={styles.eyeButton}><Ionicons color={theme.textSecondary} name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={21} /></Pressable>
             </View>
-            {passwordInvalid ? <ThemedText style={styles.error} type="small">{copy.signUp.passwordError}</ThemedText> : null}
+            {passwordInvalid ? <ThemedText accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error} type="small">{copy.signUp.passwordError}</ThemedText> : null}
             <ThemedText style={[styles.label, styles.nextLabel]} type="smallBold">{copy.signUp.confirmPassword}</ThemedText>
             <TextInput accessibilityLabel={copy.signUp.confirmPassword} autoCapitalize="none" autoComplete="new-password" onChangeText={setConfirmation} placeholder={copy.signUp.confirmPlaceholder} placeholderTextColor={theme.textMuted} secureTextEntry={!showPassword} style={[styles.input, { borderColor: confirmationInvalid ? Palette.error : border, color: theme.text }]} textContentType="newPassword" value={confirmation} />
-            {confirmationInvalid ? <ThemedText style={styles.error} type="small">{copy.signUp.confirmationError}</ThemedText> : null}
-            <Button accentColor={action} disabled={busy || !email.trim() || !password || confirmation !== password} fullWidth label={busy ? copy.signUp.creatingAccount : copy.signUp.createAccount} onPress={() => { setSubmitted(true); if (!email.trim() || !password || confirmation !== password) return; setBusy(true); setMessage(''); void auth.signUpWithPassword(email, password).then((result) => { if (result.status === 'verification_required') router.replace({ pathname: '/auth/verify-email', params: { email: email.trim() } }); else if (result.status === 'error') setMessage(result.message); }).finally(() => setBusy(false)); }} style={{ backgroundColor: action, borderColor: action }} />
-            <Button accentColor={action} disabled={busy} fullWidth label={copy.signUp.google} onPress={() => { setBusy(true); setMessage(''); void auth.signInWithGoogle().then((result) => { if (result.status === 'error') setMessage(result.message); }).finally(() => setBusy(false)); }} variant="secondary" />
-            {message ? <ThemedText accessibilityLiveRegion="polite" style={styles.error} type="small">{message}</ThemedText> : null}
+            {confirmationInvalid ? <ThemedText accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error} type="small">{copy.signUp.confirmationError}</ThemedText> : null}
+            <Button accentColor={action} disabled={busy || !email.trim() || !password || confirmation !== password} fullWidth label={busy ? copy.signUp.creatingAccount : copy.signUp.createAccount} onPress={() => { setSubmitted(true); if (!email.trim() || !password || confirmation !== password) return; setBusy(true); setMessage(''); void auth.signUpWithPassword(email, password).then((result) => { if (result.status === 'verification_required') router.replace({ pathname: '/auth/verify-email', params: { email: email.trim() } }); else if (result.status === 'error') setMessage(runtimeCopy.genericError); }).finally(() => setBusy(false)); }} style={{ backgroundColor: action, borderColor: action }} />
+            <Button accentColor={action} disabled={busy} fullWidth label={copy.signUp.google} onPress={() => { setBusy(true); setMessage(''); void auth.signInWithGoogle().then((result) => { if (result.status === 'error') setMessage(runtimeCopy.genericError); }).finally(() => setBusy(false)); }} variant="secondary" />
+            {message ? <ThemedText accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error} type="small">{message}</ThemedText> : null}
           </ThemedView>
           <Button accentColor={action} fullWidth label={`${copy.signUp.existingAccount} ${copy.signUp.signIn}`} onPress={() => router.push('/auth/sign-in')} variant="secondary" />
           <ThemedText style={styles.privacy} themeColor="textMuted" type="small">{copy.signUp.privacy}</ThemedText>

@@ -20,7 +20,7 @@ export default function FocusRoute() {
   const homeSurface = isDark ? theme.surface : Palette.homeLightSurface;
   const homeBorder = isDark ? theme.border : Palette.homeLightBorder;
   const homeAction = isDark ? Palette.mintPrimary : Palette.homeLightAction;
-  const homeActionSoft = isDark ? theme.background : Palette.homeLightActionSoft;
+  const homeActionSoft = isDark ? Palette.navySurfaceElevated : Palette.homeLightActionSoft;
   const [activeSession, setActiveSession] = useState<Awaited<ReturnType<typeof loadActiveSession>>>(null);
 
   useFocusEffect(useCallback(() => {
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   eyebrow: { letterSpacing: 1.2 },
   card: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.sm, padding: Spacing.lg },
   icon: { alignItems: 'center', borderRadius: 24, height: 48, justifyContent: 'center', width: 48 },
-  optionsCard: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', gap: Spacing.md, padding: Spacing.md },
-  optionCopy: { flex: 1, gap: Spacing.xs },
-  guidance: { alignItems: 'center', flexDirection: 'row', gap: Spacing.sm, justifyContent: 'center', paddingHorizontal: Spacing.sm },
+  optionsCard: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, padding: Spacing.md },
+  optionCopy: { flex: 1, gap: Spacing.xs, minWidth: 0 },
+  guidance: { alignItems: 'flex-start', flexDirection: 'row', gap: Spacing.sm, justifyContent: 'center', paddingHorizontal: Spacing.sm },
 });

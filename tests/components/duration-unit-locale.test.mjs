@@ -8,6 +8,6 @@ test('home and settings duration labels use localized minute copy', () => {
   assert.match(home, /25 \{copy\.focus\.minutes\}/);
   assert.match(home, /5–180 \{copy\.focus\.minutes\}/);
   assert.doesNotMatch(home, />25 min<|>5–180 min/);
-  assert.match(settings, /\$\{settingsCopy\.focusDuration\}: \$\{value\}m/);
-  assert.match(settings, /\$\{settingsCopy\.breakDuration\}: \$\{value\}m/);
+  assert.match(settings, /\$\{settingsCopy\.focusDuration\}: \$\{value\} \$\{settingsCopy\.minuteUnit\}/);
+  assert.match(settings, /\$\{settingsCopy\.breakDuration\}: \$\{value\} \$\{settingsCopy\.minuteUnit\}/);
 });

@@ -8,10 +8,10 @@ const ts = createRequire(import.meta.url)('typescript');
 const route = readFileSync(new URL('../../src/app/(tabs)/progress/index.tsx', import.meta.url), 'utf8');
 const { outputText } = ts.transpileModule(route, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } });
 
-function fixture({ sessionFailure = false, sessions = [{ id: 's1', status: 'completed', focusedDurationSeconds: 120, plannedDurationSeconds: 180 }], tasks = [{ id: 't1' }], goals = [{ id: 'g1' }], onSummary, summaryError = false } = {}) {
+function fixture({ sessionFailure = false, sessions = [{ id: 's1', status: 'completed', focusedDurationSeconds: 120, plannedDurationSeconds: 180 }], tasks = [{ id: 't1' }], goals = [{ id: 'g1' }], activityDays = [], onSummary, summaryError = false } = {}) {
   const slots = [];
   let cursor = 0, effect, mounted = false, tree;
-  const summary = { focusedSeconds: 120, completedSessions: 1, averageCompletedFocusSeconds: 120, completedTasks: 1, totalTasks: 1, taskCompletionRate: 1, focusPlanRatio: 2 / 3, streak: { currentStreakDays: 1, longestStreakDays: 1 }, activityDays: [], goals: [{ id: 'g1', title: 'Read', type: 'focus_time', currentValue: 120, targetValue: 300, progress: 0.4 }] };
+  const summary = { focusedSeconds: 120, completedSessions: 1, averageCompletedFocusSeconds: 120, completedTasks: 1, totalTasks: 1, taskCompletionRate: 1, focusPlanRatio: 2 / 3, streak: { currentStreakDays: 1, longestStreakDays: 1 }, activityDays, goals: [{ id: 'g1', title: 'Read', type: 'focus_time', currentValue: 120, targetValue: 300, progress: 0.4 }] };
   const dependencies = {
     react: {
       useState(initial) { const index = cursor++; slots[index] ??= { value: initial }; return [slots[index].value, value => { slots[index].value = value; }]; },
@@ -31,6 +31,8 @@ function fixture({ sessionFailure = false, sessions = [{ id: 's1', status: 'comp
     '@/features/localization/app-locale-context': { useAppLocale: () => ({ locale: 'en' }) },
     '@/features/goals/goal-storage': { async loadGoals() { return goals; } },
     '@/features/tasks/task-storage': { async loadTasks() { return tasks; } },
+    '@/features/storage/local-database': { async loadRewardProgress() { return { totalXp: 0 }; } },
+    '@/features/progress/progression-rules': { calculateLevelProgress: totalXp => ({ totalXp, level: 1, xpToNextLevel: 100 }) },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
     '@/hooks/use-theme': { useTheme: () => ({ background: '#fff', surface: '#fff', border: '#ddd' }) },
     '@/theme/tokens': { Palette: { homeLightBackground: '#fff', homeLightSurface: '#fff', homeLightBorder: '#ddd', homeLightAction: '#123', homeLightActionSoft: '#eee', deepNavy: '#123', mintPrimary: '#123' }, Radius: { card: 16 }, Spacing: { xs: 4, sm: 8, md: 16, lg: 24 } },
@@ -75,4 +77,10 @@ test('Progress does not display derived zeros when the source records conflict',
   const app = fixture({ summaryError: true }); app.render(); await app.settle();
   assert.ok(app.find('Progress summary unavailable'));
   assert.equal(app.find('SESSIONS: 1'), undefined);
+});
+
+test('weekly activity labels use the localized duration formatter instead of raw seconds', async () => {
+  const app = fixture({ activityDays: [{ date: '2026-10-16', day: 'Fri', focusedSeconds: 120 }] }); app.render(); await app.settle();
+  assert.ok(app.find('2026-10-16, 120 sec FOCUS TIME'));
+  assert.equal(app.find('2026-10-16, 120 FOCUS TIME'), undefined);
 });

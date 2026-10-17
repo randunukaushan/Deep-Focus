@@ -50,3 +50,57 @@ STOP / OPEN DECISIONS: translation review, legal/publisher details, release date
   actual availability, website hosting and Account Portal provider-backed flows
   remain pending under their own contracts.
 ```
+
+## Current local website verification — 2026-10-16
+
+This is a current build check, not a publication or live-provider claim.
+
+- `node --test tests/*.test.mjs` — **19/19 pass**.
+- `node node_modules/typescript/bin/tsc --noEmit` — **PASS**.
+- `node node_modules/eslint/bin/eslint.js . --max-warnings=0` — **PASS**.
+- `node node_modules/next/dist/bin/next build` — **PASS**. Next.js compiled,
+  completed TypeScript and generated **16/16** static pages; `/account` remains
+  a dynamic server-rendered route.
+
+The local project has no uncommitted website source change in this check. No
+hosting, deployment, browser runtime, live provider flow, authenticated private
+data, billing, publication, independent content/accessibility review or device
+evidence was performed. Those remain **REVIEW_PENDING** or **NOT_RUN** as
+applicable.
+
+### Local HTTP smoke check
+
+- The completed local build was served temporarily with `next start` on
+  localhost. `GET /` and `GET /account` each returned **HTTP 200** with an HTML
+  response. The temporary server was stopped immediately after the check.
+- This confirms only the local server route path. It does not establish browser
+  behavior, a provider-authenticated portal session, private data access,
+  hosting configuration, publication or accessibility-device evidence.
+
+## Account-summary export locale correction — 2026-10-16
+
+The client-generated, portal-visible account-summary JSON now obtains its
+privacy note from the selected `en`/`si`/`ta` privacy-copy record. It still
+exports no private app data and does not prove provider authentication, cloud
+sync, browser accessibility or hosted behavior.
+
+- `node --test tests/*.test.mjs` — **19/19 PASS**.
+- TypeScript and ESLint — **PASS**.
+
+## Shared ContentPage status locale correction — 2026-10-16
+
+The reusable public-page review notice, feature-status labels, release-version
+fallback and roadmap prompt now use selected `en`/`si`/`ta` copy. This does not
+translate page content that remains explicitly marked as English-only, and it
+does not change the feature-status data or any release claim.
+
+- `node --test tests/*.test.mjs` — **20/20 PASS**.
+- TypeScript, ESLint and `git diff --check` — **PASS**.
+
+## Plans status locale correction — 2026-10-16
+
+The public Plans status page now has selected `en`/`si`/`ta` truthful no-checkout
+copy. It still displays no price, checkout, payment data collection or offer.
+
+- `node --test tests/*.test.mjs` — **21/21 PASS**.
+- TypeScript, ESLint and `git diff --check` — **PASS**.

@@ -1,3 +1,6 @@
+import { getAuthServiceCopy, type AuthServiceCopy } from '@/features/localization/auth-service-copy';
+import type { AppLocale } from '@/features/settings/settings-storage';
+
 export type AuthServiceResult =
   | { status: 'signed_in' | 'verification_required' | 'sent' | 'cancelled' }
   | { status: 'error'; message: string };
@@ -31,6 +34,7 @@ type CryptoModule = {
 export type AuthServiceDependencies = {
   client: AuthClient;
   redirectUrl: string;
+  locale?: AppLocale;
   openAuthSession: (url: string, redirectUrl: string) => Promise<BrowserAuthResult>;
   apple?: AppleAuthModule;
   crypto?: CryptoModule;
@@ -57,19 +61,19 @@ export function exchangeAuthCodeOnce<T>(client: CodeExchangeClient<T>, code: str
   return promise;
 }
 
-function safeMessage(error: unknown): string {
+function safeMessage(error: unknown, copy: AuthServiceCopy): string {
   const code = typeof error === 'object' && error !== null && 'code' in error
     ? String((error as { code?: unknown }).code)
     : '';
-  if (code === 'invalid_credentials' || code === 'email_not_confirmed') return 'Email or password is incorrect, or email verification is still needed.';
-  if (code === 'weak_password') return 'Choose a stronger password and try again.';
-  if (code === 'over_email_send_rate_limit' || code === 'over_request_rate_limit') return 'Please wait a little before trying again.';
-  if (code === 'secure_storage_unavailable' || code === 'secure_storage_write_failed') return 'Secure sign-in could not be saved on this device. Your account was not opened.';
-  return 'We could not complete sign-in. Check your connection and try again.';
+  if (code === 'invalid_credentials' || code === 'email_not_confirmed') return copy.invalidCredentials;
+  if (code === 'weak_password') return copy.weakPassword;
+  if (code === 'over_email_send_rate_limit' || code === 'over_request_rate_limit') return copy.rateLimit;
+  if (code === 'secure_storage_unavailable' || code === 'secure_storage_write_failed') return copy.secureStorage;
+  return copy.generic;
 }
 
-function resultFor(error: unknown): AuthServiceResult {
-  return { status: 'error', message: safeMessage(error) };
+function resultFor(error: unknown, copy: AuthServiceCopy): AuthServiceResult {
+  return { status: 'error', message: safeMessage(error, copy) };
 }
 
 function errorMessage(error: unknown): string {
@@ -85,67 +89,68 @@ function emailValue(email: string): string {
 
 export function createAuthService(dependencies: AuthServiceDependencies) {
   const { client, redirectUrl } = dependencies;
+  const copy = getAuthServiceCopy(dependencies.locale ?? 'en');
   return {
     async signInWithPassword(email: string, password: string): Promise<AuthServiceResult> {
-      if (!password) return { status: 'error', message: 'Enter your password.' };
+      if (!password) return { status: 'error', message: copy.emptyPassword };
       try {
         const { data, error } = await client.auth.signInWithPassword({ email: emailValue(email), password });
-        if (error) return resultFor(error);
-        if (!data.session) return { status: 'error', message: 'Sign-in did not create a session. Try again or verify your email.' };
+        if (error) return resultFor(error, copy);
+        if (!data.session) return { status: 'error', message: copy.noSessionVerify };
         return { status: 'signed_in' };
-      } catch (error) { return resultFor(error); }
+      } catch (error) { return resultFor(error, copy); }
     },
 
     async signUpWithPassword(email: string, password: string): Promise<AuthServiceResult> {
-      if (!password) return { status: 'error', message: 'Enter a password.' };
+      if (!password) return { status: 'error', message: copy.emptySignUpPassword };
       try {
         const { data, error } = await client.auth.signUp({ email: emailValue(email), password, options: { emailRedirectTo: redirectUrl } });
-        if (error) return resultFor(error);
+        if (error) return resultFor(error, copy);
         return data.session ? { status: 'signed_in' } : { status: 'verification_required' };
-      } catch (error) { return resultFor(error); }
+      } catch (error) { return resultFor(error, copy); }
     },
 
     async resendVerification(email: string): Promise<AuthServiceResult> {
       try {
         const { error } = await client.auth.resend({ type: 'signup', email: emailValue(email), options: { emailRedirectTo: redirectUrl } });
-        return error ? resultFor(error) : { status: 'sent' };
-      } catch (error) { return resultFor(error); }
+        return error ? resultFor(error, copy) : { status: 'sent' };
+      } catch (error) { return resultFor(error, copy); }
     },
 
     async requestPasswordReset(email: string): Promise<AuthServiceResult> {
       try {
         const { error } = await client.auth.resetPasswordForEmail(emailValue(email), { redirectTo: redirectUrl });
         // Do not reveal whether the email belongs to an existing account.
-        return error ? resultFor(error) : { status: 'sent' };
-      } catch (error) { return resultFor(error); }
+        return error ? resultFor(error, copy) : { status: 'sent' };
+      } catch (error) { return resultFor(error, copy); }
     },
 
     async updatePassword(password: string): Promise<AuthServiceResult> {
-      if (!password) return { status: 'error', message: 'Enter a new password.' };
+      if (!password) return { status: 'error', message: copy.emptyNewPassword };
       try {
         const { error } = await client.auth.updateUser({ password });
-        return error ? resultFor(error) : { status: 'signed_in' };
-      } catch (error) { return resultFor(error); }
+        return error ? resultFor(error, copy) : { status: 'signed_in' };
+      } catch (error) { return resultFor(error, copy); }
     },
 
     async signInWithGoogle(): Promise<AuthServiceResult> {
       try {
         const { data, error } = await client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirectUrl, skipBrowserRedirect: true } });
-        if (error) return resultFor(error);
-        if (!data.url) return { status: 'error', message: 'Google sign-in is not configured for this app yet.' };
+        if (error) return resultFor(error, copy);
+        if (!data.url) return { status: 'error', message: copy.googleNotConfigured };
         const browserResult = await dependencies.openAuthSession(data.url, redirectUrl);
         if (browserResult.type !== 'success') return { status: 'cancelled' };
-        if (!browserResult.url) return { status: 'error', message: 'The sign-in response was incomplete. Please try again.' };
+        if (!browserResult.url) return { status: 'error', message: copy.incompleteResponse };
         const callback = authRedirectCode(browserResult.url, redirectUrl);
-        if (!callback || callback.error || !callback.code) return { status: 'error', message: 'The sign-in response was incomplete. Please try again.' };
+        if (!callback || callback.error || !callback.code) return { status: 'error', message: copy.incompleteResponse };
         const exchanged = await exchangeAuthCodeOnce(client, callback.code);
-        if (exchanged.error) return resultFor(exchanged.error);
-        return exchanged.data.session ? { status: 'signed_in' } : { status: 'error', message: 'Sign-in did not create a session. Try again.' };
-      } catch (error) { return resultFor(error); }
+        if (exchanged.error) return resultFor(exchanged.error, copy);
+        return exchanged.data.session ? { status: 'signed_in' } : { status: 'error', message: copy.noSession };
+      } catch (error) { return resultFor(error, copy); }
     },
 
     async signInWithApple(): Promise<AuthServiceResult> {
-      if (!dependencies.apple || !dependencies.crypto) return { status: 'error', message: 'Apple sign-in is available on supported iOS devices.' };
+      if (!dependencies.apple || !dependencies.crypto) return { status: 'error', message: copy.appleUnavailable };
       try {
         const rawNonce = dependencies.crypto.randomUUID();
         const hashedNonce = await dependencies.crypto.digestStringAsync(dependencies.crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
@@ -153,21 +158,21 @@ export function createAuthService(dependencies: AuthServiceDependencies) {
           nonce: hashedNonce,
           requestedScopes: [dependencies.apple.AppleAuthenticationScope.EMAIL, dependencies.apple.AppleAuthenticationScope.FULL_NAME],
         });
-        if (!credential.identityToken) return { status: 'error', message: 'Apple did not return a sign-in token. Please try again.' };
+        if (!credential.identityToken) return { status: 'error', message: copy.appleNoToken };
         const { data, error } = await client.auth.signInWithIdToken({ provider: 'apple', token: credential.identityToken, nonce: rawNonce });
-        if (error) return resultFor(error);
-        return data.session ? { status: 'signed_in' } : { status: 'error', message: 'Sign-in did not create a session. Try again.' };
+        if (error) return resultFor(error, copy);
+        return data.session ? { status: 'signed_in' } : { status: 'error', message: copy.noSession };
       } catch (error) {
         if (errorMessage(error) === 'ERR_REQUEST_CANCELED') return { status: 'cancelled' };
-        return resultFor(error);
+        return resultFor(error, copy);
       }
     },
 
     async signOut(): Promise<AuthServiceResult> {
       try {
         const { error } = await client.auth.signOut();
-        return error ? resultFor(error) : { status: 'sent' };
-      } catch (error) { return resultFor(error); }
+        return error ? resultFor(error, copy) : { status: 'sent' };
+      } catch (error) { return resultFor(error, copy); }
     },
   };
 }

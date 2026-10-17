@@ -59,6 +59,70 @@ test('real SQLite keeps overlapping task IDs isolated by authenticated owner and
   assert.deepEqual((await accountB.loadTasks()).map(({ title }) => title).sort(), ['Account B task', 'B second']);
 });
 
+test('terminal progression is owner-scoped, exactly-once, and retains zero-XP completed sessions for achievements', async (t) => {
+  const db = makeDatabaseAdapter();
+  t.after(() => db.close());
+  const dependencies = { platform: 'android', openDatabase: async () => db, readLegacyFiles: async () => ({}), now: () => '2026-10-15T02:00:00.000Z' };
+  const accountA = createAccountLocalDatabaseStore(USER_A, dependencies);
+  const accountB = createAccountLocalDatabaseStore(USER_B, dependencies);
+  const startedAt = Date.parse('2026-10-15T00:00:00.000Z');
+  const completed = completeFocusSession(createFocusSession(25, 'A session', startedAt), startedAt + 1_500_000);
+
+  const first = await accountA.persistTerminalSession(completed);
+  assert.deepEqual(first, {
+    operationKey: `terminal:${completed.id}`,
+    xpEarned: 25,
+    totalXp: 25,
+    level: 1,
+    replayed: false,
+    newlyUnlockedAchievementIds: ['first_focus_session'],
+  });
+  const replay = await accountA.persistTerminalSession(completed);
+  assert.equal(replay.replayed, true);
+  assert.equal((await accountA.loadRewardProgress()).totalXp, 25);
+  assert.deepEqual(await accountA.claimTerminalAchievementPresentation(completed.id), ['first_focus_session']);
+  assert.deepEqual(await accountA.claimTerminalAchievementPresentation(completed.id), [], 'reopening Summary cannot replay a consumed achievement');
+  const restartedAccountA = createAccountLocalDatabaseStore(USER_A, dependencies);
+  assert.deepEqual(await restartedAccountA.claimTerminalAchievementPresentation(completed.id), [], 'the receipt survives a process restart');
+  assert.equal((await accountB.loadRewardProgress()).totalXp, 0);
+  assert.deepEqual((await accountB.loadAchievementUnlocks()), []);
+
+  const shortStart = Date.parse('2026-10-15T03:00:00.000Z');
+  const short = {
+    ...createFocusSession(1, 'Short', shortStart),
+    plannedDurationSeconds: 59,
+    focusedDurationSeconds: 59,
+    status: 'completed',
+    completedAt: new Date(shortStart + 59_000).toISOString(),
+  };
+  const zero = await accountB.persistTerminalSession(short);
+  assert.equal(zero.xpEarned, 0);
+  assert.deepEqual((await accountB.loadAchievementUnlocks()).map((unlock) => unlock.achievementId), ['first_focus_session']);
+  assert.deepEqual(await accountB.claimTerminalAchievementPresentation(short.id), ['first_focus_session'], 'the same achievement is independently presentable to its own owner');
+});
+
+test('achievement presentation receipt rolls back on write failure and retries without touching progression', async (t) => {
+  const db = makeDatabaseAdapter();
+  t.after(() => db.close());
+  const now = '2026-10-15T04:00:00.000Z';
+  const dependencies = { platform: 'android', openDatabase: async () => db, readLegacyFiles: async () => ({}), now: () => now };
+  const account = createAccountLocalDatabaseStore(USER_A, dependencies);
+  const startedAt = Date.parse('2026-10-15T03:00:00.000Z');
+  const completed = completeFocusSession(createFocusSession(25, 'Receipt retry', startedAt), startedAt + 1_500_000);
+  await account.persistTerminalSession(completed);
+  const run = db.runAsync.bind(db);
+  let failReceipt = true;
+  db.runAsync = async (sql, ...parameters) => {
+    if (failReceipt && sql.startsWith('UPDATE user_achievements SET summary_presented_at')) throw new Error('injected receipt failure');
+    return run(sql, ...parameters);
+  };
+  await assert.rejects(account.claimTerminalAchievementPresentation(completed.id), /injected receipt failure/);
+  assert.equal((await account.loadRewardProgress()).totalXp, 25, 'receipt failure cannot alter XP');
+  failReceipt = false;
+  assert.deepEqual(await account.claimTerminalAchievementPresentation(completed.id), ['first_focus_session']);
+  assert.deepEqual(await account.claimTerminalAchievementPresentation(completed.id), []);
+});
+
 test('real SQLite stages snapshot pages atomically, makes retries idempotent, and preserves owner isolation', async (t) => {
   const db = makeDatabaseAdapter();
   t.after(() => db.close());
@@ -399,7 +463,11 @@ test('real SQLite assessment drafts migrate atomically, survive reopen, and stay
   const dependencies = { platform: 'android', openDatabase: async () => adapter, readLegacyFiles: async () => ({}), now: () => '2026-10-07T02:00:00.000Z' };
   const initial = createAccountLocalDatabaseStore(USER_A, dependencies);
   await initial.saveTasks([task('kept-task', 'Keep existing data')]);
-  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 14);
+  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 18);
+  assert.ok(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'reward_progress'").get());
+  assert.ok(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'progression_events'").get());
+  assert.ok(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'user_achievements'").get());
+  assert.ok(database.prepare('PRAGMA table_info(user_achievements)').all().some(({ name }) => name === 'summary_presented_at'));
   assert.ok(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sync_snapshot_staging'").get());
   assert.ok(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sync_snapshot_staging_pages'").get());
   assert.ok(database.prepare('PRAGMA table_info(user_settings)').all().some(({ name }) => name === 'ui_locale'));
@@ -432,7 +500,7 @@ test('real SQLite assessment drafts migrate atomically, survive reopen, and stay
 
   const reopened = createAccountLocalDatabaseStore(USER_A, dependencies);
   assert.deepEqual((await reopened.loadAssessment(draft.id)).answers, draft.answers);
-  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 14);
+  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 18);
   assert.ok(database.prepare('PRAGMA table_info(user_settings)').all().some(({ name }) => name === 'ui_locale'));
 });
 
@@ -697,6 +765,9 @@ test('real SQLite completes goals from qualifying terminal events exactly once',
   await accountA.appendSessionHistory(cancelled);
   goalsA = await accountA.loadGoals();
   assert.equal(goalsA.find((goal) => goal.id === timeGoal.id).completedAt, cancelled.cancelledAt);
+  const firstGoalUnlock = (await accountA.loadAchievementUnlocks()).filter((unlock) => unlock.achievementId === 'first_goal_completed');
+  assert.equal(firstGoalUnlock.length, 1, 'a verified persisted goal completion unlocks the achievement once');
+  assert.equal(firstGoalUnlock[0].backfilled, false);
 
   const editable = goalsA.find((goal) => goal.id === editableGoal.id);
   const lowered = await accountA.updateGoalDefinition(editable.id, editable.updatedAt, editable.title, 30);
@@ -709,6 +780,7 @@ test('real SQLite completes goals from qualifying terminal events exactly once',
   const countAfter = (await accountA.loadGoals()).find((goal) => goal.id === countGoal.id);
   assert.equal(countAfter.status, 'completed');
   assert.equal(countAfter.completedAt, completed.completedAt);
+  assert.equal((await accountA.loadAchievementUnlocks()).filter((unlock) => unlock.achievementId === 'first_goal_completed').length, 1, 'later terminal retries or further completed goals cannot duplicate the unlock');
   assert.equal((await accountB.loadGoals())[0].status, 'active', 'goal completion stays within the owner namespace');
 });
 
@@ -981,4 +1053,35 @@ test('goals, linked tasks, active pointers, settings and history remain in the s
   assert.equal((await accountB.loadSessionHistory()).length, 0);
   assert.deepEqual(await accountA.loadSettings(), { defaultFocusDurationMinutes: 45, defaultBreakDurationMinutes: 15, uiLocale: 'si' });
   assert.deepEqual(await accountB.loadSettings(), { defaultFocusDurationMinutes: 25, defaultBreakDurationMinutes: 5, uiLocale: 'en' });
+});
+
+test('onboarding state is persisted per account and does not leak across account switches', async (t) => {
+  const db = makeDatabaseAdapter();
+  t.after(() => db.close());
+  const dependencies = { platform: 'android', openDatabase: async () => db, readLegacyFiles: async () => ({}) };
+  const accountA = createAccountLocalDatabaseStore(USER_A, dependencies);
+  const accountB = createAccountLocalDatabaseStore(USER_B, dependencies);
+  assert.deepEqual(await accountA.loadOnboardingState(), { status: 'not_started', step: 'intro', version: 1 });
+  await accountA.saveOnboardingState({ status: 'completed', step: 'intro', version: 1 });
+  assert.deepEqual(await accountA.loadOnboardingState(), { status: 'completed', step: 'intro', version: 1 });
+  assert.deepEqual(await accountB.loadOnboardingState(), { status: 'not_started', step: 'intro', version: 1 });
+  await accountB.saveOnboardingState({ status: 'skipped', step: 'intro', version: 1 });
+  assert.equal((await accountA.loadOnboardingState()).status, 'completed');
+  assert.equal((await accountB.loadOnboardingState()).status, 'skipped');
+});
+
+test('terminal Summary handoff survives restart and clearing it never replays progression', async (t) => {
+  const db = makeDatabaseAdapter();
+  t.after(() => db.close());
+  const dependencies = { platform: 'android', openDatabase: async () => db, readLegacyFiles: async () => ({}) };
+  const account = createAccountLocalDatabaseStore(USER_A, dependencies);
+  const session = completeFocusSession(createFocusSession(25, 'handoff', Date.parse('2026-10-16T00:00:00.000Z')), Date.parse('2026-10-16T00:25:00.000Z'));
+  const first = await account.persistTerminalSession(session);
+  assert.equal(await account.loadPendingSummaryHandoff(), session.id);
+  const replay = await account.persistTerminalSession(session);
+  assert.equal(replay?.replayed, true);
+  assert.equal((await account.loadRewardProgress()).totalXp, first?.totalXp);
+  await account.clearPendingSummaryHandoff(session.id);
+  assert.equal(await account.loadPendingSummaryHandoff(), null);
+  assert.equal((await account.loadRewardProgress()).totalXp, first?.totalXp);
 });

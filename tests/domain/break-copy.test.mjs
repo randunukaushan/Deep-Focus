@@ -9,3 +9,9 @@ test('break accessibility copy exists for every approved locale', () => {
     assert.ok(copy.minuteUnit);
   }
 });
+
+test('Sinhala break copy uses the polished focus wording', () => {
+  const copy = getBreakCopy('si');
+  assert.equal(copy.back.includes('අවධානම්'), false);
+  assert.equal(copy.note.includes('අවධානම්'), false);
+});

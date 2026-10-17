@@ -16,6 +16,7 @@ export const Palette = {
 
   success: '#22C55E',
   warning: '#F59E0B',
+  warningText: '#B45309',
   error: '#EF4444',
   achievement: '#FBBF24',
 

@@ -20,3 +20,11 @@ test('onboarding entry exposes a persisted app-language choice', () => {
   assert.match(entrySource, /தமிழ்/);
   assert.match(entrySource, /English/);
 });
+
+test('onboarding intro preserves drafts and uses owner-scoped state actions', () => {
+  assert.match(entrySource, /clearAnswers/);
+  assert.match(entrySource, /beginAssessment/);
+  assert.match(entrySource, /skip/);
+  assert.match(source, /setOnboardingStep/);
+  assert.match(source, /skip\(\)/);
+});

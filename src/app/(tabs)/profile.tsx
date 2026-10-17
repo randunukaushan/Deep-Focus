@@ -10,11 +10,14 @@ import { Palette, Radius, Spacing } from '@/theme/tokens';
 import { useAuth } from '@/features/auth/auth-context';
 import { useEffect, useState } from 'react';
 import { useAppLocale } from '@/features/localization/app-locale-context';
+import { getAuthRuntimeCopy } from '@/features/localization/auth-runtime-copy';
+import { getProfileEducationCopy } from '@/features/localization/profile-education-copy';
 import { loadPendingOutbox } from '@/features/storage/local-database';
 
 export default function ProfileRoute() {
   const router = useRouter();
   const { copy, locale } = useAppLocale();
+  const runtimeCopy = getAuthRuntimeCopy(locale);
   const theme = useTheme();
   const auth = useAuth();
   const [accountMessage, setAccountMessage] = useState('');
@@ -26,7 +29,7 @@ export default function ProfileRoute() {
   const surface = isDark ? theme.surface : Palette.homeLightSurface;
   const border = isDark ? theme.border : Palette.homeLightBorder;
   const action = isDark ? Palette.mintPrimary : Palette.homeLightAction;
-  const softAction = isDark ? theme.background : Palette.homeLightActionSoft;
+  const softAction = isDark ? Palette.navySurfaceElevated : Palette.homeLightActionSoft;
 
   useEffect(() => {
     let active = true;
@@ -40,11 +43,7 @@ export default function ProfileRoute() {
     return () => { active = false; };
   }, []);
 
-  const education = locale === 'si'
-    ? { label: 'අධ්‍යාපන කාර්ය', detail: 'දේශීයව ගුරුවරුන්ගේ assignment draft සකස් කරන්න.' }
-    : locale === 'ta'
-      ? { label: 'கல்விப் பணி', detail: 'உள்ளூரில் ஆசிரியர் assignment draft-ஐ உருவாக்கவும்.' }
-      : { label: 'Education assignments', detail: 'Create a local teacher assignment draft.' };
+  const education = getProfileEducationCopy(locale);
   const open = (path: '/onboarding/productivity-profile' | '/progress/history' | '/goals' | '/tasks' | '/resources' | '/education/teacher-assignment' | '/profile/settings' | '/auth/sign-in' | '/focus/recovery') => router.push(path as never);
 
   return (
@@ -74,25 +73,25 @@ export default function ProfileRoute() {
 
           <View style={styles.section}>
             <ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">{copy.profile.focusSection}</ThemedText>
-            <ProfileRow action={action} border={border} icon="time-outline" label={copy.profile.history} detail={copy.profile.historyDetail} onPress={() => open('/progress/history')} />
-            <ProfileRow action={action} border={border} icon="flag-outline" label={copy.profile.goals} detail={copy.profile.goalsDetail} onPress={() => open('/goals')} />
-            <ProfileRow action={action} border={border} icon="checkmark-circle-outline" label={copy.profile.tasks} detail={copy.profile.tasksDetail} onPress={() => open('/tasks')} />
-            <ProfileRow action={action} border={border} icon="book-outline" label={copy.profile.resources} detail={copy.profile.resourcesDetail} onPress={() => open('/resources')} />
-            <ProfileRow action={action} border={border} icon="school-outline" label={education.label} detail={education.detail} onPress={() => open('/education/teacher-assignment')} />
-            <ProfileRow action={action} border={border} icon="refresh-outline" label={copy.profile.recovery} detail={copy.profile.recoveryDetail} onPress={() => open('/focus/recovery')} />
+            <ProfileRow action={action} border={border} softAction={softAction} icon="time-outline" label={copy.profile.history} detail={copy.profile.historyDetail} onPress={() => open('/progress/history')} />
+            <ProfileRow action={action} border={border} softAction={softAction} icon="flag-outline" label={copy.profile.goals} detail={copy.profile.goalsDetail} onPress={() => open('/goals')} />
+            <ProfileRow action={action} border={border} softAction={softAction} icon="checkmark-circle-outline" label={copy.profile.tasks} detail={copy.profile.tasksDetail} onPress={() => open('/tasks')} />
+            <ProfileRow action={action} border={border} softAction={softAction} icon="book-outline" label={copy.profile.resources} detail={copy.profile.resourcesDetail} onPress={() => open('/resources')} />
+            <ProfileRow action={action} border={border} softAction={softAction} icon="school-outline" label={education.label} detail={education.detail} onPress={() => open('/education/teacher-assignment')} />
+            <ProfileRow action={action} border={border} softAction={softAction} icon="refresh-outline" label={copy.profile.recovery} detail={copy.profile.recoveryDetail} onPress={() => open('/focus/recovery')} />
           </View>
 
           <View style={styles.section}>
             <ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">{copy.profile.preferences}</ThemedText>
-            <ProfileRow action={action} border={border} icon="settings-outline" label={copy.profile.settings} detail={copy.profile.settingsDetail} onPress={() => open('/profile/settings')} />
+            <ProfileRow action={action} border={border} softAction={softAction} icon="settings-outline" label={copy.profile.settings} detail={copy.profile.settingsDetail} onPress={() => open('/profile/settings')} />
             {auth.snapshot.status === 'signed_in' ? <>
               <ThemedText accessibilityLiveRegion="polite" themeColor="textSecondary" type="small">{copy.profile.signedIn}{auth.snapshot.email ? `: ${auth.snapshot.email}` : ''}. {copy.profile.offlineAccount}</ThemedText>
-              <Pressable accessibilityLabel={signingOut ? copy.profile.signingOut : copy.profile.signOut} accessibilityRole="button" disabled={signingOut} onPress={() => { setSigningOut(true); setAccountMessage(''); void auth.signOut().then((result) => { if (result.status === 'error') setAccountMessage(result.message); }).finally(() => setSigningOut(false)); }} style={({ pressed }) => [styles.row, { borderColor: border }, pressed && styles.pressed]}>
-                <View style={[styles.rowIcon, { backgroundColor: Palette.homeLightActionSoft }]}><Ionicons color={action} name="log-out-outline" size={21} /></View>
+              <Pressable accessibilityLabel={signingOut ? copy.profile.signingOut : copy.profile.signOut} accessibilityRole="button" disabled={signingOut} onPress={() => { setSigningOut(true); setAccountMessage(''); void auth.signOut().then((result) => { if (result.status === 'error') setAccountMessage(runtimeCopy.genericError); }).finally(() => setSigningOut(false)); }} style={({ pressed }) => [styles.row, { borderColor: border }, pressed && styles.pressed]}>
+                <View style={[styles.rowIcon, { backgroundColor: softAction }]}><Ionicons color={action} name="log-out-outline" size={21} /></View>
                 <View style={styles.rowCopy}><ThemedText type="smallBold">{signingOut ? copy.profile.signingOut : copy.profile.signOut}</ThemedText><ThemedText themeColor="textSecondary" type="small">{copy.profile.signOutDetail}</ThemedText></View>
               </Pressable>
-              {accountMessage ? <ThemedText accessibilityLiveRegion="polite" style={{ color: Palette.error }} type="small">{accountMessage}</ThemedText> : null}
-            </> : <ProfileRow action={action} border={border} icon="log-in-outline" label={copy.profile.signIn} detail={copy.profile.signInDetail} onPress={() => open('/auth/sign-in')} />}
+              {accountMessage ? <ThemedText accessibilityLiveRegion="assertive" accessibilityRole="alert" style={{ color: Palette.error }} type="small">{accountMessage}</ThemedText> : null}
+            </> : <ProfileRow action={action} border={border} softAction={softAction} icon="log-in-outline" label={copy.profile.signIn} detail={copy.profile.signInDetail} onPress={() => open('/auth/sign-in')} />}
           </View>
 
           <ThemedView accessibilityLabel={copy.profile.syncStatus} style={[styles.syncCard, { backgroundColor: surface, borderColor: border }]}>
@@ -115,7 +114,7 @@ export default function ProfileRoute() {
 
           <View style={styles.privateNote}>
             <Ionicons color={action} name="shield-checkmark-outline" size={20} />
-            <ThemedText themeColor="textSecondary" type="small">{copy.profile.privateNote}</ThemedText>
+            <ThemedText style={styles.privateNoteText} themeColor="textSecondary" type="small">{copy.profile.privateNote}</ThemedText>
           </View>
         </View>
       </ScrollView>
@@ -123,10 +122,10 @@ export default function ProfileRoute() {
   );
 }
 
-function ProfileRow({ action, border, detail, icon, label, onPress }: { action: string; border: string; detail: string; icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }) {
+function ProfileRow({ action, border, detail, icon, label, onPress, softAction }: { action: string; border: string; detail: string; icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; softAction: string }) {
   return (
     <Pressable accessibilityLabel={`${label}. ${detail}`} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.row, { borderColor: border }, pressed && styles.pressed]}>
-      <View style={[styles.rowIcon, { backgroundColor: Palette.homeLightActionSoft }]}><Ionicons color={action} name={icon} size={21} /></View>
+      <View style={[styles.rowIcon, { backgroundColor: softAction }]}><Ionicons color={action} name={icon} size={21} /></View>
       <View style={styles.rowCopy}><ThemedText type="smallBold">{label}</ThemedText><ThemedText themeColor="textSecondary" type="small">{detail}</ThemedText></View>
       <Ionicons color={action} name="chevron-forward" size={19} />
     </Pressable>
@@ -148,8 +147,9 @@ const styles = StyleSheet.create({
   section: { gap: Spacing.sm },
   row: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', gap: Spacing.md, minHeight: 72, padding: Spacing.md },
   rowIcon: { alignItems: 'center', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
-  rowCopy: { flex: 1, gap: 2 },
+  rowCopy: { flex: 1, gap: 2, minWidth: 0 },
   privateNote: { alignItems: 'center', flexDirection: 'row', gap: Spacing.sm, justifyContent: 'center', paddingHorizontal: Spacing.sm },
+  privateNoteText: { flex: 1, minWidth: 0 },
   syncCard: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', gap: Spacing.md, padding: Spacing.md },
   pressed: { opacity: 0.78 },
 });

@@ -15,6 +15,9 @@ export function Collapsible({ children, title }: PropsWithChildren & { title: st
   return (
     <ThemedView>
       <Pressable
+        accessibilityLabel={title}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: isOpen }}
         style={({ pressed }) => [styles.heading, pressed && styles.pressedHeading]}
         onPress={() => setIsOpen((value) => !value)}>
         <ThemedView type="backgroundElement" style={styles.button}>
@@ -27,7 +30,7 @@ export function Collapsible({ children, title }: PropsWithChildren & { title: st
           />
         </ThemedView>
 
-        <ThemedText type="small">{title}</ThemedText>
+        <ThemedText type="small" style={styles.title}>{title}</ThemedText>
       </Pressable>
       {isOpen && (
         <Animated.View entering={FadeIn.duration(200)}>
@@ -42,9 +45,13 @@ export function Collapsible({ children, title }: PropsWithChildren & { title: st
 
 const styles = StyleSheet.create({
   heading: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
+  },
+  title: {
+    flex: 1,
   },
   pressedHeading: {
     opacity: 0.7,
