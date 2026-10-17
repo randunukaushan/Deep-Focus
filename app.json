@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Deep Focus",
+    "name": "Deep Focus Preview",
     "slug": "deep-focus",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "deepfocus",
+    "scheme": "deepfocus-preview",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
@@ -18,7 +18,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.randunukaushan9.DeepFocus"
+      "package": "com.randunukaushan9.DeepFocus.preview"
     },
     "web": {
       "output": "static",
