@@ -24,7 +24,12 @@ export type AuthenticatedAccountBootstrapResult =
   | { ok: true; account: AccountBootstrap; session: AppSessionMutation & { ok: true } }
   | { ok: false; reason: 'invalid_input' | 'invalid_provider_session' | 'rate_limited'; retryAfterSeconds?: number };
 
-type BootstrapRateLimit = { counter: RateLimitCounter; windowMs: number; limit: number; nowMs: number };
+type BootstrapRateLimit = {
+  counter: RateLimitCounter;
+  /** Hosted counters reference profiles and must use the bootstrap transaction. */
+  counterForTransaction?: (runner: PostgresTransactionRunner) => RateLimitCounter;
+  windowMs: number; limit: number; nowMs: number;
+};
 
 /**
  * Verifies the provider token first, then creates the app session and account
@@ -47,6 +52,7 @@ export async function bootstrapAuthenticatedAccount(input: {
     || typeof input.now !== 'string' || !Number.isFinite(Date.parse(input.now))
     || !isRecord(input.runner) || typeof input.runner.withTransaction !== 'function'
     || !isRecord(input.rateLimit) || !isRecord(input.rateLimit.counter) || typeof input.rateLimit.counter.consume !== 'function'
+    || (input.rateLimit.counterForTransaction !== undefined && typeof input.rateLimit.counterForTransaction !== 'function')
     || !Number.isSafeInteger(input.rateLimit.windowMs) || input.rateLimit.windowMs < 1_000 || input.rateLimit.windowMs > 86_400_000
     || !Number.isSafeInteger(input.rateLimit.limit) || input.rateLimit.limit < 1 || input.rateLimit.limit > 10_000
     || !Number.isSafeInteger(input.rateLimit.nowMs) || input.rateLimit.nowMs < 0) {
@@ -61,15 +67,19 @@ export async function bootstrapAuthenticatedAccount(input: {
   if (!validateVerifiedSessionClaims(claims, input.expectedIssuer, input.expectedAudience, input.now)) {
     return { ok: false, reason: 'invalid_provider_session' };
   }
-  try {
+  const actorId = claims.sub;
+  async function checkRateLimit(counter: RateLimitCounter) {
     await enforceGatewayRateLimit({
-      actorId: claims.sub,
+      actorId,
       operation: 'bootstrapAccount',
-      counter: input.rateLimit.counter,
+      counter,
       nowMs: input.rateLimit.nowMs,
       windowMs: input.rateLimit.windowMs,
       limit: input.rateLimit.limit,
     });
+  }
+  try {
+    if (!input.rateLimit.counterForTransaction) await checkRateLimit(input.rateLimit.counter);
   } catch (error) {
     if (error instanceof SafeBoundaryError && error.code === 'RATE_LIMITED') {
       return { ok: false, reason: 'rate_limited', retryAfterSeconds: error.retryAfterSeconds };
@@ -83,6 +93,23 @@ export async function bootstrapAuthenticatedAccount(input: {
   const scopedRunner: PostgresTransactionRunner = input.runner;
   return scopedRunner.withTransaction(async (client) => {
     const transactionRunner: PostgresTransactionRunner = { withTransaction: (operation) => operation(client) };
+    // Both app_sessions and hosted rate buckets have a profile FK. Create the
+    // owner foundation first, within this same transaction, before either insert.
+    const account = await bootstrapAccountTransactionally({
+      ownerId: claims.sub,
+      workspaceId,
+      displayName: input.displayName,
+      store: createPostgresAccountBootstrapStore({ runner: transactionRunner }),
+    });
+    if (input.rateLimit.counterForTransaction) {
+      try { await checkRateLimit(input.rateLimit.counterForTransaction(transactionRunner)); }
+      catch (error) {
+        if (error instanceof SafeBoundaryError && error.code === 'RATE_LIMITED') {
+          return { ok: false, reason: 'rate_limited', retryAfterSeconds: error.retryAfterSeconds };
+        }
+        throw error;
+      }
+    }
     const session = await issueAppSessionFromVerifiedClaims({
       claims,
       expectedIssuer: input.expectedIssuer,
@@ -91,12 +118,6 @@ export async function bootstrapAuthenticatedAccount(input: {
       store: createPostgresAppSessionStore({ runner: transactionRunner }),
     });
     if (!session.ok) return { ok: false, reason: 'invalid_provider_session' };
-    const account = await bootstrapAccountTransactionally({
-      ownerId: session.record.ownerId,
-      workspaceId,
-      displayName: input.displayName,
-      store: createPostgresAccountBootstrapStore({ runner: transactionRunner }),
-    });
     return { ok: true, account, session };
   });
 }

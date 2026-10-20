@@ -34,11 +34,22 @@ function validatedBaseUrl(value: string | undefined): URL {
 }
 
 function safePath(base: URL, path: string): string {
-  if (!path.startsWith('/v1/') || path.includes('\\') || /[\u0000-\u001f\u007f]/.test(path)) {
+  if (!path.startsWith('/v1/') || path.includes('\\') || path.includes('#') || /[\u0000-\u001f\u007f]/.test(path)) {
     throw new RemoteApiError(0, 'INVALID_API_PATH');
   }
-  const target = new URL(path, base);
-  const expectedPrefix = `${base.pathname || ''}/v1/`.replace(/^\/\//, '/');
+  // Leading-slash routes must retain the function mount path in the base URL.
+  // URL(path, base) would discard /functions/v1/deep-focus-gateway entirely.
+  const pathname = path.split('?')[0];
+  for (const segment of pathname.split('/')) {
+    let decoded: string;
+    try { decoded = decodeURIComponent(segment); } catch { throw new RemoteApiError(0, 'INVALID_API_PATH'); }
+    if (decoded === '.' || decoded === '..' || /[\\/\u0000-\u001f\u007f]/.test(decoded)) {
+      throw new RemoteApiError(0, 'INVALID_API_PATH');
+    }
+  }
+  const mountPath = base.pathname.replace(/\/+$/, '');
+  const target = new URL(`${mountPath}${path}`, base.origin);
+  const expectedPrefix = `${mountPath}/v1/`;
   if (target.origin !== base.origin || !target.pathname.startsWith(expectedPrefix)) {
     throw new RemoteApiError(0, 'INVALID_API_PATH');
   }

@@ -65,10 +65,14 @@ function safeMessage(error: unknown, copy: AuthServiceCopy): string {
   const code = typeof error === 'object' && error !== null && 'code' in error
     ? String((error as { code?: unknown }).code)
     : '';
+  if (code === 'invalid_email' || code === 'email_address_invalid') return copy.invalidEmail;
+  if (code === 'email_address_not_authorized') return copy.emailDeliveryUnavailable;
   if (code === 'invalid_credentials' || code === 'email_not_confirmed') return copy.invalidCredentials;
   if (code === 'weak_password') return copy.weakPassword;
   if (code === 'over_email_send_rate_limit' || code === 'over_request_rate_limit') return copy.rateLimit;
   if (code === 'secure_storage_unavailable' || code === 'secure_storage_write_failed') return copy.secureStorage;
+  const name = typeof error === 'object' && error !== null && 'name' in error ? error.name : '';
+  if (name === 'AuthRetryableFetchError' || code === 'request_timeout') return copy.connection;
   return copy.generic;
 }
 
@@ -83,7 +87,9 @@ function errorMessage(error: unknown): string {
 
 function emailValue(email: string): string {
   const value = email.trim();
-  if (!value || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) throw new RangeError('INVALID_EMAIL');
+  if (!value || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    throw Object.assign(new RangeError('INVALID_EMAIL'), { code: 'invalid_email' });
+  }
   return value;
 }
 

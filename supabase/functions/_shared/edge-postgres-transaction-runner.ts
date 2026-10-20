@@ -5,7 +5,10 @@
 
 import type { PostgresQueryResult, PostgresTransactionClient, PostgresTransactionRunner } from './postgres-domain-mutation-adapter.ts';
 
-type QueryResult<Row extends Record<string, unknown> = Record<string, unknown>> = { rows: Row[] };
+type QueryResult<Row extends Record<string, unknown> = Record<string, unknown>> = {
+  rows: Row[];
+  rowDescription?: { columns: { name: string; typeOid: number }[] };
+};
 
 type EdgeTransaction = {
   begin: () => Promise<void>;
@@ -24,6 +27,20 @@ export type EdgePostgresPool = {
 };
 
 function unavailable(): never { throw new Error('EDGE_POSTGRES_UNAVAILABLE'); }
+
+/** Keep driver-native values out of the JSON-shaped repository contract. */
+function normalizeRows<Row extends Record<string, unknown>>(result: QueryResult<Row>): Row[] {
+  const dateColumns = new Set(result.rowDescription?.columns.filter((column) => column.typeOid === 1082).map((column) => column.name));
+  return result.rows.map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => {
+    if (typeof value === 'bigint') return [key, value.toString()];
+    if (value instanceof Date) {
+      if (!Number.isFinite(value.getTime())) unavailable();
+      const iso = value.toISOString();
+      return [key, dateColumns.has(key) ? iso.slice(0, 10) : iso];
+    }
+    return [key, value];
+  })) as Row);
+}
 
 function validPool(value: unknown): value is EdgePostgresPool {
   return Boolean(value) && typeof value === 'object' && typeof (value as EdgePostgresPool).connect === 'function';
@@ -61,7 +78,7 @@ export function createEdgePostgresTransactionRunner(input: { pool: EdgePostgresP
           query: async <Row extends Record<string, unknown> = Record<string, unknown>>(sql: string, params: readonly unknown[] = []): Promise<PostgresQueryResult<Row>> => {
             const queryResult = await transaction.queryObject<Row>(sql, params);
             if (!queryResult || !Array.isArray(queryResult.rows)) unavailable();
-            return { rows: queryResult.rows };
+            return { rows: normalizeRows(queryResult) };
           },
         });
         await transaction.commit();

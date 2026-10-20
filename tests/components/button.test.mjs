@@ -26,13 +26,18 @@ const dependencies = {
   '@/theme/tokens': {
     LetterSpacingEm: { button: 0 },
     LineHeightRatio: { body: 1.5 },
-    Palette: { deepNavy: '#001', error: '#f00', lightSurface: '#fff', mintPrimary: '#0af' },
+    Palette: { deepNavy: '#0F2537', error: '#EF4444', lightSurface: '#FFFFFF', mintPrimary: '#2165DF' },
     Radius: { card: 8 },
     Spacing: { md: 12, sm: 8 },
     Typography: { button: { fontSize: 16, fontWeight: '600' } },
   },
 };
 const exports = {};
+const actionColors = {};
+runInNewContext(ts.transpileModule(readFileSync('src/theme/action-colors.ts', 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText, { exports: actionColors, require: () => dependencies['@/theme/tokens'] });
+dependencies['@/theme/action-colors'] = actionColors;
 runInNewContext(outputText, {
   exports,
   require(name) {
@@ -66,4 +71,13 @@ test('idle button keeps its normal accessible name and enabled state', () => {
   assert.equal(element.props.accessibilityState.busy, false);
   assert.equal(element.props.accessibilityState.disabled, false);
   assert.equal(element.props.disabled, false);
+});
+
+test('primary buttons honor the accent and select readable light/dark foregrounds', () => {
+  for (const [accentColor, foreground] of [['#2165DF', '#FFFFFF'], ['#8BB8FF', '#0F2537']]) {
+    const button = Button({ label: 'Start', accentColor });
+    const styles = button.props.style({ pressed: false });
+    assert.equal(styles[1].backgroundColor, accentColor);
+    assert.equal(button.props.children[1].props.style[1].color, foreground);
+  }
 });

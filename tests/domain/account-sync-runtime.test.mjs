@@ -47,7 +47,7 @@ test('runtime obtains only a bearer token and preserves the verified owner bound
   let request;
   const result = await createAccountSyncRuntime({
     store: current, ownerId: () => OWNER, baseUrl: 'https://api.example.test',
-    client: { auth: { getSession: async () => ({ data: { session: { access_token: 'access-token' } }, error: null }) } },
+    client: { auth: { getSession: async () => ({ data: { session: { access_token: 'access-token', user: { id: OWNER } } }, error: null }) } },
     fetcher: async (input, init) => { request = { input, init }; return { ok: true, status: 200, async json() { return { acceptedMutationIds: [MUTATION] }; } }; },
   }).run();
   assert.equal(result.status, 'completed');
@@ -74,4 +74,42 @@ test('runtime rejects malformed session client and owner reader before sync work
   assert.deepEqual(await createAccountSyncRuntime({ ...base, client: {} }).run(), { status: 'unavailable' });
   assert.deepEqual(await createAccountSyncRuntime({ ...base, ownerId: () => { throw new Error('owner unavailable'); }, client: { auth: { getSession: async () => ({ data: { session: null }, error: null }) } } }).run(), { status: 'unavailable' });
   assert.equal(fetchCalls, 0);
+});
+
+test('switching accounts during outbox loading never sends or consumes the old batch', async () => {
+  const current = store();
+  const load = current.loadPendingOutbox;
+  let owner = OWNER;
+  let requests = 0;
+  current.loadPendingOutbox = async () => {
+    const pending = await load();
+    owner = '30000000-0000-4000-8000-000000000003';
+    return pending;
+  };
+  const result = await createAccountSyncRuntime({
+    store: current, ownerId: () => owner, baseUrl: 'https://api.example.test',
+    client: { auth: { getSession: async () => ({ data: { session: { access_token: 'new-account-token', user: { id: owner } } }, error: null }) } },
+    fetcher: async () => { requests += 1; throw new Error('must not send'); },
+  }).run();
+  assert.equal(result.status, 'completed');
+  assert.equal(result.result.attempted, 0);
+  assert.equal(requests, 0);
+  assert.deepEqual(current.calls.acknowledged, []);
+  assert.deepEqual(current.calls.attempts, []);
+});
+
+test('a token for a different or absent session owner never reaches transport', async () => {
+  for (const user of [undefined, { id: '30000000-0000-4000-8000-000000000003' }]) {
+    const current = store();
+    let requests = 0;
+    const result = await createAccountSyncRuntime({
+      store: current, ownerId: () => OWNER, baseUrl: 'https://api.example.test',
+      client: { auth: { getSession: async () => ({ data: { session: { access_token: 'wrong-owner-token', user } }, error: null }) } },
+      fetcher: async () => { requests += 1; throw new Error('must not send'); },
+    }).run();
+    assert.equal(result.result.acknowledged, 0);
+    assert.equal(requests, 0);
+    assert.deepEqual(current.calls.acknowledged, []);
+    assert.deepEqual(current.calls.attempts, [MUTATION]);
+  }
 });

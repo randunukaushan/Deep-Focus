@@ -52,3 +52,16 @@ test('edge runner rolls back when commit fails', async () => {
   await assert.rejects(() => runner.withTransaction(async () => 'ok'), /COMMIT_FAILED/);
   assert.deepEqual(h.calls.slice(-3), ['commit', 'rollback', 'release']);
 });
+
+test('driver timestamps, SQL dates and bigint sequences enter repositories without precision loss', async () => {
+  const transaction = {
+    begin: async () => {}, commit: async () => {}, rollback: async () => {},
+    queryObject: async () => ({
+      rows: [{ issued_at: new Date('2026-10-19T12:34:56.000Z'), due_date: new Date('2026-10-19T00:00:00.000Z'), sequence: 9007199254740993n, version: 1, payload: { keep: true } }],
+      rowDescription: { columns: [{ name: 'issued_at', typeOid: 1184 }, { name: 'due_date', typeOid: 1082 }, { name: 'sequence', typeOid: 20 }] },
+    }),
+  };
+  const runner = createEdgePostgresTransactionRunner({ pool: { connect: async () => ({ createTransaction: () => transaction, release() {} }) } });
+  const result = await runner.withTransaction((client) => client.query('select fixture'));
+  assert.deepEqual(result.rows, [{ issued_at: '2026-10-19T12:34:56.000Z', due_date: '2026-10-19', sequence: '9007199254740993', version: 1, payload: { keep: true } }]);
+});

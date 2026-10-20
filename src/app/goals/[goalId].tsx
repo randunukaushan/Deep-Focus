@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -22,7 +24,7 @@ export default function GoalDetailRoute() {
   const router = useRouter();
   const theme = useTheme();
   const isDark = useColorScheme() === 'dark';
-  const action = isDark ? Palette.mintPrimary : Palette.homeLightAction;
+  const action = theme.primary;
   const softAction = isDark ? Palette.navySurfaceElevated : Palette.homeLightActionSoft;
   const { locale } = useAppLocale();
   const text = getGoalDetailCopy(locale);
@@ -136,8 +138,9 @@ export default function GoalDetailRoute() {
   const result = goal ? getGoalProgress(goal, sessions) : null;
 
   return (
-    <ThemedView style={[styles.screen, { backgroundColor: isDark ? theme.background : Palette.homeLightBackground }]}>
-      <View style={styles.content}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: isDark ? theme.background : Palette.homeLightBackground }]}>
+      <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Button accentColor={action} label={text.back} onPress={() => router.replace('/goals')} variant="ghost" />
         {loading ? <View accessibilityLabel={text.loading} accessibilityLiveRegion="polite" style={styles.loading}><ActivityIndicator color={action} /></View>
           : loadError ? <ThemedView accessibilityRole="alert" style={[styles.card, { backgroundColor: surface, borderColor: border }]}>
@@ -186,13 +189,14 @@ export default function GoalDetailRoute() {
                 <ThemedText accessibilityRole="header" type="subtitle">{text.unavailable}</ThemedText>
                 <ThemedText themeColor="textSecondary">{text.unavailableDetail}</ThemedText>
               </ThemedView>}
-      </View>
-    </ThemedView>
+      </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 }, content: { alignSelf: 'center', flex: 1, gap: Spacing.lg, justifyContent: 'center', maxWidth: 560, padding: Spacing.lg, width: '100%' },
+  screen: { flex: 1 }, content: { alignSelf: 'center', flexGrow: 1, gap: Spacing.lg, justifyContent: 'center', maxWidth: 560, padding: Spacing.lg, width: '100%' },
   loading: { alignItems: 'center', minHeight: 180, justifyContent: 'center' }, card: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.md, padding: Spacing.lg },
   icon: { alignItems: 'center', borderRadius: 26, height: 52, justifyContent: 'center', width: 52 }, eyebrow: { letterSpacing: 1.2 }, title: { fontSize: 30, lineHeight: 38 },
   titleInput: { borderWidth: 1, borderRadius: Radius.card, fontSize: 22, minHeight: 52, paddingHorizontal: Spacing.md }, input: { borderWidth: 1, borderRadius: Radius.card, fontSize: 18, minHeight: 48, paddingHorizontal: Spacing.md },

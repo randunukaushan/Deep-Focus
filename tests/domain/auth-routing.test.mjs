@@ -10,7 +10,7 @@ test('initial session restoration never renders a protected route', () => {
 
 test('signed-out, unverified and configuration-error states allow only public entry routes', () => {
   for (const status of ['signed_out', 'verification_required', 'configuration_error', 'error']) {
-    assert.deepEqual(authRouteDecision(status, ['(tabs)', 'home']), { blocked: true, redirect: '/auth/sign-in' });
+    assert.deepEqual(authRouteDecision(status, ['(tabs)', 'home']), { blocked: true, redirect: '/auth/sign-up' });
     assert.deepEqual(authRouteDecision(status, ['auth', 'sign-up']), { blocked: false });
     assert.deepEqual(authRouteDecision(status, ['welcome']), { blocked: false });
   }

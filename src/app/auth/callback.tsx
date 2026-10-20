@@ -1,12 +1,10 @@
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
-import { Palette, Spacing } from '@/constants/theme';
+import { AuthFrame } from '@/components/ui/auth-frame';
 import { useAuth } from '@/features/auth/auth-context';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/hooks/use-theme';
 import { getAuthCallbackCopy } from '@/features/localization/auth-callback-copy';
 import { useAppLocale } from '@/features/localization/app-locale-context';
 
@@ -15,16 +13,12 @@ export default function AuthCallbackRoute() {
   const { snapshot } = useAuth();
   const { locale } = useAppLocale();
   const copy = getAuthCallbackCopy(locale);
-  const action = useColorScheme() === 'dark' ? Palette.mintPrimary : Palette.homeLightAction;
+  const action = useTheme().primary;
   const failed = snapshot.status === 'error';
-  return <ThemedView style={styles.screen}>
-    <View style={styles.content}>
-      {failed ? null : <ActivityIndicator accessibilityLabel={copy.loadingTitle} />}
-      <ThemedText accessibilityRole="header" type="subtitle">{failed ? copy.errorTitle : copy.loadingTitle}</ThemedText>
-      <ThemedText accessibilityLiveRegion={failed ? 'assertive' : 'polite'} accessibilityRole={failed ? 'alert' : undefined} themeColor="textSecondary">{failed ? snapshot.message ?? copy.errorDetail : copy.loadingDetail}</ThemedText>
+  return <AuthFrame title={failed ? copy.errorTitle : copy.loadingTitle}
+    subtitle={failed ? snapshot.message ?? copy.errorDetail : copy.loadingDetail}
+    subtitleAccessibility={{ accessibilityLiveRegion: failed ? 'assertive' : 'polite', accessibilityRole: failed ? 'alert' : undefined }}>
+      {failed ? null : <ActivityIndicator color={action} accessibilityLabel={copy.loadingTitle} />}
       {failed ? <Button accentColor={action} fullWidth label={copy.backToSignIn} onPress={() => router.replace('/auth/sign-in')} /> : null}
-    </View>
-  </ThemedView>;
+  </AuthFrame>;
 }
-
-const styles = StyleSheet.create({ screen: { flex: 1, justifyContent: 'center', padding: Spacing.lg }, content: { alignSelf: 'center', alignItems: 'center', gap: Spacing.md, maxWidth: 480, width: '100%' } });

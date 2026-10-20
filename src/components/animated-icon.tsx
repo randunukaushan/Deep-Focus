@@ -1,152 +1,75 @@
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
-import { AccessibilityInfo, Dimensions, StyleSheet, View } from 'react-native';
-import Animated, { Easing, Keyframe } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
-import { animationMode } from '@/features/accessibility/reduced-motion';
+import { AccessibilityInfo, Animated, Easing, StyleSheet, View } from 'react-native';
+import { usePresentation } from '@/features/settings/presentation-context';
 
-const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
-const DURATION = 600;
+const BRAND_IMAGE = require('../../assets/images/deep-focus-brand-reference.png');
+const READING_TIME_MS = 1500;
+const FADE_TIME_MS = 350;
 
+/** The owner's original lockup, kept at a readable size throughout launch. */
 export function AnimatedSplashOverlay() {
+  const presentation = usePresentation();
   const [visible, setVisible] = useState(true);
+  const [imageReady, setImageReady] = useState(false);
   const [reducedMotion, setReducedMotion] = useState<boolean | null>(null);
+  const [opacity] = useState(() => new Animated.Value(1));
+  const skipMotion = presentation?.preferences.reduceMotion || reducedMotion === true;
 
   useEffect(() => {
     let mounted = true;
     AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
       if (mounted) setReducedMotion(enabled);
     }).catch(() => {
-      if (mounted) setReducedMotion(false);
+      if (mounted) setReducedMotion(true);
     });
-    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', (enabled) => {
-      if (mounted) setReducedMotion(enabled);
-    });
-    return () => {
-      mounted = false;
-      subscription.remove();
-    };
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReducedMotion);
+    return () => { mounted = false; subscription.remove(); };
   }, []);
 
-  if (!visible) return null;
-  if (reducedMotion === true) return null;
-  if (animationMode(reducedMotion) === 'static') return <View style={styles.backgroundSolidColor} />;
+  useEffect(() => {
+    // Asset/accessibility failures must not leave an indefinite launch overlay.
+    const timeout = setTimeout(() => setVisible(false), 5000);
+    return () => clearTimeout(timeout);
+  }, []);
 
-  const splashKeyframe = new Keyframe({
-    0: {
-      transform: [{ scale: INITIAL_SCALE_FACTOR }],
-      opacity: 1,
-    },
-    20: {
-      opacity: 1,
-    },
-    70: {
-      opacity: 0,
-      easing: Easing.elastic(0.7),
-    },
-    100: {
-      opacity: 0,
-      transform: [{ scale: 1 }],
-      easing: Easing.elastic(0.7),
-    },
-  });
+  useEffect(() => {
+    if (skipMotion) {
+      const dismiss = setTimeout(() => setVisible(false), 0);
+      return () => clearTimeout(dismiss);
+    }
+    if (!imageReady || reducedMotion === null || presentation?.loading || !visible) return;
+    let mounted = true;
+    const fade = Animated.timing(opacity, {
+      toValue: 0, duration: FADE_TIME_MS,
+      easing: Easing.inOut(Easing.quad), useNativeDriver: true,
+    });
+    const timeout = setTimeout(() => {
+      fade.start(({ finished }) => { if (mounted && finished) setVisible(false); });
+    }, READING_TIME_MS);
+    return () => { mounted = false; clearTimeout(timeout); fade.stop(); };
+  }, [imageReady, opacity, presentation?.loading, reducedMotion, skipMotion, visible]);
 
+  if (!visible || skipMotion) return null;
   return (
-    <Animated.View
-      entering={splashKeyframe.duration(DURATION).withCallback((finished) => {
-        'worklet';
-        if (finished) {
-          scheduleOnRN(setVisible, false);
-        }
-      })}
-      style={styles.backgroundSolidColor}
-    />
+    <Animated.View style={[styles.splash, { opacity }]}
+      accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Image source={BRAND_IMAGE} contentFit="contain" transition={0}
+        onLoad={() => setImageReady(true)} onError={() => setVisible(false)}
+        accessible={false} style={styles.lockup} />
+    </Animated.View>
   );
 }
 
-const keyframe = new Keyframe({
-  0: {
-    transform: [{ scale: INITIAL_SCALE_FACTOR }],
-  },
-  100: {
-    transform: [{ scale: 1 }],
-    easing: Easing.elastic(0.7),
-  },
-});
-
-const logoKeyframe = new Keyframe({
-  0: {
-    transform: [{ scale: 1.3 }],
-    opacity: 0,
-  },
-  40: {
-    transform: [{ scale: 1.3 }],
-    opacity: 0,
-    easing: Easing.elastic(0.7),
-  },
-  100: {
-    opacity: 1,
-    transform: [{ scale: 1 }],
-    easing: Easing.elastic(0.7),
-  },
-});
-
-const glowKeyframe = new Keyframe({
-  0: {
-    transform: [{ rotateZ: '0deg' }],
-  },
-  100: {
-    transform: [{ rotateZ: '7200deg' }],
-  },
-});
-
 export function AnimatedIcon() {
-  return (
-    <View style={styles.iconContainer}>
-      <Animated.View entering={glowKeyframe.duration(60 * 1000 * 4)} style={styles.glow}>
-        <Image style={styles.glow} source={require('@/assets/images/logo-glow.png')} />
-      </Animated.View>
-
-      <Animated.View entering={keyframe.duration(DURATION)} style={styles.background} />
-      <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
-        <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />
-      </Animated.View>
-    </View>
-  );
+  return <View style={styles.icon}><Image source={BRAND_IMAGE} contentFit="contain" style={StyleSheet.absoluteFill} /></View>;
 }
 
 const styles = StyleSheet.create({
-  imageContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
+  splash: {
+    ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#031226', zIndex: 1000, elevation: 1000,
   },
-  glow: {
-    width: 201,
-    height: 201,
-    position: 'absolute',
-  },
-  iconContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 128,
-    height: 128,
-    zIndex: 100,
-  },
-  image: {
-    position: 'absolute',
-    width: 76,
-    height: 71,
-  },
-  background: {
-    borderRadius: 40,
-    experimental_backgroundImage: `linear-gradient(180deg, #3C9FFE, #0274DF)`,
-    width: 128,
-    height: 128,
-    position: 'absolute',
-  },
-  backgroundSolidColor: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: '#208AEF',
-    zIndex: 1000,
-  },
+  lockup: { width: '100%', maxWidth: 420, aspectRatio: 1 },
+  icon: { width: 128, height: 128 },
 });

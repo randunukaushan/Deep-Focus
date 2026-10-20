@@ -4,9 +4,12 @@ import * as Crypto from 'expo-crypto';
 import { Platform } from 'react-native';
 
 import type { AppSettings } from '@/features/settings/settings-storage';
+import { SETUP_VERSION, setupPatchConflicts, validSetupPatch, validSetupPreferences, type SetupPreferences } from '@/features/onboarding/setup-definition';
+import { defaultPresentationPreferences, validPresentationPreferences, type PresentationPreferences } from '@/features/settings/presentation-preferences';
 import type { Goal } from '@/features/goals/goal-types';
 import { getGoalCompletionAt } from '@/features/goals/goal-progress';
 import type { Task } from '@/features/tasks/task-types';
+import { validTaskPlanning } from '@/features/tasks/task-planning';
 import { validateFocusSession } from '@/features/focus/session-engine';
 import { createFinalizedSessionProcessing } from '@/features/focus/completion-processing';
 import type { FocusSession } from '@/features/focus/session-types';
@@ -29,8 +32,22 @@ import { createTeacherAssignmentDraft, type TeacherAssignmentDraft } from '@/fea
 const DATABASE_NAME = 'deep-focus-local.db';
 const LOCAL_OWNER_ID = 'local:device';
 const ACCOUNT_OWNER_ID = /^account:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const SCHEMA_VERSION = 18;
+const SCHEMA_VERSION = 20;
+const PRESENTATION_SCHEMA_SQL = `CREATE TABLE IF NOT EXISTS device_presentation_preferences (
+  owner_id TEXT PRIMARY KEY NOT NULL REFERENCES local_owners(id),
+  preferences_json TEXT NOT NULL CHECK (json_valid(preferences_json))
+);`;
 const LEGACY_IMPORT_VERSION = 1;
+
+async function migrateTaskPlanningColumns(db: SQLite.SQLiteDatabase) {
+  const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(tasks)');
+  if (!columns.some(column => column.name === 'estimated_minutes')) {
+    await db.execAsync("ALTER TABLE tasks ADD COLUMN estimated_minutes INTEGER CHECK (estimated_minutes IS NULL OR (typeof(estimated_minutes) = 'integer' AND estimated_minutes BETWEEN 1 AND 480));");
+  }
+  if (!columns.some(column => column.name === 'planned_date')) {
+    await db.execAsync("ALTER TABLE tasks ADD COLUMN planned_date TEXT CHECK (planned_date IS NULL OR (planned_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' AND date(planned_date, '+0 days') IS NOT NULL AND date(planned_date, '+0 days') = planned_date));");
+  }
+}
 
 const SNAPSHOT_LOCAL_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS sync_snapshot_staging (
@@ -319,6 +336,8 @@ CREATE TABLE IF NOT EXISTS tasks (
   goal_id TEXT,
   priority TEXT CHECK (priority IS NULL OR priority IN ('low', 'medium', 'high')),
   due_at TEXT,
+  estimated_minutes INTEGER CHECK (estimated_minutes IS NULL OR (typeof(estimated_minutes) = 'integer' AND estimated_minutes BETWEEN 1 AND 480)),
+  planned_date TEXT CHECK (planned_date IS NULL OR (planned_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' AND date(planned_date, '+0 days') IS NOT NULL AND date(planned_date, '+0 days') = planned_date)),
   completed_at TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
@@ -652,6 +671,7 @@ type TaskRow = {
 
 type StoredTaskRow = TaskRow & {
   goal_id: string | null; priority: string | null; due_at: string | null;
+  estimated_minutes: number | null; planned_date: string | null;
 };
 
 type ResourceRow = {
@@ -1068,7 +1088,7 @@ function validateLegacySession(value: Record<string, unknown>, label: string): F
 }
 
 function validateLegacyTask(task: Record<string, unknown>) {
-  if (typeof task.id !== 'string' || !task.id.trim() || typeof task.title !== 'string' || !task.title.trim()
+  if (!validTaskPlanning(task) || typeof task.id !== 'string' || !task.id.trim() || typeof task.title !== 'string' || !task.title.trim()
     || !['pending', 'in_progress', 'completed', 'cancelled'].includes(String(task.status))
     || !validTimestamp(task.createdAt) || !validTimestamp(task.updatedAt)
     || (task.completedAt !== undefined && !validTimestamp(task.completedAt))
@@ -1137,7 +1157,7 @@ function mergeExtra(value: Record<string, unknown>, extra: string | null) {
 }
 
 const SESSION_KEYS = ['id', 'status', 'taskId', 'taskName', 'plannedDurationSeconds', 'focusedDurationSeconds', 'pausedDurationSeconds', 'createdAt', 'startedAt', 'completedAt', 'cancelledAt', 'lastPausedAt', 'lastResumedAt'];
-const TASK_KEYS = ['id', 'goalId', 'title', 'description', 'status', 'priority', 'dueAt', 'createdAt', 'updatedAt', 'completedAt'];
+const TASK_KEYS = ['id', 'goalId', 'title', 'description', 'status', 'priority', 'dueAt', 'plannedDate', 'estimatedMinutes', 'createdAt', 'updatedAt', 'completedAt'];
 const GOAL_KEYS = ['id', 'title', 'description', 'type', 'period', 'status', 'targetValue', 'createdAt', 'updatedAt', 'completedAt', 'startsAt', 'endsAt', 'periodTimeZone', 'legacyOpenPeriod'];
 
 function sessionValues(session: FocusSession, now: string, ownerId = LOCAL_OWNER_ID, taskColumnId = session.taskId ?? null) {
@@ -1160,7 +1180,7 @@ function taskValues(task: Task, ownerId = LOCAL_OWNER_ID) {
   const value = task as Task & { priority?: string; dueAt?: string; goalId?: string };
   return [ownerId, task.id, task.title.trim(), task.description ?? null, task.status,
     value.goalId ?? null, value.priority ?? null, value.dueAt ?? null, task.completedAt ?? null,
-    task.createdAt, task.updatedAt, extraJson(task as unknown as Record<string, unknown>, TASK_KEYS)];
+    task.createdAt, task.updatedAt, extraJson(task as unknown as Record<string, unknown>, TASK_KEYS), task.estimatedMinutes ?? null, task.plannedDate ?? null];
 }
 
 function goalValues(goal: Goal, ownerId = LOCAL_OWNER_ID) {
@@ -1234,6 +1254,10 @@ function taskFromRow(row: StoredTaskRow): Task {
   else task.priority = row.priority as Task['priority'];
   if (row.due_at === null) delete task.dueAt;
   else task.dueAt = row.due_at;
+  if (row.estimated_minutes === null) delete task.estimatedMinutes;
+  else task.estimatedMinutes = row.estimated_minutes;
+  if (row.planned_date === null) delete task.plannedDate;
+  else task.plannedDate = row.planned_date;
   return task;
 }
 
@@ -1255,7 +1279,7 @@ async function insertSession(db: SQLite.SQLiteDatabase, session: FocusSession, n
 
 function validateNewTask(task: Task) {
   validateLegacyTask(task as unknown as Record<string, unknown>);
-  if (task.title.trim().length > 120
+  if (!validTaskPlanning(task) || task.title.trim().length > 120
     || (task.goalId !== undefined && (!task.goalId.trim() || task.goalId.length > 128))
     || (task.dueAt !== undefined && (!validTimestamp(task.dueAt) || new Date(task.dueAt).toISOString() !== task.dueAt))
     || (task.status !== 'completed' && task.completedAt !== undefined)) {
@@ -1473,6 +1497,14 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
           await transaction.execAsync('UPDATE user_achievements SET summary_presented_at = unlocked_at WHERE summary_presented_at IS NULL;');
           await transaction.execAsync('PRAGMA user_version = 18;');
         }
+        if ((latest?.user_version ?? 0) < 19) {
+          await migrateTaskPlanningColumns(transaction);
+          await transaction.execAsync('PRAGMA user_version = 19;');
+        }
+        if ((latest?.user_version ?? 0) < 20) {
+          await transaction.execAsync(PRESENTATION_SCHEMA_SQL);
+          await transaction.execAsync('PRAGMA user_version = 20;');
+        }
       });
     }
     if (!marker) {
@@ -1483,6 +1515,8 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
         const current = await transaction.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
         if ((current?.user_version ?? 0) > SCHEMA_VERSION) throw new Error('DATABASE_VERSION_UNSUPPORTED: newer local database');
         await transaction.execAsync(ASSESSMENT_SCHEMA_SQL);
+        await transaction.execAsync(PRESENTATION_SCHEMA_SQL);
+        if ((current?.user_version ?? 0) < 19) await migrateTaskPlanningColumns(transaction);
         if ((current?.user_version ?? 0) < 3) {
           const columns = await transaction.getAllAsync<{ name: string }>('PRAGMA table_info(user_settings)');
           if (!columns.some((column) => column.name === 'default_focus_duration_minutes')) {
@@ -1563,7 +1597,7 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
           if (link && !snapshot.goals.some((goal) => goal.id === link)) {
             throw new RangeError('INVALID_RECORD: task references a missing goal; source preserved');
           }
-          await transaction.runAsync(`INSERT INTO tasks (owner_id,id,title,description,status,goal_id,priority,due_at,completed_at,created_at,updated_at,legacy_extra_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`, ...taskValues(task));
+          await transaction.runAsync(`INSERT INTO tasks (owner_id,id,title,description,status,goal_id,priority,due_at,completed_at,created_at,updated_at,legacy_extra_json,estimated_minutes,planned_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, ...taskValues(task));
         }
 
         for (const session of snapshot.sessions) await insertSession(transaction, session, now());
@@ -1809,7 +1843,7 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
       return serialize(async () => {
       const db = await database();
       const rows = await db.getAllAsync<StoredTaskRow>(
-        'SELECT id,title,description,status,created_at,updated_at,completed_at,legacy_extra_json,goal_id,priority,due_at FROM tasks WHERE owner_id = ? ORDER BY created_at DESC,id', ownerId);
+        'SELECT id,title,description,status,created_at,updated_at,completed_at,legacy_extra_json,goal_id,priority,due_at,estimated_minutes,planned_date FROM tasks WHERE owner_id = ? ORDER BY created_at DESC,id', ownerId);
       return rows.map(taskFromRow);
       });
     },
@@ -1822,7 +1856,7 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
         seen.add(task.id);
       }
       await transaction(async (db) => {
-        for (const task of tasks) await db.runAsync(`INSERT INTO tasks (owner_id,id,title,description,status,goal_id,priority,due_at,completed_at,created_at,updated_at,legacy_extra_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(owner_id,id) DO UPDATE SET title=excluded.title,description=excluded.description,status=excluded.status,goal_id=excluded.goal_id,priority=excluded.priority,due_at=excluded.due_at,completed_at=excluded.completed_at,updated_at=excluded.updated_at,legacy_extra_json=excluded.legacy_extra_json`, ...taskValues(task, ownerId));
+        for (const task of tasks) await db.runAsync(`INSERT INTO tasks (owner_id,id,title,description,status,goal_id,priority,due_at,completed_at,created_at,updated_at,legacy_extra_json,estimated_minutes,planned_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(owner_id,id) DO UPDATE SET title=excluded.title,description=excluded.description,status=excluded.status,goal_id=excluded.goal_id,priority=excluded.priority,due_at=excluded.due_at,completed_at=excluded.completed_at,updated_at=excluded.updated_at,legacy_extra_json=excluded.legacy_extra_json,estimated_minutes=excluded.estimated_minutes,planned_date=excluded.planned_date`, ...taskValues(task, ownerId));
       });
     },
 
@@ -1848,7 +1882,7 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
       }
       return transaction(async (db) => {
         const current = await db.getFirstAsync<StoredTaskRow>(
-          'SELECT id,title,description,status,created_at,updated_at,completed_at,legacy_extra_json,goal_id,priority,due_at FROM tasks WHERE owner_id = ? AND id = ?',
+          'SELECT id,title,description,status,created_at,updated_at,completed_at,legacy_extra_json,goal_id,priority,due_at,estimated_minutes,planned_date FROM tasks WHERE owner_id = ? AND id = ?',
           ownerId, taskId,
         );
         if (!current) return null;
@@ -2689,6 +2723,106 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
       });
     },
 
+    /** Read only the new questionnaire's resumable attempt; never reinterpret v1. */
+    async saveSetupLocale(uiLocale: AppSettings['uiLocale']): Promise<void> {
+      if (!['si', 'ta', 'en'].includes(uiLocale)) throw new RangeError('INVALID_SETUP_LOCALE');
+      await transaction(async db => {
+        await db.runAsync('INSERT INTO user_settings (owner_id,default_break_duration_minutes,ui_locale) VALUES (?,5,?) ON CONFLICT(owner_id) DO UPDATE SET ui_locale=excluded.ui_locale', ownerId, uiLocale);
+      });
+    },
+
+    async loadLatestSetupDraft(): Promise<AssessmentAttempt | null> {
+      return serialize(async () => {
+        const db = await database();
+        const row = await db.getFirstAsync<AssessmentRow>(
+          "SELECT * FROM assessments WHERE owner_id = ? AND version = ? AND id LIKE 'personal-setup-v2:%' AND status = 'in_progress' ORDER BY updated_at DESC,id DESC LIMIT 1", ownerId, SETUP_VERSION,
+        );
+        if (!row) return null;
+        const answers = await db.getAllAsync<AssessmentAnswerRow>('SELECT question_id,value_json FROM assessment_answers WHERE owner_id = ? AND assessment_id = ? ORDER BY question_id', ownerId, row.id);
+        return assessmentFromRows(row, answers);
+      });
+    },
+
+    async loadSetupPreferences(): Promise<SetupPreferences> {
+      return transaction(async db => {
+        const settings = await db.getFirstAsync<{ default_focus_duration_minutes: number; default_break_duration_minutes: number }>('SELECT default_focus_duration_minutes,default_break_duration_minutes FROM user_settings WHERE owner_id = ?', ownerId);
+        const row = await db.getFirstAsync<{ preferences_json: string }>('SELECT preferences_json FROM device_presentation_preferences WHERE owner_id = ?', ownerId);
+        const presentation: unknown = row ? JSON.parse(row.preferences_json) : { ...defaultPresentationPreferences };
+        if (!validPresentationPreferences(presentation)) throw new Error('INVALID_RECORD: presentation preferences');
+        const preferences = { defaultFocusDurationMinutes: settings?.default_focus_duration_minutes ?? 25, defaultBreakDurationMinutes: settings?.default_break_duration_minutes ?? 5, appearance: presentation.appearance, reduceMotion: presentation.reduceMotion };
+        if (!validSetupPreferences(preferences)) throw new Error('INVALID_RECORD: setup preferences');
+        return preferences;
+      });
+    },
+
+    /** Commit exactly the selected review fields and completion marker together. */
+    async applySetupPreferences(expected: SetupPreferences, changes: Partial<SetupPreferences>, attempt?: { id: string; updatedAt: string }): Promise<SetupPreferences> {
+      if (!validSetupPreferences(expected) || !validSetupPatch(changes)) throw new RangeError('INVALID_INPUT: setup preferences');
+      if (attempt && (typeof attempt.id !== 'string' || !attempt.id.startsWith('personal-setup-v2:') || attempt.id.length > 120 || !validTimestamp(attempt.updatedAt))) throw new RangeError('INVALID_INPUT: setup attempt');
+      // Capture before entering the asynchronous queue, including against caller mutation.
+      const baseline = { ...expected };
+      const patch = { ...changes };
+      const reviewedAttempt = attempt ? { ...attempt } : null;
+      return transaction(async db => {
+        const settings = await db.getFirstAsync<{ default_focus_duration_minutes: number; default_break_duration_minutes: number }>('SELECT default_focus_duration_minutes,default_break_duration_minutes FROM user_settings WHERE owner_id = ?', ownerId);
+        const row = await db.getFirstAsync<{ preferences_json: string }>('SELECT preferences_json FROM device_presentation_preferences WHERE owner_id = ?', ownerId);
+        const presentation: unknown = row ? JSON.parse(row.preferences_json) : { ...defaultPresentationPreferences };
+        if (!validPresentationPreferences(presentation)) throw new Error('INVALID_RECORD: presentation preferences');
+        const current = { defaultFocusDurationMinutes: settings?.default_focus_duration_minutes ?? 25, defaultBreakDurationMinutes: settings?.default_break_duration_minutes ?? 5, appearance: presentation.appearance, reduceMotion: presentation.reduceMotion };
+        if (!validSetupPreferences(current)) throw new Error('INVALID_RECORD: setup preferences');
+        if (reviewedAttempt) {
+          const draft = await db.getFirstAsync<AssessmentRow>('SELECT * FROM assessments WHERE owner_id = ? AND id = ?', ownerId, reviewedAttempt.id);
+          if (!draft || draft.version !== SETUP_VERSION) throw new Error('SETUP_DRAFT_CONFLICT');
+          if (draft.status === 'completed') {
+            const result: unknown = draft.result_json ? JSON.parse(draft.result_json) : null;
+            if (!isObject(result) || result.reviewedRevision !== reviewedAttempt.updatedAt || !validSetupPatch(result.applied)
+              || JSON.stringify(Object.entries(result.applied).sort()) !== JSON.stringify(Object.entries(patch).sort())) throw new Error('SETUP_DRAFT_CONFLICT');
+            return current; // A completed attempt is a receipt, never a second settings write.
+          }
+          if (draft.status !== 'in_progress' || draft.updated_at !== reviewedAttempt.updatedAt) throw new Error('SETUP_DRAFT_CONFLICT');
+        }
+        if (setupPatchConflicts(current, baseline, patch)) throw new Error('SETUP_PREFERENCES_CONFLICT');
+        const next: SetupPreferences = { ...current, ...patch };
+        await db.runAsync(
+          `INSERT INTO user_settings (owner_id,default_focus_duration_minutes,default_break_duration_minutes,onboarding_status,onboarding_step,onboarding_version)
+           VALUES (?,?,?,'completed','intro',1)
+           ON CONFLICT(owner_id) DO UPDATE SET default_focus_duration_minutes=excluded.default_focus_duration_minutes,
+           default_break_duration_minutes=excluded.default_break_duration_minutes,onboarding_status='completed',onboarding_step='intro',onboarding_version=1`,
+          ownerId, next.defaultFocusDurationMinutes, next.defaultBreakDurationMinutes,
+        );
+        if (patch.appearance !== undefined || patch.reduceMotion !== undefined) {
+          const updated = { ...presentation, appearance: next.appearance, reduceMotion: next.reduceMotion };
+          await db.runAsync('INSERT INTO device_presentation_preferences (owner_id,preferences_json) VALUES (?,?) ON CONFLICT(owner_id) DO UPDATE SET preferences_json=excluded.preferences_json', ownerId, JSON.stringify(updated));
+        }
+        if (reviewedAttempt) {
+          const completedAt = now();
+          const revision = nextRevisionTimestamp(reviewedAttempt.updatedAt, completedAt);
+          const receipt = JSON.stringify({ reviewedRevision: reviewedAttempt.updatedAt, applied: patch });
+          const result = await db.runAsync("UPDATE assessments SET status = 'completed',result_json = ?,completed_at = ?,updated_at = ? WHERE owner_id = ? AND id = ? AND updated_at = ? AND status = 'in_progress'", receipt, completedAt, revision, ownerId, reviewedAttempt.id, reviewedAttempt.updatedAt);
+          if (result.changes !== 1) throw new Error('SETUP_DRAFT_CONFLICT');
+        }
+        return next;
+      });
+    },
+
+    async loadPresentationPreferences(): Promise<PresentationPreferences> {
+      return serialize(async () => {
+        const db = await database();
+        const row = await db.getFirstAsync<{ preferences_json: string }>('SELECT preferences_json FROM device_presentation_preferences WHERE owner_id = ?', ownerId);
+        if (!row) return { ...defaultPresentationPreferences };
+        const value: unknown = JSON.parse(row.preferences_json);
+        if (!validPresentationPreferences(value)) throw new Error('INVALID_RECORD: presentation preferences');
+        return value;
+      });
+    },
+    async savePresentationPreferences(value: PresentationPreferences) {
+      if (!validPresentationPreferences(value)) throw new RangeError('INVALID_INPUT: presentation preferences');
+      const encoded = JSON.stringify(value);
+      await transaction(async db => {
+        await db.runAsync('INSERT INTO device_presentation_preferences (owner_id,preferences_json) VALUES (?,?) ON CONFLICT(owner_id) DO UPDATE SET preferences_json=excluded.preferences_json', ownerId, encoded);
+      });
+    },
+
     async loadSettings(): Promise<AppSettings> {
       return serialize(async () => {
       const db = await database();
@@ -3005,6 +3139,22 @@ export const loadAssessment = (...args: Parameters<typeof deviceLocalStore.loadA
 export const saveAssessmentDraft = (...args: Parameters<typeof deviceLocalStore.saveAssessmentDraft>) => owners.current().saveAssessmentDraft(...args);
 export const cancelAssessment = (...args: Parameters<typeof deviceLocalStore.cancelAssessment>) => owners.current().cancelAssessment(...args);
 export const loadSettings = (...args: Parameters<typeof deviceLocalStore.loadSettings>) => owners.current().loadSettings(...args);
+export const loadPresentationPreferences = () => owners.current().loadPresentationPreferences();
+export const loadSetupPreferences = () => owners.current().loadSetupPreferences();
+/** Capture once at owner-keyed mount; delayed work cannot retarget a new owner. */
+export function bindSetupStorage() {
+  const store = owners.current();
+  return {
+    loadLatestSetupDraft: store.loadLatestSetupDraft,
+    loadSetupPreferences: store.loadSetupPreferences,
+    saveAssessmentDraft: store.saveAssessmentDraft,
+    applySetupPreferences: store.applySetupPreferences,
+    saveSetupLocale: store.saveSetupLocale,
+  };
+}
+export const loadLatestSetupDraft = () => owners.current().loadLatestSetupDraft();
+export const applySetupPreferences = (...args: Parameters<typeof deviceLocalStore.applySetupPreferences>) => owners.current().applySetupPreferences(...args);
+export const savePresentationPreferences = (value: PresentationPreferences) => owners.current().savePresentationPreferences(value);
 export const saveSettings = (...args: Parameters<typeof deviceLocalStore.saveSettings>) => owners.current().saveSettings(...args);
 export const loadOnboardingState = (...args: Parameters<typeof deviceLocalStore.loadOnboardingState>) => owners.current().loadOnboardingState(...args);
 export const saveOnboardingState = (...args: Parameters<typeof deviceLocalStore.saveOnboardingState>) => owners.current().saveOnboardingState(...args);

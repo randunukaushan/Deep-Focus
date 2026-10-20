@@ -5,7 +5,7 @@ import { createAccountSyncBoundary, type AccountSyncOutcome, type AccountSyncBou
 type SessionClient = {
   auth: {
     getSession: () => Promise<{
-      data: { session: { access_token?: string } | null };
+      data: { session: { access_token?: string; user?: { id?: string } } | null };
       error: unknown;
     }>;
   };
@@ -58,13 +58,16 @@ export function createAccountSyncRuntime(dependencies: AccountSyncRuntimeDepende
       if (!validSessionClient(client) || !validEndpoint(baseUrl) || !OWNER.test(ownerId ?? '')) return { status: 'unavailable' };
       return createAccountSyncBoundary({
         store: dependencies.store,
-        ownerId: () => ownerId,
+        // Keep checking the live identity, not the captured value. Otherwise an
+        // account switch while reading the outbox could send it as the new user.
+        ownerId: () => dependencies.ownerId() === ownerId ? ownerId : null,
         baseUrl,
         fetcher: dependencies.fetcher,
         getAccessToken: async () => {
           try {
             const { data, error } = await client.auth.getSession();
-            return error ? null : data.session?.access_token ?? null;
+            if (error || dependencies.ownerId() !== ownerId || data.session?.user?.id !== ownerId) return null;
+            return data.session.access_token ?? null;
           } catch {
             return null;
           }

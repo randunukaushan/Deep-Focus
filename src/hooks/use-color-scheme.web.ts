@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { useColorScheme as useRNColorScheme } from 'react-native';
+import { usePresentation } from '@/features/settings/presentation-context';
 
 const subscribe = () => () => {};
 const getClientSnapshot = () => true;
@@ -17,6 +18,7 @@ export function useColorScheme() {
   );
 
   const colorScheme = useRNColorScheme();
+  const appearance = usePresentation()?.preferences.appearance ?? 'system';
 
-  return hasHydrated ? colorScheme : 'light';
+  return hasHydrated ? appearance === 'system' ? colorScheme : appearance : 'light';
 }

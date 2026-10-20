@@ -1,11 +1,13 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
+import { SectionHeading } from '@/components/ui/section-heading';
 import { loadGoals } from '@/features/goals/goal-storage';
 import type { Goal } from '@/features/goals/goal-types';
 import { linkResourceToTask, loadResources, loadTaskResourceLinks, unlinkResourceFromTask } from '@/features/resources/resource-storage';
@@ -35,7 +37,7 @@ export default function TaskDetailRoute() {
   ];
   const theme = useTheme();
   const isDark = useColorScheme() === 'dark';
-  const action = isDark ? Palette.mintPrimary : Palette.homeLightAction;
+  const action = theme.primary;
   const softAction = isDark ? Palette.navySurfaceElevated : Palette.homeLightActionSoft;
   const surface = isDark ? theme.surface : Palette.homeLightSurface;
   const border = isDark ? theme.border : Palette.homeLightBorder;
@@ -235,8 +237,11 @@ export default function TaskDetailRoute() {
     }
   }
 
+  const statusLabel = task?.archivedAt ? taskCopy.archivedStatus : task?.status === 'completed' ? taskCopy.completedStatus : task?.status === 'cancelled' ? taskCopy.cancelledStatus : taskCopy.readyStatus;
+
   return (
-    <ThemedView style={[styles.screen, { backgroundColor: isDark ? theme.background : Palette.homeLightBackground }]}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: isDark ? theme.background : Palette.homeLightBackground }]}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.screen}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.content}>
           <Button accentColor={action} label={taskCopy.back} onPress={() => router.replace('/tasks')} variant="ghost" />
@@ -251,12 +256,11 @@ export default function TaskDetailRoute() {
                 <ThemedText themeColor="textSecondary">{taskCopy.unavailableDetail}</ThemedText>
               </ThemedView>
                 : <ThemedView accessibilityLabel={`${taskCopy.eyebrow}: ${task.title}`} style={[styles.card, { backgroundColor: surface, borderColor: border }]}>
-                  <View style={[styles.icon, { backgroundColor: task.status === 'completed' ? action : softAction }]}>
-                    <Ionicons color={task.status === 'completed' ? Palette.deepNavy : action} name={task.status === 'completed' ? 'checkmark' : 'checkmark-circle-outline'} size={28} />
-                  </View>
-                  <ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">{taskCopy.eyebrow}</ThemedText>
+                  {!editing ? <SectionHeading eyebrow={taskCopy.eyebrow} title={task.title} subtitle={statusLabel} icon={task.status === 'completed' ? 'checkmark-circle-outline' : 'document-text-outline'} /> : <ThemedText accessibilityRole="header" type="subtitle">{taskCopy.eyebrow}</ThemedText>}
                   {editing ? <>
+                    <ThemedText type="smallBold">{taskCopy.editTitle}</ThemedText>
                     <TextInput accessibilityLabel={taskCopy.editTitle} editable={!saving} maxLength={120} onChangeText={setDraftTitle} returnKeyType="next" value={draftTitle} style={[styles.titleInput, { color: theme.text, borderColor: border }]} />
+                    <ThemedText type="smallBold">{taskCopy.descriptionPlaceholder}</ThemedText>
                     <TextInput accessibilityLabel={taskCopy.descriptionPlaceholder} editable={!saving} multiline onChangeText={setDraftDescription} placeholder={taskCopy.descriptionPlaceholder} placeholderTextColor={theme.textMuted} value={draftDescription} style={[styles.descriptionInput, { color: theme.text, borderColor: border }]} />
                     <ThemedText themeColor="textSecondary" type="small">{taskCopy.dueDateLabel}</ThemedText>
                     <TextInput accessibilityLabel={taskCopy.dueDateLabel} editable={!saving} keyboardType="numbers-and-punctuation" maxLength={10} onChangeText={setDraftDueDate} placeholder="YYYY-MM-DD" placeholderTextColor={theme.textMuted} value={draftDueDate} style={[styles.input, { color: theme.text, borderColor: border }]} />
@@ -265,7 +269,7 @@ export default function TaskDetailRoute() {
                       <ThemedText type="smallBold">{taskCopy.priorityLabel}</ThemedText>
                       <View style={styles.priorityOptions}>{priorities.map(({ label, value }) => {
                         const selected = draftPriority === value;
-                        return <Pressable accessibilityLabel={label} accessibilityRole="radio" accessibilityState={{ selected }} key={label} onPress={() => setDraftPriority(value)} style={({ pressed }) => [styles.priorityOption, { borderColor: selected ? action : border, backgroundColor: selected ? softAction : 'transparent' }, pressed && styles.pressed]}>
+                        return <Pressable accessibilityLabel={label} accessibilityRole="radio" accessibilityState={{ selected, checked: selected }} key={label} onPress={() => setDraftPriority(value)} style={({ pressed }) => [styles.priorityOption, { borderColor: selected ? action : border, backgroundColor: selected ? softAction : 'transparent' }, pressed && styles.pressed]}>
                           <ThemedText type="smallBold">{label}</ThemedText>
                         </Pressable>;
                       })}</View>
@@ -278,13 +282,13 @@ export default function TaskDetailRoute() {
                         <Button disabled={goalsLoading} label={taskCopy.retryGoals} onPress={() => retryGoalsLoad.current()} variant="secondary" />
                       </ThemedView> : null}
                       {!goalsLoading && !goalsLoadError ? <View style={styles.priorityOptions}>
-                        <Pressable accessibilityLabel={taskCopy.noGoal} accessibilityRole="radio" accessibilityState={{ selected: draftGoalId === null }} onPress={() => setDraftGoalId(null)} style={({ pressed }) => [styles.priorityOption, { borderColor: draftGoalId === null ? action : border, backgroundColor: draftGoalId === null ? softAction : 'transparent' }, pressed && styles.pressed]}>
+                        <Pressable accessibilityLabel={taskCopy.noGoal} accessibilityRole="radio" accessibilityState={{ selected: draftGoalId === null, checked: draftGoalId === null }} onPress={() => setDraftGoalId(null)} style={({ pressed }) => [styles.priorityOption, { borderColor: draftGoalId === null ? action : border, backgroundColor: draftGoalId === null ? softAction : 'transparent' }, pressed && styles.pressed]}>
                           <ThemedText type="smallBold">{taskCopy.noGoal}</ThemedText>
                         </Pressable>
                         {goals.filter((goal) => goal.status === 'active' || goal.id === task.goalId).map((goal) => {
                           const selected = draftGoalId === goal.id;
                           const label = goal.status === 'active' ? goal.title : `${goal.title} (${getGoalStatusLabel(locale, goal.status)})`;
-                          return <Pressable accessibilityLabel={label} accessibilityRole="radio" accessibilityState={{ selected }} key={goal.id} onPress={() => setDraftGoalId(goal.id)} style={({ pressed }) => [styles.priorityOption, { borderColor: selected ? action : border, backgroundColor: selected ? softAction : 'transparent' }, pressed && styles.pressed]}>
+                          return <Pressable accessibilityLabel={label} accessibilityRole="radio" accessibilityState={{ selected, checked: selected }} key={goal.id} onPress={() => setDraftGoalId(goal.id)} style={({ pressed }) => [styles.priorityOption, { borderColor: selected ? action : border, backgroundColor: selected ? softAction : 'transparent' }, pressed && styles.pressed]}>
                             <ThemedText type="smallBold">{label}</ThemedText>
                           </Pressable>;
                         })}
@@ -292,12 +296,11 @@ export default function TaskDetailRoute() {
                       </View> : null}
                     </View>
                   </> : <>
-                    <ThemedText accessibilityRole="header" type="subtitle" style={styles.title}>{task.title}</ThemedText>
                     {task.description ? <ThemedText themeColor="textSecondary">{task.description}</ThemedText> : null}
                     {task.dueAt ? <ThemedText accessibilityLabel={`${taskCopy.dueDatePrefix}: ${formatTaskDueDate(task.dueAt)}`} themeColor="textSecondary">{taskCopy.dueDatePrefix} {formatTaskDueDate(task.dueAt)}</ThemedText> : null}
                     {task.priority ? <ThemedText accessibilityLabel={`${taskCopy.priorityPrefix}: ${getPriorityLabel(taskCopy, task.priority)}`} themeColor="textSecondary" type="small">{taskCopy.priorityPrefix}: {getPriorityLabel(taskCopy, task.priority)}</ThemedText> : null}
                   </>}
-                  <ThemedText themeColor="textSecondary">{task.archivedAt ? taskCopy.archivedStatus : task.status === 'completed' ? taskCopy.completedStatus : task.status === 'cancelled' ? taskCopy.cancelledStatus : taskCopy.readyStatus}</ThemedText>
+                  {editing ? <ThemedText themeColor="textSecondary">{statusLabel}</ThemedText> : null}
                   {saveError ? <ThemedText accessibilityRole="alert" themeColor="textSecondary">{taskCopy.pendingSave}</ThemedText> : null}
                   {editError ? <ThemedText accessibilityRole="alert" themeColor="textSecondary">{editError}</ThemedText> : null}
                   {deleteError ? <ThemedText accessibilityRole="alert" themeColor="textSecondary">{deleteError}</ThemedText> : null}
@@ -335,7 +338,8 @@ export default function TaskDetailRoute() {
                 </ThemedView>}
         </View>
       </ScrollView>
-    </ThemedView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -346,7 +350,6 @@ function getPriorityLabel(copy: NonNullable<ReturnType<typeof getAppLocaleCopy>[
 const styles = StyleSheet.create({
   screen: { flex: 1 }, scroll: { flexGrow: 1, justifyContent: 'center', padding: Spacing.lg }, content: { alignSelf: 'center', gap: Spacing.lg, maxWidth: 560, width: '100%' },
   loading: { alignItems: 'center', minHeight: 180, justifyContent: 'center' }, card: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.md, padding: Spacing.lg },
-  icon: { alignItems: 'center', borderRadius: 26, height: 52, justifyContent: 'center', width: 52 }, eyebrow: { letterSpacing: 1.2 }, title: { fontSize: 30, lineHeight: 38 },
   titleInput: { borderWidth: 1, borderRadius: Radius.card, fontSize: 22, minHeight: 52, paddingHorizontal: Spacing.md }, descriptionInput: { borderWidth: 1, borderRadius: Radius.card, minHeight: 92, padding: Spacing.md, textAlignVertical: 'top' }, input: { borderWidth: 1, borderRadius: Radius.card, fontSize: 18, minHeight: 48, paddingHorizontal: Spacing.md },
   priorityGroup: { gap: Spacing.sm }, priorityOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs }, priorityOption: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, justifyContent: 'center', minHeight: 44, paddingHorizontal: Spacing.md },
   actions: { gap: Spacing.sm }, confirmCard: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.sm, padding: Spacing.md }, goalError: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.sm, padding: Spacing.sm }, resourceCard: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.sm, padding: Spacing.md }, resourceRow: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', gap: Spacing.sm, minHeight: 56, padding: Spacing.sm }, resourceText: { flex: 1, gap: 2, minWidth: 0 }, resourceState: { flexShrink: 1, maxWidth: '35%', textAlign: 'right' }, pressed: { opacity: 0.78 },

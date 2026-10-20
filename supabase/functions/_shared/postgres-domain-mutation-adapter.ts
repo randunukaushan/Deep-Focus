@@ -89,6 +89,11 @@ function resultRows(result: unknown): unknown[] {
   return result.rows;
 }
 
+function comparableJson(value: Record<string, unknown>): string {
+  return JSON.stringify(value, (_key, child) => child && typeof child === 'object' && !Array.isArray(child)
+    ? Object.fromEntries(Object.keys(child).sort().map((key) => [key, child[key]])) : child);
+}
+
 export function createPostgresDomainMutationStore(input: {
   runner: PostgresTransactionRunner;
   applyMutation: PostgresMutationApplier;
@@ -162,7 +167,7 @@ export function createPostgresDomainMutationStore(input: {
           }
           const stored = asReceipt(insertedRows[0] as ReceiptRow, { ownerId: receipt.ownerId, operation: receipt.operation, mutationId: receipt.mutationId });
           if (stored.requestSha256 !== receipt.requestSha256
-            || JSON.stringify(stored.responseBody) !== JSON.stringify(receipt.responseBody)
+            || comparableJson(stored.responseBody) !== comparableJson(receipt.responseBody)
             || stored.responseStatus !== receipt.responseStatus) throw new SafeBoundaryError(503, 'DEPENDENCY_UNAVAILABLE');
         },
       };

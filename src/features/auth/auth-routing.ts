@@ -2,7 +2,7 @@ import type { AuthStatus } from './auth-context';
 import type { OnboardingState } from '@/features/onboarding/onboarding-storage';
 
 export type RecoveryState = 'none' | 'pending' | 'found' | 'error';
-export type AuthRouteDecision = { blocked: boolean; redirect?: '/auth/sign-in' | '/auth/reset-password' | '/(tabs)/home' | '/onboarding' | '/onboarding/assessment' | '/onboarding/productivity-profile' };
+export type AuthRouteDecision = { blocked: boolean; redirect?: '/auth/sign-in' | '/auth/sign-up' | '/auth/reset-password' | '/(tabs)/home' | '/onboarding' | '/onboarding/assessment' | '/onboarding/productivity-profile' };
 
 export function authRouteDecision(status: AuthStatus, segments: readonly string[], onboarding: OnboardingState | null = { status: 'completed', step: 'intro', version: 1 }, recovery: RecoveryState = 'none'): AuthRouteDecision {
   const root = segments[0];
@@ -21,7 +21,7 @@ export function authRouteDecision(status: AuthStatus, segments: readonly string[
       ? { blocked: !resetRoute, ...(!resetRoute ? { redirect: '/(tabs)/home' as const } : {}) }
       : { blocked: false };
   }
-  return publicRoute ? { blocked: false } : { blocked: true, redirect: '/auth/sign-in' };
+  return publicRoute ? { blocked: false } : { blocked: true, redirect: '/auth/sign-up' };
 }
 
 function onboardingRouteDecision(segments: readonly string[], target: '/onboarding' | '/onboarding/assessment' | '/onboarding/productivity-profile'): AuthRouteDecision {

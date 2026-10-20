@@ -1,5 +1,15 @@
 # Deep Focus Database Schema
 
+Device-local UI amendment (2026-10-19): SQLite20 adds
+`device_presentation_preferences(owner_id TEXT PRIMARY KEY REFERENCES local_owners(id),
+preferences_json TEXT NOT NULL CHECK(json_valid(preferences_json)))`.
+The application validates a closed presentation preferences object on reads
+and writes (see Data Model). This device override never syncs via user_settings
+or outbox; private words never enter sessions. Both migration/import paths
+create the table transactionally without changing existing account/domain rows.
+Newer schemas are refused; do not downgrade/reset the database. Hosted Postgres
+is unchanged. Independent review and device acceptance remain pending.
+
 This document defines the database structure for Deep Focus V1.
 
 It translates the logical entities defined in `DATA_MODEL.md` into persistent database structures, relationships, constraints, and indexes required by the application.
@@ -816,6 +826,13 @@ The `focus_sessions` table should:
 ---
 
 ## 7. Tasks Table
+
+Local SQLite amendment (owner-approved 2026-10-19): schema 19 adds nullable
+`planned_date` (validated YYYY-MM-DD calendar label) and `estimated_minutes`
+(integer 1..480) to local `tasks`, independent of `due_at`. Upgrade is additive
+and transactional; missing values preserve legacy task behavior. This amendment
+does not change the hosted gateway schema or activate synchronization for these
+two fields. Planned date is a user intention, never a completion deadline.
 
 ---
 

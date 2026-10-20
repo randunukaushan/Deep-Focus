@@ -50,6 +50,18 @@ test('receipt replay reads the exact owner-scoped row and does not apply or inse
   assert.equal(h.calls.filter((call) => call.sql.startsWith('insert into df_private.mutation_receipts')).length, 0);
 });
 
+test('JSONB object key ordering does not roll back an otherwise identical receipt', async () => {
+  const original = { id: BODY.id, version: 1, status: 'pending', nested: { z: 2, a: 1 } };
+  const stored = { nested: { a: 1, z: 2 }, status: 'pending', id: BODY.id, version: 1 };
+  const h = harness({
+    applyMutation: async () => ({ responseBody: original, responseStatus: 201 }),
+    receiptInsertRows: [{ owner_id: OWNER, operation: 'createTask', mutation_id: MUTATION, request_sha256: HASH, response_body: stored, response_status: 201 }],
+  });
+  const result = await executeDomainMutation({ actorId: OWNER, operation: 'createTask', mutationId: MUTATION, requestSha256: HASH, body: BODY, store: h.store });
+  assert.equal(result.action, 'applied');
+  assert.equal(h.committed, true);
+});
+
 test('missing owner head fails closed and never runs the mutation applier', async () => {
   let applyCalls = 0;
   const h = harness({ headRows: [], applyMutation: async () => { applyCalls += 1; return { responseBody: {}, responseStatus: 201 }; } });

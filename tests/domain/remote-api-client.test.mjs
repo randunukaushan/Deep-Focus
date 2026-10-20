@@ -61,6 +61,35 @@ test('remote API supports idempotent deletes with a validated expected-version h
   await assert.rejects(() => client.request('/v1/tasks/00000000-0000-4000-8000-000000000001', { method: 'DELETE', idempotencyKey: MUTATION, expectedVersion: 0 }), /EXPECTED_VERSION_INVALID/);
 });
 
+test('Edge Function mount paths survive GET queries and POST requests', async () => {
+  for (const suffix of ['', '/']) {
+    const requests = [];
+    const client = createRemoteApiClient({
+      baseUrl: `https://project.supabase.co/functions/v1/deep-focus-gateway${suffix}`,
+      getAccessToken: async () => 'token',
+      fetcher: async (url, init) => { requests.push({ url, init }); return fakeResponse(200, { data: {} }); },
+    });
+    await client.request('/v1/sync/pull?limit=50&cursor=abc.def');
+    await client.request('/v1/account/bootstrap', { method: 'POST', idempotencyKey: MUTATION, body: { displayName: 'Test' } });
+    assert.equal(requests[0].url, 'https://project.supabase.co/functions/v1/deep-focus-gateway/v1/sync/pull?limit=50&cursor=abc.def');
+    assert.equal(requests[1].url, 'https://project.supabase.co/functions/v1/deep-focus-gateway/v1/account/bootstrap');
+    assert.equal(requests[1].init.method, 'POST');
+  }
+});
+
+test('nested mounts reject traversal, encoded separators, fragments and malformed escapes before fetch', async () => {
+  let calls = 0;
+  const client = createRemoteApiClient({
+    baseUrl: 'https://project.supabase.co/functions/v1/deep-focus-gateway',
+    getAccessToken: async () => 'token',
+    fetcher: async () => { calls += 1; return fakeResponse(200, {}); },
+  });
+  for (const path of ['/v1/../../other', '/v1/%2e%2e/me', '/v1/tasks%2Fother', '/v1/tasks%5Cother', '/v1/me#fragment', '/v1/%', '//other.example/v1/me']) {
+    await assert.rejects(() => client.request(path), (error) => error.code === 'INVALID_API_PATH', path);
+  }
+  assert.equal(calls, 0);
+});
+
 test('remote API rejects unsafe hosts, paths and non-idempotent mutations', async () => {
   const fetcher = async () => fakeResponse(200, {});
   await assert.rejects(() => createRemoteApiClient({ baseUrl: 'http://api.example.test', getAccessToken: async () => 'token', fetcher }).request('/v1/me'), /API_NOT_CONFIGURED/);

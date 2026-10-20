@@ -1,7 +1,9 @@
 import { Slot } from 'expo-router';
 
-import { AssessmentFlowProvider } from '@/features/assessment/assessment-flow-context';
+import { SetupProvider } from '@/features/onboarding/setup-context';
+import { useAuth } from '@/features/auth/auth-context';
 
 export default function OnboardingLayout() {
-  return <AssessmentFlowProvider><Slot /></AssessmentFlowProvider>;
+  const { snapshot } = useAuth();
+  return <SetupProvider key={snapshot.userId ?? 'unavailable'}><Slot /></SetupProvider>;
 }

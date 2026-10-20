@@ -106,3 +106,11 @@ test('assessment prompts, options, profile suggestions and notes exist in EN/SI/
     if (locale !== 'en') assert.notEqual(copy.onboarding.assessment.backOnboarding, 'Onboarding');
   }
 });
+
+test('Sinhala onboarding copy uses natural focus-block wording', () => {
+  const data = getAppLocaleCopy('si').assessmentData;
+  assert.equal(data.questions.focus_pace.prompt, 'දැනට ඔබට ගැළපෙන්නේ කුමන අවධානයේ කාල කොටසද?');
+  assert.equal(data.questions.current_focus.prompt, 'මේ දිනවල ඔබ ඉඩක් වෙන් කිරීමට කැමති කුමකටද?');
+  assert.equal(data.profile.suggestionTitles[0], 'අවධානයේ රිද්මය');
+  assert.equal(data.profile.focusRhythm, 'ඔබේ දවසට ගැළපෙන විට මිනිත්තු {value}ක අවධානයේ සැසියක් උත්සාහ කරන්න.');
+});

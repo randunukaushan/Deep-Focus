@@ -62,6 +62,28 @@ test('verifies provider claims and atomically creates session, profile, workspac
   assert.equal(result.account.profile.ownerId, OWNER);
   assert.equal(result.session.record.sessionId, SESSION);
   assert.equal(h.queries.length, 5);
+  assert.ok(h.queries.findIndex((query) => query.sql.includes('insert into df_private.profiles'))
+    < h.queries.findIndex((query) => query.sql.includes('insert into df_private.app_sessions')));
+});
+
+test('hosted rate counter shares the bootstrap transaction after profile creation and before session issuance', async () => {
+  const h = harness();
+  let counted = false;
+  const result = await bootstrapAuthenticatedAccount({
+    providerClient: provider(), accessToken: 'provider-token', expectedIssuer: 'https://issuer.example',
+    expectedAudience: 'authenticated', now: NOW, displayName: 'Nimal', createWorkspaceId: () => WORKSPACE, runner: h.runner,
+    rateLimit: { ...RATE_LIMIT,
+      counter: { consume: async () => { throw new Error('must not reacquire the pool connection'); } },
+      counterForTransaction: (runner) => ({ consume: async () => {
+        assert.ok(h.queries.some((query) => query.sql.includes('insert into df_private.profiles')));
+        assert.equal(h.queries.some((query) => query.sql.includes('insert into df_private.app_sessions')), false);
+        await runner.withTransaction(async () => { counted = true; });
+        return { allowed: true, retryAfterSeconds: 0 };
+      } }),
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(counted, true);
 });
 
 test('lost-response bootstrap retry reuses the verified app session and canonical account foundation', async () => {

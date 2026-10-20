@@ -27,6 +27,99 @@ function task(id, title) {
   return { id, title, status: 'pending', createdAt: '2026-10-07T00:00:00.000Z', updatedAt: '2026-10-07T00:00:00.000Z' };
 }
 
+test('device presentation preferences migrate, stay private per owner, and preserve the prior value on invalid or failed writes', async (t) => {
+  const db = makeDatabaseAdapter(); t.after(() => db.close());
+  const deps = { platform: 'android', openDatabase: async () => db, readLegacyFiles: async () => ({}) };
+  const a = createAccountLocalDatabaseStore(USER_A, deps);
+  const defaults = await a.loadPresentationPreferences();
+  assert.equal(defaults.showDuringFocus, false);
+  assert.equal(defaults.appearance, 'system');
+  await db.execAsync('DROP TABLE device_presentation_preferences; PRAGMA user_version = 19;');
+  const upgraded = createAccountLocalDatabaseStore(USER_A, deps);
+  assert.deepEqual(await upgraded.loadPresentationPreferences(), defaults);
+  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 20);
+  const personal = { ...defaults, personalPhrase: '🌱'.repeat(240), motivation: 'personal', appearance: 'dark' };
+  await upgraded.savePresentationPreferences(personal);
+  assert.deepEqual(await createAccountLocalDatabaseStore(USER_A, deps).loadPresentationPreferences(), personal);
+  assert.deepEqual(await createAccountLocalDatabaseStore(USER_B, deps).loadPresentationPreferences(), defaults);
+  assert.deepEqual(await createLocalDatabaseStore(deps).loadPresentationPreferences(), defaults);
+  await assert.rejects(upgraded.savePresentationPreferences({ ...personal, personalPhrase: '🌱'.repeat(241) }), /INVALID_INPUT/);
+  await assert.rejects(upgraded.savePresentationPreferences({ ...personal, showDuringFocus: 'true' }), /INVALID_INPUT/);
+  const run = db.runAsync;
+  db.runAsync = async (sql, ...args) => { if (sql.startsWith('INSERT INTO device_presentation_preferences')) throw Error('synthetic write failure'); return run(sql, ...args); };
+  await assert.rejects(upgraded.savePresentationPreferences(defaults), /synthetic/);
+  db.runAsync = run;
+  assert.deepEqual(await upgraded.loadPresentationPreferences(), personal);
+  assert.deepEqual(await upgraded.loadPendingOutbox(), []);
+  assert.deepEqual(await upgraded.loadSessionHistory(), []);
+});
+
+test('presentation migration failure retains the prior schema and allows a safe retry', async (t) => {
+  const db = makeDatabaseAdapter(); t.after(() => db.close());
+  const deps = { platform: 'android', openDatabase: async () => db, readLegacyFiles: async () => ({}) };
+  await createAccountLocalDatabaseStore(USER_A, deps).loadTasks();
+  await db.execAsync('DROP TABLE device_presentation_preferences; PRAGMA user_version = 19;');
+  const exec = db.execAsync;
+  db.execAsync = async sql => { if (sql.startsWith('CREATE TABLE IF NOT EXISTS device_presentation_preferences')) throw Error('synthetic migration failure'); return exec(sql); };
+  await assert.rejects(createAccountLocalDatabaseStore(USER_A, deps).loadPresentationPreferences(), /synthetic/);
+  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 19);
+  db.execAsync = exec;
+  assert.equal((await createAccountLocalDatabaseStore(USER_A, deps).loadPresentationPreferences()).motivation, 'default');
+});
+
+test('SQLite planning metadata survives v18 upgrade, reload and completion without changing deadlines', async (t) => {
+  const database = new DatabaseSync(':memory:'); t.after(() => database.close());
+  const db = {
+    async execAsync(sql) { database.exec(sql); },
+    async getFirstAsync(sql, ...args) { return database.prepare(sql).get(...args) ?? null; },
+    async getAllAsync(sql, ...args) { return database.prepare(sql).all(...args); },
+    async runAsync(sql, ...args) { return database.prepare(sql).run(...args); },
+  };
+  const deps = { platform: 'android', openDatabase: async () => db, readLegacyFiles: async () => ({}), now: () => '2026-10-19T03:00:00.000Z' };
+  const original = task('kept', 'Keep me');
+  await createAccountLocalDatabaseStore(USER_A, deps).saveTasks([original]);
+  database.exec('ALTER TABLE tasks DROP COLUMN estimated_minutes; ALTER TABLE tasks DROP COLUMN planned_date; PRAGMA user_version = 18;');
+  const migrated = createAccountLocalDatabaseStore(USER_A, deps);
+  assert.deepEqual(await migrated.loadTasks(), [original]);
+assert.equal(database.prepare('PRAGMA user_version').get().user_version, 20);
+  const planned = { ...original, estimatedMinutes: 45, plannedDate: '2026-10-20', dueAt: '2026-11-01T00:00:00.000Z' };
+  await migrated.saveTasks([planned]);
+  const reopened = createAccountLocalDatabaseStore(USER_A, deps);
+  assert.deepEqual(await reopened.loadTasks(), [planned]);
+  const completed = await reopened.completeTask(planned.id, planned.updatedAt);
+  assert.equal(completed.task.estimatedMinutes, 45);
+  assert.equal(completed.task.plannedDate, '2026-10-20');
+  assert.equal(completed.task.dueAt, planned.dueAt);
+  assert.deepEqual(await createAccountLocalDatabaseStore(USER_B, deps).loadTasks(), []);
+  await assert.rejects(reopened.saveTasks([{ ...planned, estimatedMinutes: 0 }]), /INVALID/);
+  await assert.rejects(reopened.saveTasks([{ ...planned, plannedDate: '2026-02-30' }]), /INVALID/);
+  assert.equal((await reopened.loadTasks())[0].status, 'completed');
+});
+
+test('interrupted planning migration rolls back columns, version and task data atomically', async (t) => {
+  const database = new DatabaseSync(':memory:'); t.after(() => database.close());
+  let fail = false;
+  const db = {
+    async execAsync(sql) {
+      if (fail && sql.startsWith('ALTER TABLE tasks ADD COLUMN planned_date')) { fail = false; throw Error('interrupted planning migration'); }
+      database.exec(sql);
+    },
+    async getFirstAsync(sql, ...args) { return database.prepare(sql).get(...args) ?? null; },
+    async getAllAsync(sql, ...args) { return database.prepare(sql).all(...args); },
+    async runAsync(sql, ...args) { return database.prepare(sql).run(...args); },
+  };
+  const deps = { platform: 'android', openDatabase: async () => db, readLegacyFiles: async () => ({}), now: () => '2026-10-19T03:00:00.000Z' };
+  const original = task('kept', 'Unchanged');
+  await createAccountLocalDatabaseStore(USER_A, deps).saveTasks([original]);
+  database.exec('ALTER TABLE tasks DROP COLUMN estimated_minutes; ALTER TABLE tasks DROP COLUMN planned_date; PRAGMA user_version = 18;');
+  fail = true;
+  await assert.rejects(createAccountLocalDatabaseStore(USER_A, deps).loadTasks(), /interrupted/);
+  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 18);
+  assert.equal(database.prepare('PRAGMA table_info(tasks)').all().some(row => row.name === 'estimated_minutes'), false);
+  assert.equal(database.prepare('SELECT title FROM tasks').get().title, 'Unchanged');
+  assert.deepEqual(await createAccountLocalDatabaseStore(USER_A, deps).loadTasks(), [original]);
+});
+
 test('real SQLite keeps overlapping task IDs isolated by authenticated owner and preserves device-local rows', async (t) => {
   const db = makeDatabaseAdapter();
   t.after(() => db.close());
@@ -463,7 +556,7 @@ test('real SQLite assessment drafts migrate atomically, survive reopen, and stay
   const dependencies = { platform: 'android', openDatabase: async () => adapter, readLegacyFiles: async () => ({}), now: () => '2026-10-07T02:00:00.000Z' };
   const initial = createAccountLocalDatabaseStore(USER_A, dependencies);
   await initial.saveTasks([task('kept-task', 'Keep existing data')]);
-  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 18);
+  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 20);
   assert.ok(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'reward_progress'").get());
   assert.ok(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'progression_events'").get());
   assert.ok(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'user_achievements'").get());
@@ -500,7 +593,7 @@ test('real SQLite assessment drafts migrate atomically, survive reopen, and stay
 
   const reopened = createAccountLocalDatabaseStore(USER_A, dependencies);
   assert.deepEqual((await reopened.loadAssessment(draft.id)).answers, draft.answers);
-  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 18);
+  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 20);
   assert.ok(database.prepare('PRAGMA table_info(user_settings)').all().some(({ name }) => name === 'ui_locale'));
 });
 

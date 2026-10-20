@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -10,7 +12,9 @@ import { useAppLocale } from '@/features/localization/app-locale-context';
 import { getTeacherAssignmentCopy } from '@/features/localization/teacher-assignment-copy';
 import { createTeacherAssignmentDraft, type TeacherAssignmentDraft } from '@/features/education/teacher-assignment-draft';
 import { loadTeacherAssignmentDrafts, saveTeacherAssignmentDraft } from '@/features/storage/local-database';
-import { Palette, Radius, Spacing } from '@/theme/tokens';
+import { Radius, Spacing } from '@/theme/tokens';
+import { Button } from '@/components/ui/button';
+import { SectionHeading } from '@/components/ui/section-heading';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function TeacherAssignmentRoute() {
@@ -51,22 +55,18 @@ export default function TeacherAssignmentRoute() {
   }
 
   return (
-    <ThemedView style={styles.screen}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: theme.background }]}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.screen}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <Pressable accessibilityRole="button" accessibilityLabel={text.back} onPress={() => router.back()} style={styles.back}><Ionicons color={Palette.mintPrimary} name="arrow-back" size={20} /><ThemedText style={{ color: Palette.mintPrimary }} type="smallBold">{text.back}</ThemedText></Pressable>
-        <ThemedText style={styles.eyebrow} type="smallBold">{text.eyebrow}</ThemedText>
-        <ThemedText accessibilityRole="header" type="title">{text.title}</ThemedText>
-        <ThemedText themeColor="textSecondary" style={styles.detail}>{text.detail}</ThemedText>
+        <Pressable accessibilityRole="button" accessibilityLabel={text.back} onPress={() => router.back()} style={styles.back}><Ionicons color={theme.primary} name="arrow-back" size={20} /><ThemedText style={{ color: theme.primary }} type="smallBold">{text.back}</ThemedText></Pressable>
+        <SectionHeading eyebrow={text.eyebrow} title={text.title} subtitle={text.detail} icon="school-outline" />
         <Field label={text.classId} value={classId} onChangeText={setClassId} theme={theme} />
         <Field label={text.titleLabel} value={title} onChangeText={setTitle} theme={theme} />
         <Field label={text.instructions} value={instructions} onChangeText={setInstructions} multiline theme={theme} />
-        {error ? <ThemedText accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error}>{error}</ThemedText> : null}
-        {message ? <ThemedText accessibilityLiveRegion="polite" style={styles.success}>{message}</ThemedText> : null}
-        <Pressable accessibilityRole="button" accessibilityLabel={text.save} accessibilityState={{ busy: saving, disabled: saving }} disabled={saving} onPress={() => void save()} style={({ pressed }) => [styles.button, pressed && styles.pressed, saving && styles.disabled]}>
-          <ThemedText style={styles.buttonText} type="smallBold">{saving ? text.saving : text.save}</ThemedText>
-        </Pressable>
+        {error ? <ThemedText accessibilityLiveRegion="assertive" accessibilityRole="alert" themeColor="textPrimary">{error}</ThemedText> : null}
+        {message ? <ThemedText accessibilityLiveRegion="polite" style={{ color: theme.primary }}>{message}</ThemedText> : null}
+        <Button label={text.save} loading={saving} loadingAccessibilityLabel={text.saving} onPress={() => void save()} />
       </ScrollView>
-    </ThemedView>
+    </KeyboardAvoidingView></SafeAreaView>
   );
 }
 
@@ -75,5 +75,10 @@ function Field({ label, value, onChangeText, multiline = false, theme }: { label
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 }, scroll: { alignSelf: 'center', maxWidth: 560, padding: Spacing.lg, gap: Spacing.md, width: '100%' }, back: { alignItems: 'center', flexDirection: 'row', gap: Spacing.sm, minHeight: 44 }, eyebrow: { color: Palette.mintPrimary, marginTop: Spacing.lg }, detail: { lineHeight: 22 }, field: { gap: Spacing.xs }, input: { borderWidth: 1, borderRadius: Radius.card, minHeight: 48, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, fontSize: 16 }, multiline: { minHeight: 120, textAlignVertical: 'top' }, button: { backgroundColor: Palette.mintPrimary, borderRadius: Radius.card, minHeight: 48, padding: Spacing.md, alignItems: 'center', justifyContent: 'center' }, buttonText: { color: Palette.deepNavy }, pressed: { opacity: 0.8 }, disabled: { opacity: 0.5 }, error: { color: Palette.error }, success: { color: Palette.mintPrimary },
+  screen: { flex: 1 },
+  scroll: { alignSelf: 'center', maxWidth: 560, padding: Spacing.lg, gap: Spacing.md, width: '100%' },
+  back: { alignItems: 'center', flexDirection: 'row', gap: Spacing.sm, minHeight: 48 },
+  field: { gap: Spacing.xs },
+  input: { borderWidth: 1, borderRadius: Radius.card, minHeight: 48, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, fontSize: 16 },
+  multiline: { minHeight: 120, textAlignVertical: 'top' },
 });

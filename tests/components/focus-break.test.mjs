@@ -5,6 +5,7 @@ import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 
 import * as breakEngine from '../../src/features/focus/break-engine.ts';
+import { getBreakCopy } from '../../src/features/localization/break-copy.ts';
 
 const ts = createRequire(import.meta.url)('typescript');
 const source = readFileSync(new URL('../../src/app/focus/break.tsx', import.meta.url), 'utf8');
@@ -22,14 +23,18 @@ function fixture({ failure = false, duration = 10, retryFailure = false } = {}) 
     'react/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
     'expo-router': { useRouter: () => ({ back() {}, replace(value) { replaced = value; } }) },
     '@expo/vector-icons': { Ionicons: 'Icon' },
+    'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
     'react-native': { AppState: { addEventListener: () => ({ remove() {} }) }, Pressable: 'Pressable', ScrollView: 'ScrollView', StyleSheet: { create: value => value }, View: 'View' },
     '@/components/themed-text': { ThemedText: 'Text' }, '@/components/themed-view': { ThemedView: 'View' }, '@/components/ui/button': { Button: 'Button' },
+    '@/components/ui/section-heading': { SectionHeading: 'SectionHeading' },
+    '@/components/ui/focus-dial': { FocusDial: 'FocusDial' },
+    '@/theme/action-colors': { accentTextColor: () => '#FFFFFF' },
     '@/features/settings/settings-storage': { async loadSettings() { reads++; if (failure || (retryFailure && reads > 1)) throw Error('private settings details'); return { defaultFocusDurationMinutes: 25, defaultBreakDurationMinutes: duration }; } },
     '@/features/focus/break-engine': breakEngine,
-    '@/features/localization/break-copy': { getBreakCopy: () => ({ back: 'Back to focus session', title: 'Make room to recover.', subtitle: 'A break is part of the work. Step away, breathe, and return when your attention feels ready.', eyebrow: 'OPTIONAL BREAK', choose: 'Choose a gentle pause.', loading: 'Loading your saved break choice…', error: 'Your saved break choice couldn’t be read. Try again, or choose a length below; choosing here won’t overwrite your saved preference.', retry: 'Retry saved choice', complete: 'Break complete.', settle: 'Let your attention settle.', durationLabel: 'Choose a break duration', minuteUnit: 'minute break', water: 'Drink some water', move: 'Move away from the screen', rest: 'Let your eyes rest', resume: 'Resume Focus', start: 'Start', skip: 'Skip Break', note: 'Your focus session remains paused until you choose to resume.' }) },
+    '@/features/localization/break-copy': { getBreakCopy },
     '@/features/localization/app-locale-context': { useAppLocale: () => ({ locale: 'en' }) },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
-    '@/hooks/use-theme': { useTheme: () => ({ background: '#fff', surface: '#fff', border: '#ddd' }) },
+    '@/hooks/use-theme': { useTheme: () => ({ primary: '#2165DF', background: '#fff', surface: '#fff', border: '#ddd' }) },
     '@/constants/theme': { Palette: { homeLightBackground: '#fff', homeLightSurface: '#fff', homeLightBorder: '#ddd', homeLightAction: '#123', homeLightActionSoft: '#eee', navySurfaceElevated: '#eee', deepNavy: '#123', mintPrimary: '#123' }, Radius: { card: 16 }, Spacing: { xs: 4, sm: 8, md: 16, lg: 24 }, Typography: { body: { fontSize: 16 } } },
   };
   const exports = {};
@@ -41,15 +46,24 @@ function fixture({ failure = false, duration = 10, retryFailure = false } = {}) 
     find(label) { return nodes(tree).find(node => node.props.accessibilityLabel === label || node.props.label === label || node.props.children === label); },
     hasText(text) { return nodes(tree).some(node => node.props.children === text); },
     replaced: () => replaced,
+    ofType: type => nodes(tree).filter(node => node.type === type),
   };
 }
 
 test('break uses the saved local default and starts that duration', async () => {
   const app = fixture(); app.render(); await app.settle();
   assert.equal(app.find('10 minute break').props.accessibilityState.selected, true);
+  assert.equal(app.find('10 minute break').props.accessibilityState.checked, true);
+  assert.equal(app.find('10 minute break').props.children.props.style.color, '#FFFFFF');
   assert.equal(app.find('Start 10-minute break').props.disabled, false);
   app.find('Start 10-minute break').props.onPress(); app.render();
   assert.ok(app.find('Resume Focus'));
+  assert.equal(app.ofType('FocusDial')[0].props.value, '10:00');
+  assert.equal(app.ofType('FocusDial')[0].props.caption, 'remaining in break');
+  assert.equal(app.ofType('FocusDial')[0].props.progress, 0);
+  app.find('Resume Focus').props.onPress();
+  assert.equal(app.replaced().pathname, '/focus/session');
+  assert.equal(app.replaced().params.resume, '1');
 });
 
 test('settings read failure is recoverable and allows a clearly manual unsaved choice', async () => {

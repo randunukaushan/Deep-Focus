@@ -10,6 +10,7 @@ const completed = { id: 'session-1', status: 'completed', taskName: 'Read chapte
 
 function fixture({ reads = [Promise.resolve([completed])], sessions = [completed] } = {}) {
   const slots = [];
+  const replacements = [];
   let cursor = 0, focusEffect, cleanup, mounted = false, tree, readIndex = 0;
   const dependencies = {
     react: {
@@ -18,19 +19,22 @@ function fixture({ reads = [Promise.resolve([completed])], sessions = [completed
       useCallback(fn) { return fn; },
     },
     'react/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
-    'expo-router': { useRouter: () => ({ push() {} }), useFocusEffect(fn) { if (!mounted) focusEffect = fn; } },
-    '@expo/vector-icons': { Ionicons: { glyphMap: {} } },
+    'expo-router': { useRouter: () => ({ push() {}, replace(path) { replacements.push(path); } }), useFocusEffect(fn) { if (!mounted) focusEffect = fn; } },
+    '@expo/vector-icons': { Ionicons: 'Icon' },
     'react-native': { ActivityIndicator: 'ActivityIndicator', Pressable: 'Pressable', ScrollView: 'ScrollView', StyleSheet: { create: value => value }, View: 'View' },
     '@/components/themed-text': { ThemedText: 'Text' },
     '@/components/themed-view': { ThemedView: 'ThemedView' },
+    '@/components/ui/button': { Button: 'Button' },
+    '@/components/ui/section-heading': { SectionHeading: ({ title, subtitle }) => ({ type: 'View', props: { children: [title, subtitle].map(children => ({ type: 'Text', props: { children } })) } }) },
+    '@/theme/action-colors': { accentTextColor: () => '#FFFFFF' },
     '@/features/focus/session-storage': { loadSessionHistory() { return reads[readIndex++] ?? Promise.resolve(sessions); } },
     '@/features/focus/session-history': { getHistoricalSessions: value => value, formatSessionDuration: seconds => `${Math.floor(seconds / 60)} min`, getSessionTimestamp: () => 'Oct 6, 2026' },
     '@/features/localization/rewards-copy': { getRewardsCopy: () => ({ eyebrow: 'REWARDS', title: 'Notice the work you protect.', subtitle: 'Small milestones for sustainable focus, without pressure.', loading: 'Loading rewards', errorTitle: 'Rewards could not be loaded.', errorDetail: 'Your saved session history has not been changed. Try again to reload rewards.', retry: 'Retry loading rewards', tryAgain: 'Try again', yourMilestones: 'YOUR MILESTONES', unlockedSummary: 'unlocked', completedSession: 'completed session', completedSessions: 'completed sessions', focused: 'focused', milestones: 'MILESTONES', emptyLabel: 'No rewards unlocked yet', emptyTitle: 'YOUR FIRST MILESTONE IS CLOSE', emptyDetail: 'Start one calm focus session to begin your progress.', startFocus: 'Start Focus Session', latestDetail: 'Milestones are based on completed sessions saved locally.', unlocked: 'Unlocked', unlockedDetail: 'Unlocked · a meaningful step forward.', firstTitle: 'First protected block', firstDetail: 'Complete your first focus session.', fiveTitle: 'Five steady blocks', fiveDetail: 'Complete five focus sessions.', hourTitle: 'One hour of focus', hourDetail: 'Protect 60 minutes of focused time.', hoursUnit: 'h', minutesUnit: 'min' }) , getAchievementCopy: () => ({ title: 'Milestone', detail: 'Detail' }) },
     '@/features/progress/progression-rules': { ACHIEVEMENT_IDS: ['first_focus_session', 'focus_sessions_5', 'focus_minutes_60'], calculateLevelProgress: totalXp => ({ totalXp, level: 1, xpToNextLevel: 100 }) },
     '@/features/storage/local-database': { async loadAchievementUnlocks() { return sessions.length ? [{ achievementId: 'first_focus_session', unlockedAt: '2026-10-06T00:20:00.000Z' }] : []; } },
-    '@/features/localization/app-locale-context': { useAppLocale: () => ({ locale: 'en' }) },
+    '@/features/localization/app-locale-context': { useAppLocale: () => ({ locale: 'en', copy: { historyPage: { back: 'Back to Progress' } } }) },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
-    '@/hooks/use-theme': { useTheme: () => ({ background: '#fff', surface: '#fff', border: '#ddd' }) },
+    '@/hooks/use-theme': { useTheme: () => ({ primary: '#2165DF', background: '#fff', surface: '#fff', border: '#ddd' }) },
     '@/theme/tokens': { Palette: { homeLightBackground: '#fff', homeLightSurface: '#fff', homeLightBorder: '#ddd', homeLightAction: '#123', homeLightActionSoft: '#eee', deepNavy: '#123', mintPrimary: '#123' }, Radius: { card: 16 }, Spacing: { xs: 4, sm: 8, md: 16, lg: 24 } },
   };
   const exports = {};
@@ -50,8 +54,25 @@ function fixture({ reads = [Promise.resolve([completed])], sessions = [completed
     blur() { cleanup?.(); },
     find(label) { return nodes(tree).find(node => node.props.accessibilityLabel === label || node.props.label === label); },
     text() { return nodes(tree).filter(node => node.type === 'Text').map(node => node.props.children).flat(Infinity).join(' ').replace(/\s+/g, ' '); },
+    ofType: type => nodes(tree).filter(node => node.type === type),
+    replacements,
   };
 }
+
+test('Rewards keeps readable locked milestones and shared navigation/actions without nested safe-area padding', async () => {
+  const app = fixture(); app.render(); await app.settle();
+  assert.ok(app.find('Back to Progress'));
+  app.find('Back to Progress').props.onPress();
+  assert.equal(app.replacements[0], '/progress');
+  assert.equal(app.ofType('SafeAreaView').length, 0);
+  assert.equal(app.ofType('ScrollView')[0].props.contentContainerStyle.flexGrow, 1);
+  const milestones = app.ofType('ThemedView').filter(node => node.props.accessibilityLabel?.startsWith('Milestone.'));
+  assert.equal(milestones.length, 3);
+  for (const milestone of milestones) assert.equal(milestone.props.style[1].opacity, undefined);
+  assert.match(milestones[0].props.accessibilityLabel, /Unlocked/);
+  assert.match(milestones[1].props.accessibilityLabel, /Detail/);
+  assert.equal(app.ofType('Icon').find(node => node.props.name === 'checkmark').props.color, '#FFFFFF');
+});
 
 test('Rewards shows an error instead of false zero milestones and retries the local read', async () => {
   const app = fixture({ reads: [Promise.reject(Error('private storage detail')), Promise.resolve([completed])] });

@@ -14,7 +14,7 @@ function fixture({ sessionFailure = false, sessions = [{ id: 's1', status: 'comp
   const summary = { focusedSeconds: 120, completedSessions: 1, averageCompletedFocusSeconds: 120, completedTasks: 1, totalTasks: 1, taskCompletionRate: 1, focusPlanRatio: 2 / 3, streak: { currentStreakDays: 1, longestStreakDays: 1 }, activityDays, goals: [{ id: 'g1', title: 'Read', type: 'focus_time', currentValue: 120, targetValue: 300, progress: 0.4 }] };
   const dependencies = {
     react: {
-      useState(initial) { const index = cursor++; slots[index] ??= { value: initial }; return [slots[index].value, value => { slots[index].value = value; }]; },
+      useState(initial) { const index = cursor++; slots[index] ??= { value: initial }; return [slots[index].value, value => { slots[index].value = typeof value === 'function' ? value(slots[index].value) : value; }]; },
       useRef(initial) { return slots[cursor++] ??= { current: initial }; },
       useCallback(fn) { return fn; },
     },
@@ -23,18 +23,20 @@ function fixture({ sessionFailure = false, sessions = [{ id: 's1', status: 'comp
     '@expo/vector-icons': { Ionicons: 'Icon' },
     'react-native': { ActivityIndicator: 'ActivityIndicator', Pressable: 'Pressable', ScrollView: 'ScrollView', StyleSheet: { create: value => value }, View: 'View' },
     '@/components/themed-text': { ThemedText: 'Text' }, '@/components/themed-view': { ThemedView: 'View' },
+    '@/components/ui/section-heading': { SectionHeading: ({ title, subtitle }) => ({ type: 'View', props: { children: [title, subtitle].map(children => ({ type: 'Text', props: { children } })) } }) },
+    '@/theme/action-colors': { accentTextColor: () => '#FFFFFF' },
     '@/features/focus/session-history': { formatSessionDuration: seconds => `${seconds} sec`, getHistoricalSessions: value => value },
     '@/features/focus/session-storage': { async loadSessionHistory() { if (sessionFailure) throw Error('private session data'); return sessions; } },
     '@/features/focus/progress-analytics': { summarizeProgress: (...args) => { onSummary?.(args[3]); return summary; } },
     '@/features/progress/progress-analytics': { summarizeProgress: (...args) => { onSummary?.(args[3]); if (summaryError) throw Error('conflicting source data'); return summary; } },
-    '@/features/localization/progress-copy': { getProgressCopy: () => ({ eyebrow: 'PROGRESS', title: 'Notice your rhythm.', subtitle: 'A clear view of the focus time you have protected.', loading: 'Loading progress', loadErrorLabel: 'Progress could not be loaded', loadErrorTitle: 'Your progress is still here.', loadErrorDetail: 'We could not read your saved sessions just now. Your data has not been changed.', retry: 'Try again', unavailableLabel: 'Progress summary unavailable', unavailableTitle: 'Your saved progress needs a refresh.', unavailableDetail: 'We found records that could not be safely combined. Your saved data has not been changed.', emptyLabel: 'No progress available yet', emptyTitle: 'Your pattern will appear here.', emptyDetail: 'Complete a focus session to start building a quiet, useful record of your work.', viewHistory: 'View session history', calendar: 'Calendar periods use {zone} time. Weeks begin Monday.', today: 'Today', week: 'This week', month: 'This month', allTime: 'All time', focusTime: 'FOCUS TIME', sessions: 'SESSIONS', tasksDone: 'TASKS DONE', insightEyebrow: 'YOUR PROGRESS', oneBlock: 'One block protected.', blocks: 'blocks protected.', insightDetail: 'Focus time includes time actually focused, even in sessions ended early. Session count includes completed sessions only.', weekFocus: 'This week’s focus', goals: 'Your goals', sessionsWord: 'sessions', viewRewards: 'View rewards', average: 'AVERAGE', focusPlan: 'FOCUS / PLAN', taskRate: 'TASK RATE' }) },
+    '@/features/localization/progress-copy': { getProgressCopy: () => ({ details: 'More details', recent: 'Time you made for yourself', completedLabel: 'Completed', endedEarlyLabel: 'Ended early', eyebrow: 'PROGRESS', title: 'Notice your rhythm.', subtitle: 'A clear view of the focus time you have protected.', loading: 'Loading progress', loadErrorLabel: 'Progress could not be loaded', loadErrorTitle: 'Your progress is still here.', loadErrorDetail: 'We could not read your saved sessions just now. Your data has not been changed.', retry: 'Try again', unavailableLabel: 'Progress summary unavailable', unavailableTitle: 'Your saved progress needs a refresh.', unavailableDetail: 'We found records that could not be safely combined. Your saved data has not been changed.', emptyLabel: 'No progress available yet', emptyTitle: 'Your pattern will appear here.', emptyDetail: 'Complete a focus session to start building a quiet, useful record of your work.', viewHistory: 'View session history', calendar: 'Calendar periods use {zone} time. Weeks begin Monday.', today: 'Today', week: 'This week', month: 'This month', allTime: 'All time', focusTime: 'FOCUS TIME', sessions: 'SESSIONS', tasksDone: 'TASKS DONE', insightEyebrow: 'YOUR PROGRESS', oneBlock: 'One block protected.', blocks: 'blocks protected.', insightDetail: 'Focus time includes time actually focused, even in sessions ended early. Session count includes completed sessions only.', weekFocus: 'This week’s focus', goals: 'Your goals', sessionsWord: 'sessions', viewRewards: 'View rewards', average: 'AVERAGE', focusPlan: 'FOCUS / PLAN', taskRate: 'TASK RATE' }) },
     '@/features/localization/app-locale-context': { useAppLocale: () => ({ locale: 'en' }) },
     '@/features/goals/goal-storage': { async loadGoals() { return goals; } },
     '@/features/tasks/task-storage': { async loadTasks() { return tasks; } },
     '@/features/storage/local-database': { async loadRewardProgress() { return { totalXp: 0 }; } },
     '@/features/progress/progression-rules': { calculateLevelProgress: totalXp => ({ totalXp, level: 1, xpToNextLevel: 100 }) },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
-    '@/hooks/use-theme': { useTheme: () => ({ background: '#fff', surface: '#fff', border: '#ddd' }) },
+    '@/hooks/use-theme': { useTheme: () => ({ primary: '#2165DF', background: '#fff', surface: '#fff', border: '#ddd' }) },
     '@/theme/tokens': { Palette: { homeLightBackground: '#fff', homeLightSurface: '#fff', homeLightBorder: '#ddd', homeLightAction: '#123', homeLightActionSoft: '#eee', deepNavy: '#123', mintPrimary: '#123' }, Radius: { card: 16 }, Spacing: { xs: 4, sm: 8, md: 16, lg: 24 } },
   };
   const exports = {};
@@ -53,13 +55,17 @@ test('Progress period controls select a window and show task, session, focus and
   const windows = [];
   const app = fixture({ onSummary: options => windows.push(options.window) }); app.render(); await app.settle();
   assert.deepEqual(windows, ['week']);
+  app.find('More details').props.onPress(); app.render();
+  assert.equal(app.periods()[1].props.children.props.style.color, '#FFFFFF');
+  const focusMetric = app.nodes(app.find('FOCUS TIME: 120 sec')).find(node => node.type === 'Text' && node.props.children === 'FOCUS TIME');
+  assert.equal(focusMetric.props.style.fontSize, undefined);
   assert.equal(app.find('FOCUS TIME: 120 sec') !== undefined, true);
   assert.equal(app.find('SESSIONS: 1') !== undefined, true);
   assert.equal(app.find('TASKS DONE: 1') !== undefined, true);
   assert.equal(app.find('Read, Your goals, 40%') !== undefined, true);
   const month = app.periods()[2];
   month.props.onPress(); app.render();
-  assert.deepEqual(windows, ['week', 'month']);
+  assert.deepEqual(windows, ['week', 'week', 'month']);
 });
 
 test('Progress storage failure is visible and does not become the empty state', async () => {
@@ -81,6 +87,7 @@ test('Progress does not display derived zeros when the source records conflict',
 
 test('weekly activity labels use the localized duration formatter instead of raw seconds', async () => {
   const app = fixture({ activityDays: [{ date: '2026-10-16', day: 'Fri', focusedSeconds: 120 }] }); app.render(); await app.settle();
+  app.find('More details').props.onPress(); app.render();
   assert.ok(app.find('2026-10-16, 120 sec FOCUS TIME'));
   assert.equal(app.find('2026-10-16, 120 FOCUS TIME'), undefined);
 });

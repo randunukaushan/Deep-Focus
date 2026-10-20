@@ -20,8 +20,12 @@ function fixture({ initial = 10, loadFailures = 0, saveFailures = 0, saveGate } 
     'react/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
     'expo-router': { useRouter: () => ({ back() {}, push() {} }) },
     '@expo/vector-icons': { Ionicons: 'Icon' },
-    'react-native': { Pressable: 'Pressable', ScrollView: 'ScrollView', StyleSheet: { create: value => value }, View: 'View' },
+    'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
+    'react-native': { KeyboardAvoidingView: 'KeyboardAvoidingView', Platform: { OS: 'android' }, Pressable: 'Pressable', ScrollView: 'ScrollView', StyleSheet: { create: value => value }, View: 'View' },
     '@/components/themed-text': { ThemedText: 'Text' }, '@/components/themed-view': { ThemedView: 'View' },
+    '@/components/ui/section-heading': { SectionHeading: ({ title, subtitle }) => ({ type: 'View', props: { children: [{ type: 'Text', props: { children: title } }, { type: 'Text', props: { children: subtitle } }] } }) },
+    '@/theme/action-colors': { accentTextColor: () => '#fff' },
+    '@/features/settings/presentation-panel': { PresentationPanel: 'PresentationPanel' },
     '@/features/settings/settings-storage': {
       async loadSettings() { if (loadFailures-- > 0) throw Error('private settings detail'); return { defaultFocusDurationMinutes: stored.focus, defaultBreakDurationMinutes: stored.break, uiLocale: stored.locale }; },
       async saveSettings(value) { writes++; if (saveGate) await saveGate(); if (saveFailures-- > 0) throw Error('private settings detail'); stored = { focus: value.defaultFocusDurationMinutes, break: value.defaultBreakDurationMinutes, locale: value.uiLocale }; },

@@ -183,16 +183,18 @@ function privacyJobRow(row: Record<string, unknown>, ownerId: string, expectedId
 export function createPostgresGatewayReadHandlers(input: { runner: PostgresTransactionRunner; listCursorSecret?: string; now?: () => string; cursorTtlMs?: number; analyticsMaxRangeMs?: number }): Record<string, GatewayHandler> {
   return {
     getMe: readHandler(input.runner, async (client, context) => {
-      const result = await client.query<{ owner_id: string; display_name: string; account_state: string; version: number }>(
-        `select owner_id, display_name, account_state, version from df_private.profiles
-         where owner_id = $1 and account_state = 'active'`, [context.actorId],
+      const result = await client.query<{ owner_id: string; display_name: string; account_state: string; version: number; personal_workspace_id: string }>(
+        `select p.owner_id, p.display_name, p.account_state, p.version, w.id as personal_workspace_id
+         from df_private.profiles p join df_private.workspaces w on w.owner_id = p.owner_id and w.kind = 'personal'
+         where p.owner_id = $1 and p.account_state = 'active'`, [context.actorId],
       );
       const rows = resultRows(result);
       if (rows.length === 0) throw new SafeBoundaryError(404, 'NOT_FOUND');
       if (rows.length !== 1) dependencyFailure();
       const row = rows[0];
-      if (row.owner_id !== context.actorId || typeof row.display_name !== 'string' || row.account_state !== 'active' || !Number.isInteger(row.version)) dependencyFailure();
-      return { status: 200, body: { id: row.owner_id, displayName: row.display_name, accountState: row.account_state, version: row.version } };
+      if (row.owner_id !== context.actorId || typeof row.display_name !== 'string' || row.account_state !== 'active' || !Number.isInteger(row.version)
+        || typeof row.personal_workspace_id !== 'string' || !UUID.test(row.personal_workspace_id)) dependencyFailure();
+      return { status: 200, body: { data: { id: row.owner_id, displayName: row.display_name, personalWorkspaceId: row.personal_workspace_id, version: row.version } } };
     }),
     getSettings: readHandler(input.runner, async (client, context) => {
       const result = await client.query(`select id, owner_id, theme, ui_locale, default_focus_duration_minutes, default_break_duration_minutes, ai_features_enabled, version, updated_at from df_private.user_settings where owner_id = $1`, [context.actorId]);

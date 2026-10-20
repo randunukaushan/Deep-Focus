@@ -13,6 +13,8 @@ import { readProgressHistory } from '@/features/progress/progress-state';
 import { useAppLocale } from '@/features/localization/app-locale-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+import { SectionHeading } from '@/components/ui/section-heading';
+import { accentTextColor } from '@/theme/action-colors';
 import { Palette, Radius, Spacing } from '@/theme/tokens';
 
 export default function SessionHistoryRoute() {
@@ -25,7 +27,8 @@ export default function SessionHistoryRoute() {
   const background = isDark ? theme.background : Palette.homeLightBackground;
   const surface = isDark ? theme.surface : Palette.homeLightSurface;
   const border = isDark ? theme.border : Palette.homeLightBorder;
-  const action = isDark ? Palette.mintPrimary : Palette.homeLightAction;
+  const action = theme.primary;
+  const onAction = accentTextColor(action);
   const warning = isDark ? Palette.warning : Palette.warningText;
   const softAction = isDark ? Palette.navySurfaceElevated : Palette.homeLightActionSoft;
   const [sessions, setSessions] = useState<ReturnType<typeof getHistoricalSessions>>([]);
@@ -61,12 +64,9 @@ export default function SessionHistoryRoute() {
           <View style={styles.navigation}>
               <Button accentColor={action} label={text.back} onPress={() => router.replace('/progress')} variant="ghost" />
           </View>
-          <View style={styles.titleBlock}>
-            <ThemedText accessibilityRole="header" type="subtitle">{text.title}</ThemedText>
-            <ThemedText themeColor="textSecondary">{text.subtitle}</ThemedText>
-          </View>
+          <SectionHeading eyebrow={text.focusSession} title={text.title} subtitle={text.subtitle} icon="time-outline" />
           {loading ? (
-            <View accessibilityLabel={text.loading} accessibilityLiveRegion="polite" style={styles.state}><ActivityIndicator color={Palette.mintPrimary} /></View>
+            <View accessibilityLabel={text.loading} accessibilityLiveRegion="polite" style={styles.state}><ActivityIndicator color={action} /></View>
           ) : loadError ? (
             <ThemedView accessibilityRole="alert" style={[styles.emptyCard, { backgroundColor: surface, borderColor: border }]}>
               <ThemedText accessibilityRole="header" type="smallBold">{text.loadErrorTitle}</ThemedText>
@@ -83,7 +83,7 @@ export default function SessionHistoryRoute() {
           ) : (
             <>
               <ThemedView accessibilityLabel={`${formatDuration(totalFocusedSeconds)} ${text.focusTime}, ${completedSessions.length} ${text.focusSession}`} style={styles.summaryCard}>
-                <View style={styles.summaryIcon}><Ionicons color={Palette.deepNavy} name="time-outline" size={22} /></View>
+                <View style={[styles.summaryIcon, { backgroundColor: action }]}><Ionicons color={onAction} name="time-outline" size={22} /></View>
                 <View style={styles.summaryMetric}>
                   <ThemedText style={styles.summaryLabel} type="smallBold">{text.focusTime}</ThemedText>
                   <ThemedText style={styles.summaryValue} type="subtitle">{formatDuration(totalFocusedSeconds)}</ThemedText>
@@ -97,7 +97,7 @@ export default function SessionHistoryRoute() {
                 {(['all', 'completed', 'cancelled'] as const).map((value) => {
                   const selected = filter === value;
                   const label = value === 'all' ? text.allSessions : value === 'completed' ? text.completedFilter : text.cancelledFilter;
-                  return <Pressable accessibilityLabel={label} accessibilityRole="tab" accessibilityState={{ selected }} key={value} onPress={() => setFilter(value)} style={[styles.filterChip, { backgroundColor: selected ? action : surface, borderColor: selected ? action : border }]}><ThemedText style={{ color: selected ? Palette.deepNavy : theme.text }} type="smallBold">{label}</ThemedText></Pressable>;
+                  return <Pressable accessibilityLabel={label} accessibilityRole="tab" accessibilityState={{ selected }} key={value} onPress={() => setFilter(value)} style={[styles.filterChip, { backgroundColor: selected ? action : surface, borderColor: selected ? action : border }]}><ThemedText style={{ color: selected ? onAction : theme.text }} type="smallBold">{label}</ThemedText></Pressable>;
                 })}
               </ScrollView>
               {filteredSessions.length === 0 ? (
@@ -121,7 +121,7 @@ export default function SessionHistoryRoute() {
                     <View style={styles.sessionBody}>
                       <View style={styles.sessionHeader}>
                         <ThemedText numberOfLines={2} style={styles.sessionTitle}>{session.taskName || text.focusSession}</ThemedText>
-                        <View style={[styles.statusPill, { backgroundColor: cancelled ? theme.background : Palette.mintPrimary, borderColor: cancelled ? warning : Palette.mintPrimary }]}><ThemedText style={{ color: cancelled ? warning : Palette.deepNavy }} type="smallBold">{cancelled ? text.cancelled : text.completedStatus}</ThemedText></View>
+                        <View style={[styles.statusPill, { backgroundColor: cancelled ? theme.background : action, borderColor: cancelled ? warning : action }]}><ThemedText style={{ color: cancelled ? warning : onAction }} type="smallBold">{cancelled ? text.cancelled : text.completedStatus}</ThemedText></View>
                       </View>
                       <View style={styles.sessionMeta}>
                         <ThemedText type="smallBold">{formatDuration(session.focusedDurationSeconds)} {text.focused}</ThemedText>

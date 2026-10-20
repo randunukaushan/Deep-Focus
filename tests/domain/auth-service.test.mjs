@@ -77,6 +77,45 @@ test('provider errors and SecureStore write failures become safe user-facing err
   assert.doesNotMatch(result.message, /sensitive detail/);
 });
 
+test('malformed emails are actionable in every locale and never reach the provider', async () => {
+  for (const locale of ['en', 'si', 'ta']) {
+    const fixture = makeClient();
+    const service = createAuthService({ client: fixture.client, locale, redirectUrl, openAuthSession: async () => ({ type: 'cancel' }) });
+    for (const email of ['', 'not-an-email', 'name@@gmail.com', 'name @gmail.com', 'name@gmail']) {
+      for (const result of [await service.signUpWithPassword(email, 'pass'), await service.signInWithPassword(email, 'pass'), await service.resendVerification(email), await service.requestPasswordReset(email)]) {
+        assert.equal(result.status, 'error');
+        assert.equal(result.message, copyExports.getAuthServiceCopy(locale).invalidEmail);
+      }
+    }
+    assert.equal(fixture.calls.length, 0);
+  }
+});
+
+test('email restrictions, throttling, connection and unknown failures use distinct safe copy', async () => {
+  for (const locale of ['en', 'si', 'ta']) {
+    const copy = copyExports.getAuthServiceCopy(locale);
+    for (const [error, expected] of [
+      [{ code: 'email_address_invalid' }, copy.invalidEmail],
+      [{ code: 'email_address_not_authorized' }, copy.emailDeliveryUnavailable],
+      [{ code: 'over_email_send_rate_limit' }, copy.rateLimit],
+      [{ code: 'over_request_rate_limit' }, copy.rateLimit],
+      [{ name: 'AuthRetryableFetchError' }, copy.connection],
+      [{ code: 'request_timeout' }, copy.connection],
+      [{ code: 'unexpected_failure' }, copy.generic],
+      [{ code: 'validation_failed' }, copy.generic],
+    ]) {
+      error.message = 'private-provider-detail';
+      const fixture = makeClient({ signUp: async () => ({ data: { session: null }, error }), resend: async () => ({ error }) });
+      const service = createAuthService({ client: fixture.client, locale, redirectUrl, openAuthSession: async () => ({ type: 'cancel' }) });
+      for (const result of [await service.signUpWithPassword('user@gmail.com', 'pass'), await service.resendVerification('user@gmail.com')]) {
+        assert.deepEqual(plain(result), { status: 'error', message: expected });
+        assert.doesNotMatch(result.message, /private-provider-detail/);
+      }
+    }
+    assert.notEqual(copy.generic, copy.connection);
+  }
+});
+
 test('Google OAuth uses PKCE redirect and rejects cancellation or missing exchange session', async () => {
   const canceled = makeClient();
   assert.deepEqual(plain(await createAuthService({ client: canceled.client, redirectUrl, openAuthSession: async () => ({ type: 'cancel' }) }).signInWithGoogle()), { status: 'cancelled' });

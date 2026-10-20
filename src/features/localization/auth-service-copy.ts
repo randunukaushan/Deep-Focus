@@ -1,6 +1,9 @@
 import type { AppLocale } from '@/features/settings/settings-storage';
 
 export type AuthServiceCopy = {
+  invalidEmail: string;
+  emailDeliveryUnavailable: string;
+  connection: string;
   invalidCredentials: string;
   weakPassword: string;
   rateLimit: string;
@@ -19,11 +22,14 @@ export type AuthServiceCopy = {
 
 const COPY: Record<AppLocale, AuthServiceCopy> = {
   en: {
+    invalidEmail: 'Enter a valid email address and check for typing mistakes.',
+    emailDeliveryUnavailable: 'Verification email cannot be sent to this address with the current email service. Please contact support.',
+    connection: 'The authentication service could not be reached. Check your connection and try again.',
     invalidCredentials: 'Email or password is incorrect, or email verification is still needed.',
     weakPassword: 'Choose a stronger password and try again.',
     rateLimit: 'Please wait a little before trying again.',
     secureStorage: 'Secure sign-in could not be saved on this device. Your account was not opened.',
-    generic: 'We could not complete sign-in. Check your connection and try again.',
+    generic: 'We could not complete this request. Please try again later.',
     emptyPassword: 'Enter your password.',
     emptySignUpPassword: 'Enter a password.',
     emptyNewPassword: 'Enter a new password.',
@@ -35,11 +41,14 @@ const COPY: Record<AppLocale, AuthServiceCopy> = {
     appleNoToken: 'Apple did not return a sign-in token. Please try again.',
   },
   si: {
+    invalidEmail: 'වලංගු විද්‍යුත් තැපැල් ලිපිනයක් ඇතුළත් කර, ටයිප් කිරීමේ වැරදි තිබේද බලන්න.',
+    emailDeliveryUnavailable: 'දැනට ඇති විද්‍යුත් තැපැල් සේවාවෙන් මෙම ලිපිනයට තහවුරු කිරීමේ පණිවිඩය යැවිය නොහැක. සහාය ලබාගන්න.',
+    connection: 'ඇතුල්වීමේ සේවාවට සම්බන්ධ විය නොහැකි විය. ඔබේ සම්බන්ධතාව පරීක්ෂා කර නැවත උත්සාහ කරන්න.',
     invalidCredentials: 'විද්‍යුත් තැපෑල හෝ මුරපදය වැරදියි, නැතහොත් විද්‍යුත් තැපෑල තවම තහවුරු කර නැත.',
     weakPassword: 'වඩා ශක්තිමත් මුරපදයක් තෝරා නැවත උත්සාහ කරන්න.',
     rateLimit: 'නැවත උත්සාහ කිරීමට මඳ වේලාවක් රැඳී සිටින්න.',
     secureStorage: 'ආරක්ෂිත ඇතුල්වීම මෙම උපාංගයේ සුරැකිය නොහැකි විය. ඔබේ ගිණුම විවෘත කර නැත.',
-    generic: 'ඇතුල්වීම සම්පූර්ණ කළ නොහැකි විය. ඔබේ සම්බන්ධතාව පරීක්ෂා කර නැවත උත්සාහ කරන්න.',
+    generic: 'මෙම ඉල්ලීම සම්පූර්ණ කළ නොහැකි විය. පසුව නැවත උත්සාහ කරන්න.',
     emptyPassword: 'ඔබේ මුරපදය ඇතුළත් කරන්න.',
     emptySignUpPassword: 'මුරපදයක් ඇතුළත් කරන්න.',
     emptyNewPassword: 'නව මුරපදයක් ඇතුළත් කරන්න.',
@@ -51,11 +60,14 @@ const COPY: Record<AppLocale, AuthServiceCopy> = {
     appleNoToken: 'Apple ඇතුල්වීමේ ටෝකනයක් ලබා දුන්නේ නැත. නැවත උත්සාහ කරන්න.',
   },
   ta: {
+    invalidEmail: 'சரியான மின்னஞ்சல் முகவரியை உள்ளிட்டு, தட்டச்சுப் பிழைகளைச் சரிபார்க்கவும்.',
+    emailDeliveryUnavailable: 'தற்போதைய மின்னஞ்சல் சேவையால் இந்த முகவரிக்குச் சரிபார்ப்பு மின்னஞ்சலை அனுப்ப முடியவில்லை. உதவியை நாடவும்.',
+    connection: 'உள்நுழைவு சேவையை அணுக முடியவில்லை. உங்கள் இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.',
     invalidCredentials: 'மின்னஞ்சல் அல்லது கடவுச்சொல் தவறாக உள்ளது; அல்லது மின்னஞ்சல் இன்னும் சரிபார்க்கப்படவில்லை.',
     weakPassword: 'வலுவான கடவுச்சொல்லைத் தேர்ந்தெடுத்து மீண்டும் முயற்சிக்கவும்.',
     rateLimit: 'மீண்டும் முயற்சிக்கும் முன் சிறிது நேரம் காத்திருக்கவும்.',
     secureStorage: 'பாதுகாப்பான உள்நுழைவை இந்தச் சாதனத்தில் சேமிக்க முடியவில்லை. உங்கள் கணக்கு திறக்கப்படவில்லை.',
-    generic: 'உள்நுழைவை முடிக்க முடியவில்லை. உங்கள் இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.',
+    generic: 'இந்தக் கோரிக்கையை முடிக்க முடியவில்லை. பின்னர் மீண்டும் முயற்சிக்கவும்.',
     emptyPassword: 'உங்கள் கடவுச்சொல்லை உள்ளிடவும்.',
     emptySignUpPassword: 'கடவுச்சொல்லை உள்ளிடவும்.',
     emptyNewPassword: 'புதிய கடவுச்சொல்லை உள்ளிடவும்.',

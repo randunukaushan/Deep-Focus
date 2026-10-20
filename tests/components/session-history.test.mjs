@@ -28,6 +28,8 @@ function fixture(route, { sessions = [session], readFailures = 0 } = {}) {
     '@/components/themed-text': { ThemedText: 'Text' },
     '@/components/themed-view': { ThemedView: 'View' },
     '@/components/ui/button': { Button: 'Button' },
+    '@/components/ui/section-heading': { SectionHeading: ({ title, subtitle }) => ({ type: 'View', props: { children: [{ type: 'Text', props: { children: title } }, { type: 'Text', props: { children: subtitle } }] } }) },
+    '@/theme/action-colors': { accentTextColor: () => '#fff' },
     '@/constants/theme': { MaxContentWidth: 600 },
     '@/features/focus/session-storage': { async loadSessionHistory() { if (readFailures-- > 0) throw Error('private history detail'); return sessions; } },
     '@/features/focus/session-history': {

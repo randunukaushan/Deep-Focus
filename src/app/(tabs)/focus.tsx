@@ -1,96 +1,46 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-
+import { useCallback, useRef, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { Button } from '@/components/ui/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Button } from '@/components/ui/button';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useTheme } from '@/hooks/use-theme';
 import { loadActiveSession } from '@/features/focus/session-storage';
-import { Palette, Radius, Spacing } from '@/theme/tokens';
 import { useAppLocale } from '@/features/localization/app-locale-context';
+import { getSessionCopy } from '@/features/localization/session-copy';
+import { getProgressCopy } from '@/features/localization/progress-copy';
+import { useTheme } from '@/hooks/use-theme';
+import { Spacing } from '@/theme/tokens';
 
+/** Enter the real focus screen; this gate never starts or resumes a timer. */
 export default function FocusRoute() {
   const router = useRouter();
-  const { copy } = useAppLocale();
+  const { locale } = useAppLocale();
+  const text = getSessionCopy(locale);
+  const common = getProgressCopy(locale);
   const theme = useTheme();
-  const isDark = useColorScheme() === 'dark';
-  const homeSurface = isDark ? theme.surface : Palette.homeLightSurface;
-  const homeBorder = isDark ? theme.border : Palette.homeLightBorder;
-  const homeAction = isDark ? Palette.mintPrimary : Palette.homeLightAction;
-  const homeActionSoft = isDark ? Palette.navySurfaceElevated : Palette.homeLightActionSoft;
-  const [activeSession, setActiveSession] = useState<Awaited<ReturnType<typeof loadActiveSession>>>(null);
-
+  const [failed, setFailed] = useState(false);
+  const retry = useRef<() => void>(() => {});
   useFocusEffect(useCallback(() => {
-    let mounted = true;
-    void loadActiveSession().then((session) => {
-      if (mounted) setActiveSession(session);
-    });
-    return () => { mounted = false; };
-  }, []));
-
-  const sessionPath = activeSession
-    ? { pathname: '/focus/session' as const, params: { durationMinutes: String(activeSession.plannedDurationSeconds / 60), taskName: activeSession.taskName || '' } }
-    : '/focus/setup' as const;
-
-  return (
-    <ThemedView style={[styles.screen, { backgroundColor: isDark ? theme.background : Palette.homeLightBackground }]}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <ThemedText style={[styles.eyebrow, { color: homeAction }]} type="smallBold">{copy.focus.eyebrow}</ThemedText>
-            <ThemedText accessibilityRole="header" type="title">{copy.focus.title}</ThemedText>
-            <ThemedText themeColor="textSecondary">{copy.focus.subtitle}</ThemedText>
-          </View>
-
-          {activeSession ? (
-            <ThemedView accessibilityLabel={`${activeSession.status === 'paused' ? copy.focus.sessionPaused : copy.focus.sessionActive}. ${activeSession.taskName || copy.home.focusSession}.`} style={[styles.card, { backgroundColor: homeSurface, borderColor: homeBorder }]}>
-              <View style={[styles.icon, { backgroundColor: homeAction }]}><Ionicons color={Palette.deepNavy} name="timer-outline" size={24} /></View>
-              <ThemedText style={[styles.eyebrow, { color: homeAction }]} type="smallBold">{activeSession.status === 'paused' ? copy.focus.sessionPaused : copy.focus.sessionActive}</ThemedText>
-              <ThemedText type="subtitle">{activeSession.taskName || copy.home.focusSession}</ThemedText>
-              <ThemedText themeColor="textSecondary">{activeSession.status === 'paused' ? copy.focus.sessionReady : copy.focus.sessionProgress}</ThemedText>
-              <Button accentColor={homeAction} fullWidth label={activeSession.status === 'paused' ? copy.focus.resume : copy.focus.returnToSession} onPress={() => router.push(sessionPath)} style={{ backgroundColor: homeAction, borderColor: homeAction }} />
-            </ThemedView>
-          ) : (
-            <ThemedView accessibilityLabel={copy.home.startFocusAccessibility} style={[styles.card, { backgroundColor: homeSurface, borderColor: homeBorder }]}>
-              <View style={[styles.icon, { backgroundColor: homeActionSoft }]}><Ionicons color={homeAction} name="leaf-outline" size={24} /></View>
-              <ThemedText style={[styles.eyebrow, { color: homeAction }]} type="smallBold">{copy.focus.recommendedStart}</ThemedText>
-              <ThemedText type="subtitle">{copy.focus.calmBlock}</ThemedText>
-              <ThemedText themeColor="textSecondary">{copy.focus.chooseTask}</ThemedText>
-              <Button accentColor={homeAction} fullWidth label={copy.focus.start} onPress={() => router.push('/focus/setup')} style={{ backgroundColor: homeAction, borderColor: homeAction }} />
-            </ThemedView>
-          )}
-
-          {!activeSession ? <View style={[styles.optionsCard, { backgroundColor: homeActionSoft, borderColor: homeBorder }]}>
-            <View style={styles.optionCopy}>
-              <ThemedText style={[styles.eyebrow, { color: homeAction }]} type="smallBold">{copy.focus.flexibleTiming}</ThemedText>
-              <ThemedText type="subtitle">{copy.focus.chooseDuration}</ThemedText>
-              <ThemedText themeColor="textSecondary" type="small">{copy.focus.durationHint}</ThemedText>
-            </View>
-            <Button accentColor={homeAction} label={copy.focus.configure} onPress={() => router.push('/focus/setup')} variant="secondary" />
-          </View> : null}
-
-          <View style={styles.guidance}>
-            <Ionicons color={homeAction} name="shield-checkmark-outline" size={20} />
-            <ThemedText themeColor="textSecondary" type="small">{copy.focus.savedLocally}</ThemedText>
-          </View>
-        </View>
-      </ScrollView>
-    </ThemedView>
-  );
+    let current = true;
+    const enter = async () => {
+      setFailed(false);
+      try {
+        const session = await loadActiveSession(true);
+        if (!current) return;
+        if (session?.status === 'active' || session?.status === 'paused') {
+          router.replace({ pathname: '/focus/session', params: { durationMinutes: String(session.plannedDurationSeconds / 60), taskName: session.taskName ?? '' } });
+        } else router.replace('/focus/setup');
+      } catch { if (current) setFailed(true); }
+    };
+    retry.current = () => { void enter(); };
+    void enter();
+    return () => { current = false; retry.current = () => {}; };
+  }, [router]));
+  return <ThemedView style={styles.screen}><ScrollView contentContainerStyle={styles.content}>
+    {failed ? <><ThemedText accessibilityRole="alert">{text.recoveryError}</ThemedText><Button label={common.retry} onPress={() => retry.current()} /></> : <View accessibilityLabel={text.loading} accessibilityLiveRegion="polite"><ActivityIndicator color={theme.primary} /></View>}
+  </ScrollView></ThemedView>;
 }
-
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  scroll: { flexGrow: 1, padding: Spacing.lg },
-  content: { alignSelf: 'center', gap: Spacing.lg, justifyContent: 'center', maxWidth: 560, width: '100%' },
-  header: { gap: Spacing.xs },
-  eyebrow: { letterSpacing: 1.2 },
-  card: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.sm, padding: Spacing.lg },
-  icon: { alignItems: 'center', borderRadius: 24, height: 48, justifyContent: 'center', width: 48 },
-  optionsCard: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, padding: Spacing.md },
-  optionCopy: { flex: 1, gap: Spacing.xs, minWidth: 0 },
-  guidance: { alignItems: 'flex-start', flexDirection: 'row', gap: Spacing.sm, justifyContent: 'center', paddingHorizontal: Spacing.sm },
+  content: { alignSelf: 'center', flexGrow: 1, justifyContent: 'center', padding: Spacing.lg, width: '100%', maxWidth: 560, gap: Spacing.md },
 });

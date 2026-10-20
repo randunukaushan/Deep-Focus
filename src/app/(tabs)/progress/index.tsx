@@ -3,6 +3,9 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { accentTextColor } from '@/theme/action-colors';
+import { SectionHeading } from '@/components/ui/section-heading';
+
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { formatSessionDuration, getHistoricalSessions } from '@/features/focus/session-history';
@@ -30,13 +33,15 @@ export default function ProgressRoute() {
   const background = isDark ? theme.background : Palette.homeLightBackground;
   const surface = isDark ? theme.surface : Palette.homeLightSurface;
   const border = isDark ? theme.border : Palette.homeLightBorder;
-  const action = isDark ? Palette.mintPrimary : Palette.homeLightAction;
+  const action = theme.primary;
+  const onAction = accentTextColor(action);
   const softAction = isDark ? Palette.navySurfaceElevated : Palette.homeLightActionSoft;
   const [sessions, setSessions] = useState<ReturnType<typeof getHistoricalSessions>>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [rewardProgress, setRewardProgress] = useState<LocalRewardProgress | null>(null);
   const [window, setWindow] = useState<ProgressWindow>('week');
+  const [showDetails, setShowDetails] = useState(false);
   const [now, setNow] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -82,11 +87,7 @@ export default function ProgressRoute() {
     <ThemedView style={[styles.screen, { backgroundColor: background }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
-          <View style={styles.header}>
-            <ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">{text.eyebrow}</ThemedText>
-            <ThemedText accessibilityRole="header" type="title" style={styles.title}>{text.title}</ThemedText>
-            <ThemedText themeColor="textSecondary">{text.subtitle}</ThemedText>
-          </View>
+          <SectionHeading eyebrow={text.eyebrow} title={text.title} subtitle={text.subtitle} icon="bar-chart-outline" />
 
           {loading ? <View accessibilityLabel={text.loading} accessibilityLiveRegion="polite" style={styles.loading}><ActivityIndicator color={action} /></View> : loadError ? (
             <ThemedView accessibilityLabel={text.loadErrorLabel} accessibilityLiveRegion="polite" style={[styles.emptyCard, { backgroundColor: surface, borderColor: border }]}>
@@ -110,9 +111,22 @@ export default function ProgressRoute() {
             </ThemedView>
           ) : (
             <>
+              <ThemedView style={[styles.emptyCard, { backgroundColor: surface, borderColor: border }]}>
+                <ThemedText type="small" themeColor="textSecondary">{text.allTime}</ThemedText>
+                <ThemedText style={styles.overallCount}>{sessions.filter(session => session.status === 'completed').length}</ThemedText>
+                <ThemedText themeColor="textSecondary">{text.completedLabel} · {text.sessionsWord}</ThemedText>
+              </ThemedView>
+              <ThemedText accessibilityRole="header" type="smallBold">{text.recent}</ThemedText>
+              {sessions.slice(0, 5).map(session => <Pressable key={session.id} accessibilityRole="button" accessibilityLabel={`${session.taskName || text.focusTime}. ${session.status === 'completed' ? text.completedLabel : text.endedEarlyLabel}`} onPress={() => router.push({ pathname: '/progress/history/[sessionId]', params: { sessionId: session.id } })} style={[styles.recentRow, { borderColor: border }]}>
+                <Ionicons accessible={false} color={action} name="time-outline" size={22} />
+                <View style={styles.goalCopy}><ThemedText>{session.taskName || text.focusTime}</ThemedText><ThemedText themeColor="textSecondary" type="small">{formatDuration(session.focusedDurationSeconds)} · {session.status === 'completed' ? text.completedLabel : text.endedEarlyLabel}</ThemedText></View>
+                <Ionicons accessible={false} color={action} name="chevron-forward" size={18} />
+              </Pressable>)}
+              <Pressable accessibilityRole="button" accessibilityLabel={text.details} accessibilityState={{ expanded: showDetails }} onPress={() => setShowDetails(current => !current)} style={[styles.outlineButton, { borderColor: border }]}><ThemedText type="smallBold">{text.details}</ThemedText></Pressable>
+              {showDetails ? <>
               <ThemedText accessibilityLiveRegion="polite" themeColor="textSecondary" type="small">{text.calendar.replace('{zone}', Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC')}</ThemedText>
               <View accessibilityRole="tablist" accessibilityLabel={text.title} style={styles.filters}>
-                {(['today', 'week', 'month', 'all'] as const).map((option) => <Pressable key={option} accessibilityLabel={option === 'today' ? text.today : option === 'week' ? text.week : option === 'month' ? text.month : text.allTime} accessibilityRole="tab" accessibilityState={{ selected: window === option }} onPress={() => setWindow(option)} style={[styles.filter, { borderColor: action, backgroundColor: window === option ? action : 'transparent' }]}><ThemedText type="smallBold" style={{ color: window === option ? Palette.deepNavy : action }}>{option === 'today' ? text.today : option === 'week' ? text.week : option === 'month' ? text.month : text.allTime}</ThemedText></Pressable>)}
+                {(['today', 'week', 'month', 'all'] as const).map((option) => <Pressable key={option} accessibilityLabel={option === 'today' ? text.today : option === 'week' ? text.week : option === 'month' ? text.month : text.allTime} accessibilityRole="tab" accessibilityState={{ selected: window === option }} onPress={() => setWindow(option)} style={[styles.filter, { borderColor: action, backgroundColor: window === option ? action : 'transparent' }]}><ThemedText type="smallBold" style={{ color: window === option ? onAction : action }}>{option === 'today' ? text.today : option === 'week' ? text.week : option === 'month' ? text.month : text.allTime}</ThemedText></Pressable>)}
               </View>
               <View style={styles.metrics}>
                 <Metric action={action} border={border} icon="time-outline" label={text.focusTime} value={formatDuration(summary.focusedSeconds)} />
@@ -136,7 +150,8 @@ export default function ProgressRoute() {
               </ThemedView>
               {window === 'week' && <ThemedView style={[styles.chartCard, { backgroundColor: surface, borderColor: border }]}><ThemedText accessibilityRole="header" type="subtitle">{text.weekFocus}</ThemedText><View style={styles.chart}>{summary.activityDays.map((day) => { const max = Math.max(1, ...summary!.activityDays.map((entry) => entry.focusedSeconds)); const height = day.focusedSeconds ? Math.max(6, Math.round((day.focusedSeconds / max) * 84)) : 2; return <View key={day.date} accessibilityLabel={`${day.date}, ${formatDuration(day.focusedSeconds)} ${text.focusTime}`} style={styles.chartDay}><View style={[styles.barTrack, { backgroundColor: softAction }]}><View style={[styles.bar, { height, backgroundColor: action }]} /></View><ThemedText type="small">{day.day}</ThemedText><ThemedText type="small">{formatDuration(day.focusedSeconds)}</ThemedText></View>; })}</View></ThemedView>}
               {summary.goals.length > 0 && <ThemedView style={[styles.goalCard, { backgroundColor: surface, borderColor: border }]}><ThemedText accessibilityRole="header" type="subtitle">{text.goals}</ThemedText>{summary.goals.map((goal) => <View key={goal.id} accessibilityLabel={`${goal.title}, ${text.goals}, ${Math.round(goal.progress * 100)}%`} style={styles.goalRow}><View style={styles.goalCopy}><ThemedText type="smallBold">{goal.title}</ThemedText><ThemedText themeColor="textSecondary" type="small">{goal.type === 'focus_time' ? formatDuration(goal.currentValue) : `${goal.currentValue} ${text.sessionsWord}`} {text.of} {goal.type === 'focus_time' ? formatDuration(goal.targetValue) : `${goal.targetValue} ${text.sessionsWord}`}</ThemedText></View><ThemedText style={{ color: action }} type="smallBold">{Math.round(goal.progress * 100)}%</ThemedText></View>)}</ThemedView>}
-              <Pressable accessibilityLabel={text.viewHistory} accessibilityRole="button" onPress={() => router.push('/progress/history')} style={({ pressed }) => [styles.historyButton, { backgroundColor: action, borderColor: action }, pressed && styles.pressed]}><ThemedText style={{ color: Palette.deepNavy }} type="smallBold">{text.viewHistory}</ThemedText><Ionicons color={Palette.deepNavy} name="arrow-forward" size={18} /></Pressable>
+              </> : null}
+              <Pressable accessibilityLabel={text.viewHistory} accessibilityRole="button" onPress={() => router.push('/progress/history')} style={({ pressed }) => [styles.historyButton, { borderColor: border }, pressed && styles.pressed]}><ThemedText style={{ color: theme.text }} type="smallBold">{text.viewHistory}</ThemedText><Ionicons color={theme.text} name="arrow-forward" size={18} /></Pressable>
             </>
           )}
           <Pressable accessibilityLabel={text.viewRewards} accessibilityRole="button" onPress={() => router.push('/progress/rewards')} style={({ pressed }) => [styles.outlineButton, { borderColor: action }, pressed && styles.pressed]}><ThemedText style={{ color: action }} type="smallBold">{text.viewRewards}</ThemedText><Ionicons color={action} name="ribbon-outline" size={18} /></Pressable>
@@ -151,5 +166,7 @@ function Metric({ action, border, icon, label, value }: { action: string; border
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 }, scroll: { flexGrow: 1, padding: Spacing.lg }, content: { alignSelf: 'center', gap: Spacing.lg, maxWidth: 560, width: '100%' }, header: { gap: Spacing.xs }, title: { fontSize: 38, lineHeight: 44 }, eyebrow: { letterSpacing: 1.2 }, loading: { alignItems: 'center', minHeight: 180, justifyContent: 'center' }, filters: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }, filter: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexBasis: 100, flexGrow: 1, justifyContent: 'center', minHeight: 44, paddingHorizontal: Spacing.xs }, metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }, metric: { borderRadius: Radius.card, borderWidth: 1, flexBasis: 150, flexGrow: 1, gap: Spacing.xs, minHeight: 128, padding: Spacing.md }, metricLabel: { fontSize: 11, letterSpacing: 0.7 }, metricValue: { fontSize: 22, lineHeight: 28 }, emptyCard: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.md, padding: Spacing.lg }, largeIcon: { alignItems: 'center', borderRadius: 24, height: 48, justifyContent: 'center', width: 48 }, cardTitle: { fontSize: 25, lineHeight: 32 }, outlineButton: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, justifyContent: 'center', minHeight: 48, paddingHorizontal: Spacing.md }, insightCard: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, padding: Spacing.lg }, insightLabel: { flexShrink: 1 }, insightCopy: { flex: 1, gap: Spacing.xs, minWidth: 0 }, chartCard: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.md, padding: Spacing.md }, chart: { flexDirection: 'row', gap: Spacing.xs, justifyContent: 'space-between' }, chartDay: { alignItems: 'center', flex: 1, gap: 4 }, barTrack: { borderRadius: 5, height: 88, justifyContent: 'flex-end', overflow: 'hidden', width: '100%' }, bar: { borderRadius: 5, minHeight: 2, width: '100%' }, goalCard: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.md, padding: Spacing.md }, goalRow: { alignItems: 'center', flexDirection: 'row', gap: Spacing.sm }, goalCopy: { flex: 1, gap: 2, minWidth: 0 }, historyButton: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', gap: Spacing.sm, justifyContent: 'center', minHeight: 48, paddingHorizontal: Spacing.md }, pressed: { opacity: 0.78 },
+  overallCount: { fontSize: 56, lineHeight: 68, fontWeight: '600' },
+  recentRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md, minHeight: 76, borderBottomWidth: 1 },
+  screen: { flex: 1 }, scroll: { flexGrow: 1, padding: Spacing.lg }, content: { alignSelf: 'center', gap: Spacing.lg, maxWidth: 560, width: '100%' }, eyebrow: { letterSpacing: 1.2 }, loading: { alignItems: 'center', minHeight: 180, justifyContent: 'center' }, filters: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }, filter: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexBasis: 100, flexGrow: 1, justifyContent: 'center', minHeight: 44, paddingHorizontal: Spacing.xs }, metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }, metric: { borderRadius: Radius.card, borderWidth: 1, flexBasis: 150, flexGrow: 1, gap: Spacing.xs, minHeight: 128, padding: Spacing.md }, metricLabel: { letterSpacing: 0.7 }, metricValue: { fontSize: 22, lineHeight: 28 }, emptyCard: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.md, padding: Spacing.lg }, largeIcon: { alignItems: 'center', borderRadius: 24, height: 48, justifyContent: 'center', width: 48 }, cardTitle: { fontSize: 25, lineHeight: 32 }, outlineButton: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, justifyContent: 'center', minHeight: 48, paddingHorizontal: Spacing.md }, insightCard: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, padding: Spacing.lg }, insightLabel: { flexShrink: 1 }, insightCopy: { flex: 1, gap: Spacing.xs, minWidth: 0 }, chartCard: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.md, padding: Spacing.md }, chart: { flexDirection: 'row', gap: Spacing.xs, justifyContent: 'space-between' }, chartDay: { alignItems: 'center', flex: 1, gap: 4 }, barTrack: { borderRadius: 5, height: 88, justifyContent: 'flex-end', overflow: 'hidden', width: '100%' }, bar: { borderRadius: 5, minHeight: 2, width: '100%' }, goalCard: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.md, padding: Spacing.md }, goalRow: { alignItems: 'center', flexDirection: 'row', gap: Spacing.sm }, goalCopy: { flex: 1, gap: 2, minWidth: 0 }, historyButton: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', gap: Spacing.sm, justifyContent: 'center', minHeight: 48, paddingHorizontal: Spacing.md }, pressed: { opacity: 0.78 },
 });

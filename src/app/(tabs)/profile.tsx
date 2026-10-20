@@ -13,6 +13,12 @@ import { useAppLocale } from '@/features/localization/app-locale-context';
 import { getAuthRuntimeCopy } from '@/features/localization/auth-runtime-copy';
 import { getProfileEducationCopy } from '@/features/localization/profile-education-copy';
 import { loadPendingOutbox } from '@/features/storage/local-database';
+import { PresentationPanel } from '@/features/settings/presentation-panel';
+import { getPresentationCopy } from '@/features/localization/presentation-copy';
+import { getSetupCopy } from '@/features/onboarding/setup-copy';
+import { useOnboarding } from '@/features/onboarding/onboarding-context';
+import { useSetupAction } from '@/features/onboarding/setup-ui';
+import { loadActiveSession } from '@/features/focus/session-storage';
 
 export default function ProfileRoute() {
   const router = useRouter();
@@ -20,6 +26,8 @@ export default function ProfileRoute() {
   const runtimeCopy = getAuthRuntimeCopy(locale);
   const theme = useTheme();
   const auth = useAuth();
+  const onboarding = useOnboarding();
+  const setupAction = useSetupAction();
   const [accountMessage, setAccountMessage] = useState('');
   const [signingOut, setSigningOut] = useState(false);
   const [pendingSyncCount, setPendingSyncCount] = useState<number | null>(null);
@@ -28,7 +36,7 @@ export default function ProfileRoute() {
   const background = isDark ? theme.background : Palette.homeLightBackground;
   const surface = isDark ? theme.surface : Palette.homeLightSurface;
   const border = isDark ? theme.border : Palette.homeLightBorder;
-  const action = isDark ? Palette.mintPrimary : Palette.homeLightAction;
+  const action = theme.primary;
   const softAction = isDark ? Palette.navySurfaceElevated : Palette.homeLightActionSoft;
 
   useEffect(() => {
@@ -48,11 +56,11 @@ export default function ProfileRoute() {
 
   return (
     <ThemedView style={[styles.screen, { backgroundColor: background }]}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           <View style={styles.header}>
             <ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">{copy.profile.eyebrow}</ThemedText>
-            <ThemedText accessibilityRole="header" type="title" style={styles.title}>{copy.profile.title}</ThemedText>
+            <ThemedText accessibilityRole="header" type="title" style={styles.title}>{getPresentationCopy(locale).title}</ThemedText>
             <ThemedText themeColor="textSecondary">{copy.profile.subtitle}</ThemedText>
           </View>
 
@@ -65,11 +73,21 @@ export default function ProfileRoute() {
               <ThemedText type="subtitle" style={styles.profileTitle}>{copy.profile.cardTitle}</ThemedText>
               <ThemedText themeColor="textSecondary" type="small">{copy.profile.cardDetail}</ThemedText>
             </View>
-            <Pressable accessibilityLabel={copy.profile.review} accessibilityRole="button" onPress={() => open('/onboarding/productivity-profile')} style={({ pressed }) => [styles.profileAction, { borderColor: action }, pressed && styles.pressed]}>
-            <ThemedText style={{ color: action }} type="smallBold">{copy.profile.review}</ThemedText>
+            <Pressable accessibilityLabel={getSetupCopy(locale).redo} accessibilityRole="button" accessibilityState={{ disabled: setupAction.busy }} disabled={setupAction.busy} onPress={() => { void setupAction.run(async active => {
+              const session = await loadActiveSession(true);
+              if (!active()) return;
+              if (session) { router.push({ pathname: '/focus/session', params: { durationMinutes: String(session.plannedDurationSeconds / 60), taskName: session.taskName ?? '' } }); return; }
+              await onboarding.setStep('intro');
+              if (active()) router.push('/onboarding');
+            }); }} style={({ pressed }) => [styles.profileAction, { borderColor: action }, pressed && styles.pressed]}>
+            <ThemedText style={{ color: action }} type="smallBold">{getSetupCopy(locale).redo}</ThemedText>
               <Ionicons color={action} name="chevron-forward" size={18} />
             </Pressable>
           </ThemedView>
+
+          {setupAction.error ? <ThemedText accessibilityRole="alert">{getSetupCopy(locale).navError}</ThemedText> : null}
+
+          <PresentationPanel key={auth.snapshot.userId ?? 'signed-out'} />
 
           <View style={styles.section}>
             <ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">{copy.profile.focusSection}</ThemedText>

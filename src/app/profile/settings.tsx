@@ -1,12 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+import { SectionHeading } from '@/components/ui/section-heading';
+import { accentTextColor } from '@/theme/action-colors';
+import { PresentationPanel } from '@/features/settings/presentation-panel';
 import { Palette, Radius, Spacing } from '@/theme/tokens';
 import { loadSettings, saveSettings, type AppLocale, type AppSettings } from '@/features/settings/settings-storage';
 import { getAppLocaleCopy } from '@/features/localization/app-locale';
@@ -21,7 +26,8 @@ export default function SettingsRoute() {
   const background = isDark ? theme.background : Palette.homeLightBackground;
   const surface = isDark ? theme.surface : Palette.homeLightSurface;
   const border = isDark ? theme.border : Palette.homeLightBorder;
-  const action = isDark ? Palette.mintPrimary : Palette.homeLightAction;
+  const action = theme.primary;
+  const onAction = accentTextColor(action);
   const softAction = isDark ? Palette.navySurfaceElevated : Palette.homeLightActionSoft;
   const [focusDuration, setFocusDuration] = useState<AppSettings['defaultFocusDurationMinutes']>(25);
   const [breakDuration, setBreakDuration] = useState<5 | 10 | 15>(5);
@@ -106,39 +112,31 @@ export default function SettingsRoute() {
   }
 
   return (
-    <ThemedView style={[styles.screen, { backgroundColor: background }]}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: background }]}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           <Pressable accessibilityLabel={settingsCopy.back} accessibilityRole="button" onPress={() => router.back()} style={({ pressed }) => [styles.back, pressed && styles.pressed]}>
             <Ionicons color={action} name="arrow-back" size={20} />
             <ThemedText style={{ color: action }} type="smallBold">{settingsCopy.back}</ThemedText>
           </Pressable>
-          <View style={styles.header}>
-            <ThemedText style={[styles.eyebrow, { color: action }]} type="smallBold">{settingsCopy.eyebrow}</ThemedText>
-            <ThemedText accessibilityRole="header" type="title" style={styles.title}>{settingsCopy.title}</ThemedText>
-            <ThemedText themeColor="textSecondary">{settingsCopy.subtitle}</ThemedText>
-          </View>
+          <SectionHeading eyebrow={settingsCopy.eyebrow} title={settingsCopy.title} subtitle={settingsCopy.subtitle} icon="settings-outline" />
 
           {loading ? <ThemedView accessibilityLabel={settingsCopy.loading} accessibilityLiveRegion="polite" style={[styles.stateCard, { backgroundColor: surface, borderColor: border }]}><ThemedText themeColor="textSecondary">{settingsCopy.loading}</ThemedText></ThemedView> : loadError ? <ThemedView accessibilityRole="alert" accessibilityLabel={settingsCopy.loadErrorTitle} style={[styles.stateCard, { backgroundColor: surface, borderColor: border }]}><ThemedText type="subtitle">{settingsCopy.loadErrorTitle}</ThemedText><ThemedText themeColor="textSecondary">{settingsCopy.loadErrorDetail}</ThemedText><Pressable accessibilityLabel={settingsCopy.retry} accessibilityRole="button" onPress={() => retryRef.current()} style={[styles.retryButton, { borderColor: action }]}><ThemedText style={{ color: action }} type="smallBold">{settingsCopy.retry}</ThemedText></Pressable></ThemedView> : <>
           <SettingsSection action={action} label={settingsCopy.focusSection} />
           <ThemedView accessibilityLabel={`${settingsCopy.focusDuration}: ${focusDuration}`} style={[styles.durationCard, { backgroundColor: surface, borderColor: border }]}>
             <View style={[styles.infoIcon, { backgroundColor: softAction }]}><Ionicons color={action} name="timer-outline" size={22} /></View>
-          <View style={styles.durationCopy}><ThemedText type="smallBold">{settingsCopy.focusDuration}</ThemedText><ThemedText accessibilityLiveRegion="polite" themeColor="textSecondary" type="small">{saving ? settingsCopy.saving : settingsCopy.focusHint}</ThemedText><View accessibilityRole="radiogroup" style={styles.durationOptions}>{[25, 45, 60].map((value) => { const selected = value === focusDuration; return <Pressable accessibilityLabel={`${settingsCopy.focusDuration}: ${value} ${settingsCopy.minuteUnit}`} accessibilityRole="radio" accessibilityState={{ selected }} key={value} onPress={() => { void updateFocusDuration(value as AppSettings['defaultFocusDurationMinutes']); }} disabled={saving} style={({ pressed }) => [styles.durationOption, { backgroundColor: selected ? action : 'transparent', borderColor: selected ? action : border }, pressed && styles.pressed]}><ThemedText style={selected ? { color: Palette.deepNavy } : undefined} type="smallBold">{value} {settingsCopy.minuteUnit}</ThemedText></Pressable>; })}</View>{saveError ? <ThemedText accessibilityLiveRegion="assertive" accessibilityRole="alert" style={{ color: Palette.error }} type="small">{settingsCopy.saveError}</ThemedText> : null}</View>
+          <View style={styles.durationCopy}><ThemedText type="smallBold">{settingsCopy.focusDuration}</ThemedText><ThemedText accessibilityLiveRegion="polite" themeColor="textSecondary" type="small">{saving ? settingsCopy.saving : settingsCopy.focusHint}</ThemedText><View accessibilityRole="radiogroup" style={styles.durationOptions}>{[25, 45, 60].map((value) => { const selected = value === focusDuration; return <Pressable accessibilityLabel={`${settingsCopy.focusDuration}: ${value} ${settingsCopy.minuteUnit}`} accessibilityRole="radio" accessibilityState={{ selected, checked: selected, disabled: saving }} key={value} onPress={() => { void updateFocusDuration(value as AppSettings['defaultFocusDurationMinutes']); }} disabled={saving} style={({ pressed }) => [styles.durationOption, { backgroundColor: selected ? action : 'transparent', borderColor: selected ? action : border }, pressed && styles.pressed]}><ThemedText style={selected ? { color: onAction } : undefined} type="smallBold">{value} {settingsCopy.minuteUnit}</ThemedText></Pressable>; })}</View>{saveError ? <ThemedText accessibilityLiveRegion="assertive" accessibilityRole="alert" themeColor="textPrimary" type="small">{settingsCopy.saveError}</ThemedText> : null}</View>
           </ThemedView>
           <ThemedView accessibilityLabel={`${settingsCopy.breakDuration}: ${breakDuration}`} style={[styles.durationCard, { backgroundColor: surface, borderColor: border }]}>
             <View style={[styles.infoIcon, { backgroundColor: softAction }]}><Ionicons color={action} name="cafe-outline" size={22} /></View>
-          <View style={styles.durationCopy}><ThemedText type="smallBold">{settingsCopy.breakDuration}</ThemedText><ThemedText accessibilityLiveRegion="polite" themeColor="textSecondary" type="small">{saving ? settingsCopy.saving : settingsCopy.breakHint}</ThemedText><View accessibilityRole="radiogroup" style={styles.durationOptions}>{[5, 10, 15].map((value) => { const selected = value === breakDuration; return <Pressable accessibilityLabel={`${settingsCopy.breakDuration}: ${value} ${settingsCopy.minuteUnit}`} accessibilityRole="radio" accessibilityState={{ selected }} key={value} onPress={() => { void updateBreakDuration(value as 5 | 10 | 15); }} disabled={saving} style={({ pressed }) => [styles.durationOption, { backgroundColor: selected ? action : 'transparent', borderColor: selected ? action : border }, pressed && styles.pressed]}><ThemedText style={selected ? { color: Palette.deepNavy } : undefined} type="smallBold">{value} {settingsCopy.minuteUnit}</ThemedText></Pressable>; })}</View>{saveError ? <ThemedText accessibilityLiveRegion="assertive" accessibilityRole="alert" style={{ color: Palette.error }} type="small">{settingsCopy.saveError}</ThemedText> : null}</View>
+          <View style={styles.durationCopy}><ThemedText type="smallBold">{settingsCopy.breakDuration}</ThemedText><ThemedText accessibilityLiveRegion="polite" themeColor="textSecondary" type="small">{saving ? settingsCopy.saving : settingsCopy.breakHint}</ThemedText><View accessibilityRole="radiogroup" style={styles.durationOptions}>{[5, 10, 15].map((value) => { const selected = value === breakDuration; return <Pressable accessibilityLabel={`${settingsCopy.breakDuration}: ${value} ${settingsCopy.minuteUnit}`} accessibilityRole="radio" accessibilityState={{ selected, checked: selected, disabled: saving }} key={value} onPress={() => { void updateBreakDuration(value as 5 | 10 | 15); }} disabled={saving} style={({ pressed }) => [styles.durationOption, { backgroundColor: selected ? action : 'transparent', borderColor: selected ? action : border }, pressed && styles.pressed]}><ThemedText style={selected ? { color: onAction } : undefined} type="smallBold">{value} {settingsCopy.minuteUnit}</ThemedText></Pressable>; })}</View>{saveError ? <ThemedText accessibilityLiveRegion="assertive" accessibilityRole="alert" themeColor="textPrimary" type="small">{settingsCopy.saveError}</ThemedText> : null}</View>
           </ThemedView>
 
           <SettingsSection action={action} label={settingsCopy.appearanceSection} />
-          <ThemedView accessibilityLabel={`${settingsCopy.appearance}: ${settingsCopy.systemTheme}`} style={[styles.infoCard, { backgroundColor: surface, borderColor: border }]}>
-            <View style={[styles.infoIcon, { backgroundColor: softAction }]}><Ionicons color={action} name="contrast-outline" size={22} /></View>
-            <View style={styles.rowCopy}><ThemedText type="smallBold">{settingsCopy.appearance}</ThemedText><ThemedText themeColor="textSecondary" type="small">{settingsCopy.systemTheme}</ThemedText></View>
-          </ThemedView>
-          <SettingsRow action={action} border={border} icon="sparkles-outline" label={settingsCopy.reducedMotion} detail={settingsCopy.reducedMotionDetail} />
+          <PresentationPanel />
           <ThemedView accessibilityLabel={`${copy.settings.language}: ${locale}`} style={[styles.infoCard, { backgroundColor: surface, borderColor: border }]}>
             <View style={[styles.infoIcon, { backgroundColor: softAction }]}><Ionicons color={action} name="language-outline" size={22} /></View>
-          <View style={styles.durationCopy}><ThemedText type="smallBold">{copy.settings.language}</ThemedText><ThemedText themeColor="textSecondary" type="small">{copy.settings.languageHint} {settingsCopy.languageDetailSuffix}</ThemedText><View accessibilityRole="radiogroup" style={styles.durationOptions}>{([{ value: 'si', label: 'සිංහල' }, { value: 'ta', label: 'தமிழ்' }, { value: 'en', label: 'English' }] as const).map((option) => { const selected = option.value === locale; return <Pressable accessibilityLabel={`${copy.settings.language}: ${option.label}`} accessibilityRole="radio" accessibilityState={{ selected }} key={option.value} onPress={() => { void updateLocale(option.value); }} disabled={saving} style={({ pressed }) => [styles.durationOption, { backgroundColor: selected ? action : 'transparent', borderColor: selected ? action : border }, pressed && styles.pressed]}><ThemedText style={selected ? { color: Palette.deepNavy } : undefined} type="smallBold">{option.label}</ThemedText></Pressable>; })}</View>{saveError ? <ThemedText accessibilityLiveRegion="assertive" accessibilityRole="alert" style={{ color: Palette.error }} type="small">{settingsCopy.saveError}</ThemedText> : null}</View>
+          <View style={styles.durationCopy}><ThemedText type="smallBold">{copy.settings.language}</ThemedText><ThemedText themeColor="textSecondary" type="small">{copy.settings.languageHint} {settingsCopy.languageDetailSuffix}</ThemedText><View accessibilityRole="radiogroup" style={styles.durationOptions}>{([{ value: 'si', label: 'සිංහල' }, { value: 'ta', label: 'தமிழ்' }, { value: 'en', label: 'English' }] as const).map((option) => { const selected = option.value === locale; return <Pressable accessibilityLabel={`${copy.settings.language}: ${option.label}`} accessibilityRole="radio" accessibilityState={{ selected, checked: selected, disabled: saving }} key={option.value} onPress={() => { void updateLocale(option.value); }} disabled={saving} style={({ pressed }) => [styles.durationOption, { backgroundColor: selected ? action : 'transparent', borderColor: selected ? action : border }, pressed && styles.pressed]}><ThemedText style={selected ? { color: onAction } : undefined} type="smallBold">{option.label}</ThemedText></Pressable>; })}</View>{saveError ? <ThemedText accessibilityLiveRegion="assertive" accessibilityRole="alert" themeColor="textPrimary" type="small">{settingsCopy.saveError}</ThemedText> : null}</View>
           </ThemedView>
 
           <SettingsSection action={action} label={settingsCopy.notificationsSection} />
@@ -154,7 +152,7 @@ export default function SettingsRoute() {
           </>}
         </View>
       </ScrollView>
-    </ThemedView>
+    </KeyboardAvoidingView></SafeAreaView>
   );
 }
 

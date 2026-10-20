@@ -1,6 +1,6 @@
 // Supabase Edge Functions resolve these pinned imports through this directory's deno.json.
 // @ts-expect-error The mobile TypeScript program does not resolve Edge-only JSR imports.
-import { Pool } from '@db/postgres';
+import { Pool } from '@db/postgres'; // eslint-disable-line import/no-unresolved -- The pinned function-local deno.json resolves this JSR import.
 import { createClient } from '@supabase/supabase-js';
 // @ts-expect-error The mobile TypeScript program does not allow Edge Runtime .ts imports.
 import { createEdgePostgresTransactionRunner } from '../_shared/edge-postgres-transaction-runner.ts';
@@ -18,10 +18,27 @@ import { createAccountBootstrapHttpHandler } from '../_shared/account-bootstrap-
 import { bootstrapAuthenticatedAccount } from '../_shared/postgres-authenticated-account-bootstrap.ts';
 // @ts-expect-error The mobile TypeScript program does not allow Edge Runtime .ts imports.
 import { gatewayIssuer, readDeepFocusGatewayConfig, type DeepFocusGatewayConfig } from './config.ts';
+// @ts-expect-error The Edge runtime resolves TypeScript modules directly.
+import { createSafeServerLogger } from '../_shared/safe-server-logger.ts';
 
 declare const Deno: { env: { get: (name: string) => string | undefined }; serve: (handler: (request: Request) => Promise<Response>) => void };
 
 type RequestHandler = (request: Request) => Promise<Response>;
+
+const logger = createSafeServerLogger({ sink: (entry) => console.error(JSON.stringify(entry)) });
+function logFailure(operation: string, error: unknown): void {
+  let code = 'DEPENDENCY_UNAVAILABLE';
+  if (error && typeof error === 'object') {
+    const value = error as { fields?: { code?: unknown }; message?: unknown; name?: unknown };
+    if (typeof value.fields?.code === 'string' && /^[0-9A-Z]{5}$/.test(value.fields.code)) code = `SQLSTATE_${value.fields.code}`;
+    else if (value.message === 'GATEWAY_CONFIGURATION_INVALID' || value.message === 'EDGE_POSTGRES_UNAVAILABLE') code = value.message;
+    else if (value.name === 'ConnectionError') code = 'DATABASE_CONNECTION_FAILED';
+    else if (value.name === 'ConnectionParamsError') code = 'DATABASE_CONFIGURATION_INVALID';
+    else if (value.name === 'TransactionError') code = 'DATABASE_TRANSACTION_FAILED';
+    else if (value.name === 'TypeError') code = 'GATEWAY_TYPE_ERROR';
+  }
+  logger.write({ event: 'gateway.failure', operation, outcome: 'failure', errorCode: code });
+}
 
 function unavailable(): Response {
   return new Response(JSON.stringify({ error: { code: 'DEPENDENCY_UNAVAILABLE', retryable: true } }), {
@@ -74,7 +91,17 @@ function createHandler(config: DeepFocusGatewayConfig): RequestHandler {
   // transaction across requests. The selected shared pooler transaction URL is
   // stored only in SUPABASE_DB_URL.
   const pool = new Pool(config.databaseUrl, 1, true);
-  const runner = createEdgePostgresTransactionRunner({ pool });
+  const rawRunner = createEdgePostgresTransactionRunner({ pool });
+  const runner: typeof rawRunner = {
+    withTransaction: (run) => rawRunner.withTransaction(async (client) => {
+      let queryIndex = 0;
+      return run({ query: async (sql, params) => {
+        const index = ++queryIndex;
+        try { return await client.query(sql, params); }
+        catch (error) { logFailure(`database.query.${index}`, error); throw error; }
+      } });
+    }).catch((error: unknown) => { logFailure('database.transaction', error); throw error; }),
+  };
   const providerClient = createClient(config.supabaseUrl, config.supabasePublishableKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
@@ -93,13 +120,14 @@ function createHandler(config: DeepFocusGatewayConfig): RequestHandler {
         now: now.toISOString(),
         rateLimit: {
           counter: createPostgresRateLimitCounter({ runner }),
+          counterForTransaction: (transactionRunner) => createPostgresRateLimitCounter({ runner: transactionRunner }),
           windowMs: config.rateLimitWindowMs,
           limit: config.rateLimitLimit,
           nowMs: now.getTime(),
         },
         createWorkspaceId: () => crypto.randomUUID(),
         runner,
-      });
+      }).catch((error: unknown) => { logFailure('account.bootstrap', error); throw error; });
     },
   });
   const gatewayHandlers = createPostgresGatewayHandlers({
@@ -149,7 +177,8 @@ Deno.serve(async (request) => {
   try {
     handler ??= createHandler(readDeepFocusGatewayConfig(Deno.env));
     return await handler(normalized);
-  } catch {
+  } catch (error) {
+    logFailure('gateway.request', error);
     return unavailable();
   }
 });

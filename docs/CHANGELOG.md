@@ -1,5 +1,117 @@
 # Changelog
 
+## 2026-10-20
+
+- Restored the owner's original arcs/coral-dot logo, wordmark and tagline in
+  the launch overlay. Removed whole-screen zoom; loaded artwork remains visible
+  for 1500ms then fades for 350ms. Reduced motion bypasses decoration; asset
+  failure and a watchdog prevent a trapped launch. Native Android splash
+  resources use the same supplied artwork and navy background.
+
+- Changed signed-out root entry to open Sign Up first, with an explicit Sign In
+  path for returning users. Added local email-shape validation to sign-in and
+  sign-up, preserved safe provider error copy, and exposed a direct Create
+  Account action after invalid credentials. Replaced the plain startup overlay
+  with a short branded Deep Focus logo/name transition that respects reduced
+  motion. Native splash asset replacement and phone visual verification remain
+  pending.
+
+- Added an official-source competitive UI research note covering Forest,
+  Focusmate, Todoist and TickTick. Applied a bounded Sinhala language polish to
+  onboarding focus-block wording, progress labels and presentation preferences;
+  no data, navigation or focus-session behavior changed. Native typography and
+  device verification remain pending.
+
+- Unified Welcome and Auth callback with the original-scene AuthFrame while
+  preserving callback alert/live-region copy and sign-in return. Added permanent
+  goal-composer labels, checked/readable selections, standalone safe-area and
+  keyboard handling, plus scrollable goal/focus-entry failure states. No Auth,
+  goal persistence or focus-navigation logic changed; native QA remains pending.
+
+- Aligned Task detail, Plan My Day and Rewards with shared preview-style headings
+  and semantic actions. Added persistent task-edit labels, standalone safe-area
+  and keyboard handling, readable locked milestones, shared retry/empty buttons
+  and explicit return to Progress. Task/planner/reward handlers and persistence
+  remain unchanged; native visual/keyboard acceptance remains pending.
+  Native tab chrome now follows saved app appearance instead of bypassing it
+  with the OS hook, with explicit default/selected semantic icon and label colors.
+
+- Polished break, summary and recovery presentation: shared calm headings and
+  actual-time dial, checked/readable duration selections, scrollable summary and
+  recovery states, centered finalized results and Home-first summary actions.
+  Existing pause/resume, finalized-record reads, reward receipts and task actions
+  remain unchanged. Native visual/accessibility verification is still pending;
+  the existing break lifecycle/spec mismatch is recorded separately.
+
+- Connected Settings to its existing saved appearance/motion editor instead of
+  static System descriptions. Shared the existing action-contrast rule with
+  selected controls, aligned history headings and made session detail scrollable
+  without changing history totals, filters or persistence. Targeted checks pass;
+  native visual/accessibility acceptance remains pending.
+
+- Extended the shared form presentation and duplicate-action guard to recovery
+  and verification, retaining recovery-only routing and enumeration-safe copy.
+  Aligned resource/assignment headers/actions and made goal detail scrollable
+  with keyboard avoidance. Existing goal edit/delete/failure tests remain green;
+  native visual and large-text/keyboard acceptance are still pending.
+
+- Aligned sign-in/sign-up with a shared preview-scene frame, safe-area/keyboard
+  handling, semantic actions and keyboard field progression. Added synchronous
+  duplicate-submit protection, safe thrown-error fallback and unmounted-callback
+  invalidation without changing Auth service/provider policies or making live
+  account requests. Native visual/keyboard verification remains pending.
+
+- Recorded the owner's superseding five-step onboarding scope (language plus
+  focus duration, break duration, appearance and motion) and whole-app preview
+  alignment goal. Added a version-2 definition, selected old/new review mapping,
+  owner-local atomic settings/completion application, draft resume lookup and
+  completed-attempt retry receipts. No schema reset or legacy answer rewrite.
+  Connected the real language/questions/review routes with localized preview-style
+  UI, owner-bound resume/retry, selected old/new review and Profile redo. Language
+  changes no longer rewrite duration settings. Account switches hide stale
+  onboarding markers and invalidate old callbacks. Whole-app polish, native
+  bundling/accessibility/translation verification and independent review remain open.
+
+## 2026-10-19
+
+- Ported the preview's Home/Plan/Focus/Progress presentation, original offline
+  scenery, semantic palette and accessible timer dial without importing demo
+  tasks/timer logic. Plan derives real task counts/time and supports optional
+  planned dates/estimates with additive SQLite19 columns.
+- Added explicit-save, owner-isolated device-local Profile appearance/motion
+  and motivational preferences via SQLite20. Personal words are not synced or
+  written to history; focus display defaults off with a stable phrase. Native
+  device/accessibility acceptance and independent migration/privacy review
+  remain pending.
+
+- Continued the native planning UI with shared localized, theme-aware headings
+  across Plan/Tasks/Goals and clearer Plan navigation cards. Task completion and
+  task opening now have separate controls, and pending tasks no longer show a
+  checkmark. Existing storage/domain behavior is preserved; new phone visual and
+  accessibility acceptance remains pending device/Metro reconnection.
+
+- Auth now distinguishes malformed email, restricted email delivery, throttling
+  and retryable connection failures using safe localized copy. Verification
+  resend preserves these errors instead of hiding them. Unknown failures no
+  longer assert a connection problem. Real inbox delivery remains unverified;
+  email confirmation stays enabled and no SMTP/provider policy was changed.
+
+- Deployed the authenticated development gateway and configured its missing
+  server secrets after explicit owner authorization. Real synthetic-account
+  checks passed account bootstrap/profile, task write/read/replay, cross-owner
+  denial, sync pull and app-session revocation. Fixed Postgres driver value
+  normalization, bootstrap FK ordering, JSONB receipt comparison and the profile
+  response contract exposed by these checks.
+- Connected mobile sign-in/restoration to backend account bootstrap and verified
+  workspace lookup with foreground retry. Preserved function mount paths in
+  API URLs and stopped old-account outbox delivery after account switches.
+  Tasks/Goals/Focus automatic domain sync is not activated by this account
+  connection; phone end-to-end verification remains pending.
+
+- Authentication forms now preserve the existing localized, safe Supabase Auth
+  error message instead of replacing it with a generic failure. Real-provider
+  device verification and independent authentication review remain pending.
+
 ## 2026-10-16
 
 - Connected Plan My Day's local proposal screen to the existing deterministic

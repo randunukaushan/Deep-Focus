@@ -1,5 +1,8 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter, useSegments } from 'expo-router';
-import { ActivityIndicator, StyleSheet, useColorScheme } from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { PresentationProvider } from '@/features/settings/presentation-context';
 import { useEffect, useRef, useState } from 'react';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
@@ -15,7 +18,7 @@ import { getAppLocaleCopy } from '@/features/localization/app-locale';
 import { OnboardingProvider, useOnboarding } from '@/features/onboarding/onboarding-context';
 
 export default function RootLayout() {
-  return <AppLocaleProvider><AuthProvider><OnboardingProvider><RootNavigator /></OnboardingProvider></AuthProvider></AppLocaleProvider>;
+  return <AppLocaleProvider><AuthProvider><PresentationProvider><OnboardingProvider><RootNavigator /></OnboardingProvider></PresentationProvider></AuthProvider></AppLocaleProvider>;
 }
 
 function RootNavigator() {
@@ -56,9 +59,11 @@ function RootNavigator() {
   }, [router, snapshot.status, snapshot.userId]);
 
   const blocked = authRouteDecision(snapshot.status, segments, onboardingLoading ? null : onboarding, recovery).blocked;
+  const statusBar = <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />;
 
   if (onboardingError && snapshot.status === 'signed_in') {
     return <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      {statusBar}
       <ThemedView style={styles.loading}>
         <ThemedText accessibilityLiveRegion="assertive">{settingsCopy.loadErrorDetail}</ThemedText>
         <Button label={settingsCopy.retry} onPress={retryOnboarding} />
@@ -68,6 +73,7 @@ function RootNavigator() {
 
   if (blocked) {
     return <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      {statusBar}
       <ThemedView style={styles.loading}>
         <ActivityIndicator accessibilityLabel={snapshot.status === 'signed_in' ? settingsCopy.loading : copy.signIn.signingIn} />
         <ThemedText accessibilityLiveRegion="polite" type="small">{snapshot.status === 'signed_in' ? settingsCopy.loading : copy.signIn.signingIn}</ThemedText>
@@ -77,6 +83,7 @@ function RootNavigator() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      {statusBar}
       <AnimatedSplashOverlay />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />

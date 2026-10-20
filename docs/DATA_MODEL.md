@@ -1,5 +1,19 @@
 # Deep Focus Data Model
 
+Device-local presentation preferences (owner-delegated 2026-10-19): per owner,
+`appearance: system|light|dark` (default system), `reduceMotion: boolean` (default
+false, cannot override system reduced motion), `motivation: default|personal|off`
+(default default), `personalPhrase: string` (default empty, maximum 240 Unicode
+code points, no unsafe control characters), `showDuringFocus: boolean` (default
+false). Explicit Save persists this closed object only on this device. Appearance
+overrides the OS locally, not the synced user-settings theme. Focus words are a
+transient per-session snapshot; Off/focus opt-out hides them for the remainder
+of that session. Private words must not enter remote DTOs, outbox, history,
+analytics or logs. Account switches hide prior-owner preferences immediately.
+Failed reads block preference edits; failed writes preserve the draft and must
+not report success. Core focus remains independent. SQLite20 is not production
+acceptance; independent review and device acceptance remain pending.
+
 This document defines the core data model for Deep Focus V1.
 
 It describes the primary application entities, their responsibilities, relationships, lifecycle expectations, and important data rules.
@@ -749,6 +763,9 @@ interface Task {
   priority?: TaskPriority;
 
   dueAt?: string;
+  // Owner-approved local planning metadata (2026-10-19), separate from deadline.
+  plannedDate?: string; // YYYY-MM-DD calendar label
+  estimatedMinutes?: number; // optional integer 1..480; not a session target
   completedAt?: string;
 
   createdAt: string;

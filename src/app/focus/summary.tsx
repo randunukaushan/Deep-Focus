@@ -1,14 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
+
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
+import { accentTextColor } from '@/theme/action-colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
-import { Palette, Radius, Spacing } from '@/theme/tokens';
+import { Palette, Radius, Spacing, Typography } from '@/theme/tokens';
 import { useAppLocale } from '@/features/localization/app-locale-context';
 import { getSessionCopy } from '@/features/localization/session-copy';
 import { getAchievementCopy } from '@/features/localization/rewards-copy';
@@ -33,7 +36,8 @@ export default function SessionSummaryRoute() {
   const isDark = useColorScheme() === 'dark';
   const homeSurface = isDark ? theme.surface : Palette.homeLightSurface;
   const homeBorder = isDark ? theme.border : Palette.homeLightBorder;
-  const homeAction = isDark ? Palette.mintPrimary : Palette.homeLightAction;
+  const homeAction = theme.primary;
+  const onAction = accentTextColor(homeAction);
   const { locale, copy } = useAppLocale();
   const text = copy.focus;
   const sessionText = getSessionCopy(locale);
@@ -132,26 +136,27 @@ export default function SessionSummaryRoute() {
 
   if (loading || loadError || !session) {
     return (
-      <ThemedView style={[styles.screen, { backgroundColor: isDark ? theme.background : Palette.homeLightBackground }]}>
-        <View style={styles.content}>
+      <SafeAreaView style={[styles.screen, { backgroundColor: isDark ? theme.background : Palette.homeLightBackground }]}>
+        <ScrollView contentContainerStyle={styles.content}>
           <ThemedText accessibilityRole={loadError ? 'alert' : 'text'} type="subtitle">{loadError ? sessionText.summaryUnavailable : sessionText.loading}</ThemedText>
           {loadError ? <Button accentColor={homeAction} fullWidth label={sessionText.retryLoad} onPress={() => { setLoading(true); setLoadError(false); setAttempt((value) => value + 1); }} style={{ backgroundColor: homeAction, borderColor: homeAction }} /> : null}
           <Button accentColor={homeAction} fullWidth label={sessionText.returnHome} onPress={goHome} variant="secondary" />
-        </View>
-      </ThemedView>
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ThemedView style={[styles.screen, { backgroundColor: isDark ? theme.background : Palette.homeLightBackground }]}>
-      <View style={styles.content}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: isDark ? theme.background : Palette.homeLightBackground }]}>
+      <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.heading}>
-          <View style={[styles.statusIcon, { backgroundColor: completed ? homeAction : Palette.error }]}>
-            <Ionicons color={completed ? Palette.deepNavy : Palette.lightSurface} name={completed ? 'checkmark' : 'close'} size={26} />
+          <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.statusIcon, { backgroundColor: completed ? homeAction : theme.backgroundElement }]}>
+            <Ionicons color={completed ? onAction : theme.textSecondary} name={completed ? 'checkmark' : 'close'} size={36} />
           </View>
           <ThemedText themeColor="textSecondary" type="smallBold">{text.summaryEyebrow}</ThemedText>
-          <ThemedText accessibilityRole="header" type="title">{completed ? text.sessionComplete : text.sessionEnded}</ThemedText>
-          <ThemedText themeColor="textSecondary">{completed ? text.focusedWork : text.endedBeforePlan}</ThemedText>
+          <ThemedText accessibilityRole="header" style={styles.title} type="title">{completed ? text.sessionComplete : text.sessionEnded}</ThemedText>
+          <ThemedText style={styles.centeredText} themeColor="textSecondary">{completed ? text.focusedWork : text.endedBeforePlan}</ThemedText>
+          <ThemedText style={styles.focusValue}>{formatMinutes(focused, text.minutes)}</ThemedText>
         </View>
         <ThemedView accessibilityLabel={`${completed ? text.completed : text.cancelled}. ${text.focusTime}: ${formatMinutes(focused, text.minutes)}. ${text.planned}: ${formatMinutes(planned, text.minutes)}${session.taskName ? `. ${text.task} ${session.taskName}` : ''}.`} style={[styles.card, { backgroundColor: homeSurface, borderColor: homeBorder }]}>
           <ThemedText style={[styles.cardEyebrow, { color: homeAction }]} type="smallBold">{text.focusSummary}</ThemedText>
@@ -168,7 +173,7 @@ export default function SessionSummaryRoute() {
           </View>
           <View style={[styles.statusRow, { borderTopColor: homeBorder }]}>
             <ThemedText themeColor="textSecondary" type="smallBold">{text.status}</ThemedText>
-            <ThemedText style={[styles.statusValue, { color: completed ? homeAction : Palette.error }]} type="smallBold">{completed ? text.completed : text.cancelled}</ThemedText>
+            <ThemedText style={[styles.statusValue, { color: completed ? homeAction : theme.text }]} type="smallBold">{completed ? text.completed : text.cancelled}</ThemedText>
           </View>
           {session.taskName ? <ThemedText themeColor="textSecondary">{text.task} {session.taskName}</ThemedText> : null}
           {completed && progression?.xpEarned && progression.xpEarned > 0 ? <View accessibilityLabel={`${sessionText.xpEarned}: ${progression.xpEarned}`} style={[styles.statusRow, { borderTopColor: homeBorder }]}><ThemedText themeColor="textSecondary" type="smallBold">{sessionText.xpEarned}</ThemedText><ThemedText style={{ color: homeAction }} type="smallBold">+{progression.xpEarned}</ThemedText></View> : null}
@@ -180,19 +185,22 @@ export default function SessionSummaryRoute() {
           {streak ? <ThemedText accessibilityLabel={`${sessionText.currentStreak}: ${streak.currentStreakDays}`} themeColor="textSecondary">{sessionText.currentStreak}: {streak.currentStreakDays}</ThemedText> : null}
         </ThemedView>
         <View style={styles.actions}>
-          <Button accentColor={homeAction} fullWidth label={text.anotherSession} onPress={() => router.replace('/focus/setup')} style={{ backgroundColor: homeAction, borderColor: homeAction }} />
-          <Button accentColor={homeAction} fullWidth label={text.backHome} onPress={goHome} variant="secondary" />
+          <Button accentColor={homeAction} fullWidth label={text.backHome} onPress={goHome} />
+          <Button accentColor={homeAction} fullWidth label={text.anotherSession} onPress={() => router.replace('/focus/setup')} variant="secondary" />
         </View>
-      </View>
-    </ThemedView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { alignSelf: 'center', flex: 1, gap: Spacing.lg, justifyContent: 'center', maxWidth: 560, padding: Spacing.lg, width: '100%' },
-  heading: { gap: Spacing.xs },
-  statusIcon: { alignItems: 'center', borderRadius: 28, height: 56, justifyContent: 'center', marginBottom: Spacing.sm, width: 56 },
+  content: { alignSelf: 'center', flexGrow: 1, gap: Spacing.lg, justifyContent: 'center', maxWidth: 560, padding: Spacing.lg, width: '100%' },
+  heading: { alignItems: 'center', gap: Spacing.sm },
+  title: { fontSize: Typography.heading1.fontSize, lineHeight: 40, textAlign: 'center' },
+  centeredText: { textAlign: 'center' },
+  focusValue: { fontSize: 48, fontWeight: '600', lineHeight: 60, textAlign: 'center' },
+  statusIcon: { alignItems: 'center', borderRadius: 40, height: 80, justifyContent: 'center', marginBottom: Spacing.sm, width: 80 },
   card: { borderRadius: Radius.card, borderWidth: 1, gap: Spacing.md, padding: Spacing.lg },
   cardEyebrow: { letterSpacing: 1.2 },
   metricRow: { alignItems: 'center', flexDirection: 'row', gap: Spacing.md },

@@ -27,6 +27,18 @@ function runner(query) {
   };
 }
 
+test('own profile response matches the mobile workspace contract and omits internal account state', async () => {
+  let query;
+  const handlers = createPostgresGatewayReadHandlers({ runner: runner(async (sql, params) => {
+    query = { sql, params };
+    return { rows: [{ owner_id: OWNER, display_name: 'Development owner', account_state: 'active', version: 1, personal_workspace_id: WORKSPACE }] };
+  }) });
+  const result = await handlers.getMe({ actorId: OWNER, sessionId: SESSION, operation: 'getMe', body: null });
+  assert.deepEqual(result.body, { data: { id: OWNER, displayName: 'Development owner', personalWorkspaceId: WORKSPACE, version: 1 } });
+  assert.deepEqual(query.params, [OWNER]);
+  assert.match(query.sql, /w.owner_id = p.owner_id/);
+});
+
 test('getPlan returns the canonical owner-bound plan and bound reminder shape', async () => {
   const handlers = createPostgresGatewayReadHandlers({ runner: runner(async (sql) => {
     if (sql.includes('from df_private.ai_plans')) return { rows: [{ owner_id: OWNER, id: PLAN, workspace_id: WORKSPACE, generation_request_id: REQUEST, proposal_id: PROPOSAL, contract_version: 2, version: 1, local_date: '2026-10-11', time_zone: 'Asia/Colombo', available_start: '2026-10-11T00:00:00.000Z', available_end: '2026-10-11T02:00:00.000Z', explanation: null, state: 'active', deleted_at: null, confirmed_at: '2026-10-11T00:00:00.000Z', created_at: '2026-10-11T00:00:00.000Z', updated_at: '2026-10-11T00:00:00.000Z' }] };

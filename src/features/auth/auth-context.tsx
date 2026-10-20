@@ -12,6 +12,7 @@ import { authRedirectCode, createAuthService, exchangeAuthCodeOnce, type AuthSer
 import { authConfigurationError, secureAuthStorage, supabase } from './supabase-client';
 import { activateSessionOwner } from './session-owner-activation';
 import { applySuccessfulLocalSignOut } from './sign-out-transition';
+import { useBackendAccount, type BackendAccountState } from './use-backend-account';
 
 export type AuthStatus = 'initializing' | 'signed_out' | 'verification_required' | 'signed_in' | 'recovering' | 'configuration_error' | 'error';
 
@@ -24,6 +25,7 @@ export type AuthSnapshot = {
 
 type AuthContextValue = {
   snapshot: AuthSnapshot;
+  backend: BackendAccountState;
   signInWithPassword(email: string, password: string): Promise<AuthServiceResult>;
   signUpWithPassword(email: string, password: string): Promise<AuthServiceResult>;
   signInWithGoogle(): Promise<AuthServiceResult>;
@@ -47,6 +49,7 @@ export function AuthProvider({ children }: React.PropsWithChildren) {
   const [snapshot, setSnapshot] = useState<AuthSnapshot>(supabase
     ? { status: 'initializing' }
     : { status: 'configuration_error', message: authConfigurationError ?? copy.configurationUnavailable });
+  const backend = useBackendAccount(snapshot);
   const service = useMemo(() => supabase ? createAuthService({
     client: supabase as unknown as Parameters<typeof createAuthService>[0]['client'],
     redirectUrl,
@@ -216,9 +219,9 @@ export function AuthProvider({ children }: React.PropsWithChildren) {
   }, [copy, updateFromSession]);
 
   const value = useMemo<AuthContextValue>(() => ({
-    snapshot, signInWithPassword, signUpWithPassword, signInWithGoogle, signInWithApple,
+    snapshot, backend, signInWithPassword, signUpWithPassword, signInWithGoogle, signInWithApple,
     resendVerification, requestPasswordReset, updatePassword, signOut, handleAuthRedirect,
-  }), [snapshot, signInWithPassword, signUpWithPassword, signInWithGoogle, signInWithApple, resendVerification, requestPasswordReset, updatePassword, signOut, handleAuthRedirect]);
+  }), [snapshot, backend, signInWithPassword, signUpWithPassword, signInWithGoogle, signInWithApple, resendVerification, requestPasswordReset, updatePassword, signOut, handleAuthRedirect]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

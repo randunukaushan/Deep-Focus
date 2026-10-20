@@ -9,7 +9,7 @@ const { outputText } = ts.transpileModule(readFileSync(new URL('../../src/app/pl
   compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 });
 
-function fixture({ tasks = [], loadFailures = 0, loadTasks, router = {}, savePlanFailures = 0 } = {}) {
+function fixture({ tasks = [], loadFailures = 0, loadTasks, router = {}, savePlanFailures = 0, platform = 'android' } = {}) {
   const slots = [];
   let cursor = 0, effect, cleanup, mounted = false, tree;
   const dependencies = {
@@ -22,10 +22,13 @@ function fixture({ tasks = [], loadFailures = 0, loadTasks, router = {}, savePla
     'react/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
     'expo-router': { useRouter: () => ({ push() {}, replace() {}, ...router }), useFocusEffect(fn) { if (!mounted) effect = fn; } },
     '@expo/vector-icons': { Ionicons: 'Icon' },
-    'react-native': { Pressable: 'Pressable', ScrollView: 'ScrollView', StyleSheet: { create: x => x }, TextInput: 'TextInput', View: 'View' },
+    'react-native': { KeyboardAvoidingView: 'KeyboardAvoidingView', Platform: { OS: platform }, Pressable: 'Pressable', ScrollView: 'ScrollView', StyleSheet: { create: x => x }, TextInput: 'TextInput', View: 'View' },
+    'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
     '@/components/themed-text': { ThemedText: 'Text' },
     '@/components/themed-view': { ThemedView: 'View' },
     '@/components/ui/button': { Button: 'Button' },
+    '@/components/ui/section-heading': { SectionHeading: ({ title, subtitle }) => ({ type: 'View', props: { children: [title, subtitle].map(children => ({ type: 'Text', props: { children } })) } }) },
+    '@/theme/action-colors': { accentTextColor: () => '#FFFFFF' },
     '@/features/tasks/task-storage': { loadTasks: async () => {
       if (loadTasks) return loadTasks();
       if (loadFailures > 0) { loadFailures -= 1; throw Error('local read failed'); }
@@ -54,7 +57,7 @@ function fixture({ tasks = [], loadFailures = 0, loadTasks, router = {}, savePla
     },
     '@/features/localization/app-locale-context': { useAppLocale: () => ({ copy: { planner: { back: 'Home', eyebrow: 'PLAN MY DAY', title: 'Start with what matters.', subtitle: 'Choose the tasks and time you have. We will suggest a simple starting point for your day.', timeAvailable: 'TIME AVAILABLE', availableMinutes: 'Available minutes', minutes: 'minutes', minError: 'Enter at least 25 minutes to plan.', numberError: 'Enter a smaller whole number of minutes.', breakHint: 'Each suggestion leaves space for a short break.', chooseTasks: 'CHOOSE TASKS', loading: 'Loading your tasks…', loadError: 'We could not load your tasks. Your saved tasks have not been changed.', retry: 'Retry loading tasks', empty: 'Add a task first, then come back to build a plan.', addTask: 'Add a task', selected: 'selected', notSelected: 'not selected', suggest: 'Suggest a plan', suggestion: 'YOUR SUGGESTION', included: 'Included in your suggestion', startingPoint: 'A clear starting point.', blockDuration: '25 min focus · 5 min break', moveEarlier: 'Move', moveEarlierSuffix: 'earlier', moveLater: 'Move', moveLaterSuffix: 'later', start: 'Start', proposalNote: 'This is a proposal only. Your tasks and schedule have not been changed.', confirmed: 'You confirmed this exact selection. Starting a task still uses the normal focus flow.', confirm: 'Confirm this proposal', adjust: 'Adjust selection' } } }) },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
-    '@/hooks/use-theme': { useTheme: () => ({}) },
+    '@/hooks/use-theme': { useTheme: () => ({ primary: '#2165DF' }) },
     '@/theme/tokens': { Palette: { deepNavy: '#0e1c36', homeLightBackground: '#f5f7fb', homeLightSurface: '#fff', homeLightBorder: '#dce3ef', homeLightAction: '#426fba', homeLightActionSoft: '#eaf0fb', mintPrimary: '#8ed8c5' }, Radius: { card: 16 }, Spacing: { lg: 20, md: 12, sm: 8, xs: 4 } },
   };
   const exports = {};
@@ -74,11 +77,27 @@ function fixture({ tasks = [], loadFailures = 0, loadTasks, router = {}, savePla
     find(label) { return nodes(tree).find(node => node.props.label === label || node.props.accessibilityLabel === label); },
     status() { return nodes(tree).filter(node => node.props.accessibilityLiveRegion === 'polite' || node.props.accessibilityRole === 'alert'); },
     blur() { cleanup?.(); cleanup = undefined; },
+    ofType: type => nodes(tree).filter(node => node.type === type),
   };
   return app;
 }
 
 const task = { id: 'task-1', title: 'Study chapter', status: 'pending' };
+
+test('Plan My Day retains scroll taps and safe-area/keyboard layout with readable selected controls', async () => {
+  for (const platform of ['android', 'ios']) {
+    const app = fixture({ platform, tasks: [task] }); app.render(); await app.settle();
+    assert.equal(app.ofType('SafeAreaView').length, 1);
+    assert.equal(app.ofType('KeyboardAvoidingView')[0].props.behavior, platform === 'ios' ? 'padding' : undefined);
+    assert.equal(app.ofType('ScrollView')[0].props.keyboardShouldPersistTaps, 'handled');
+    assert.equal(app.find('Available minutes').props.style[1].borderBottomColor, '#2165DF');
+    assert.equal(app.ofType('Icon').find(node => node.props.name === 'checkmark').props.color, '#FFFFFF');
+    assert.equal(app.find('Study chapter, selected').props.accessibilityState.checked, true);
+    app.find('Suggest a plan').props.onPress(); await app.settle();
+    assert.ok(app.find('Confirm this proposal'));
+    assert.equal(app.find('Start').props.disabled, true);
+  }
+});
 
 test('Plan My Day distinguishes loading and read failure from an empty task list, then retries', async () => {
   const app = fixture({ tasks: [task], loadFailures: 1 }); app.render();

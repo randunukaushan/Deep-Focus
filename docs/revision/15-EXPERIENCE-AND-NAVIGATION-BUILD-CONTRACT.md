@@ -65,6 +65,12 @@ an unrelated message, upsell, assessment or new plan over an active session.
 
 ## 3. Personalization data and defaults
 
+The October 20, 2026 owner amendment in the decision register supersedes the
+question outline/count below for current native implementation: language first
+plus focus duration, break duration, appearance and motion; review is separate.
+The old role/education outline remains a historical expansion proposal. All
+selected-review, atomic application, ownership and failure safeguards still apply.
+
 The ten-step question outline in [03 §3](03-PRODUCT-AND-EXPERIENCE.md) remains the
 proposal. Stable keys, not displayed text or question indexes, identify answers:
 `roles`, `intent`, `friction`, `availability`, `preferred_windows`,

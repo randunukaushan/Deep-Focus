@@ -11,7 +11,7 @@ const { outputText } = ts.transpileModule(readFileSync(new URL('../../src/app/ta
 
 const storedTask = { id: 'task-1', title: 'Real task', status: 'pending', createdAt: '2026-10-06T00:00:00.000Z', updatedAt: '2026-10-06T00:00:00.000Z' };
 
-function fixture({ tasks = [storedTask], goals = [], goalLoadFailures = 0, loadFailures = 0, saveFailures = 0, completionFailures = 0, editFailures = 0, editConflict = false, deleteFailures = 0, deleteConflict = false, archiveFailures = 0, archiveConflict = false, save, complete } = {}) {
+function fixture({ tasks = [storedTask], goals = [], goalLoadFailures = 0, loadFailures = 0, saveFailures = 0, completionFailures = 0, editFailures = 0, editConflict = false, deleteFailures = 0, deleteConflict = false, archiveFailures = 0, archiveConflict = false, save, complete, platform = 'android' } = {}) {
   const slots = [];
   let cursor = 0, effect, mounted = false, tree, writes = 0;
   const pushes = [], replacements = [];
@@ -28,10 +28,12 @@ function fixture({ tasks = [storedTask], goals = [], goalLoadFailures = 0, loadF
       useFocusEffect(fn) { if (!mounted) effect = fn; },
     },
     '@expo/vector-icons': { Ionicons: 'Icon' },
-      'react-native': { ActivityIndicator: 'ActivityIndicator', TextInput: 'TextInput', View: 'View', StyleSheet: { create: x => x } },
+    'react-native': { ActivityIndicator: 'ActivityIndicator', KeyboardAvoidingView: 'KeyboardAvoidingView', Platform: { OS: platform }, Pressable: 'Pressable', ScrollView: 'ScrollView', TextInput: 'TextInput', View: 'View', StyleSheet: { create: x => x } },
+    'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
     '@/components/themed-text': { ThemedText: 'Text' },
     '@/components/themed-view': { ThemedView: 'View' },
     '@/components/ui/button': { Button: 'Button' },
+    '@/components/ui/section-heading': { SectionHeading: ({ title, subtitle }) => ({ type: 'View', props: { children: [title, subtitle].map(children => ({ type: 'Text', props: { children } })) } }) },
     '@/features/tasks/task-storage': {
       async loadTasks() { if (loadFailures-- > 0) throw Error('private task storage detail'); return tasks; },
       async saveTasks(next) { writes++; if (saveFailures-- > 0) throw Error('private task write detail'); if (save) await save(); tasks = next; },
@@ -108,7 +110,7 @@ function fixture({ tasks = [storedTask], goals = [], goalLoadFailures = 0, loadF
       },
       formatTaskDueDate(value) { return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(value)); },
     },
-    '@/hooks/use-theme': { useTheme: () => ({ background: '#fff', surface: '#fff', border: '#ddd', text: '#111', textMuted: '#666' }) },
+    '@/hooks/use-theme': { useTheme: () => ({ primary: '#2165DF', background: '#fff', surface: '#fff', border: '#ddd', text: '#111', textMuted: '#666' }) },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
     '@/theme/tokens': { Palette: { homeLightBackground: '#fff', homeLightSurface: '#fff', homeLightBorder: '#ddd', homeLightAction: '#123', homeLightActionSoft: '#eee', deepNavy: '#123', mintPrimary: '#123' }, Radius: { card: 16 }, Spacing: { sm: 8, md: 16, lg: 24 } },
   };
@@ -128,12 +130,28 @@ function fixture({ tasks = [storedTask], goals = [], goalLoadFailures = 0, loadF
     async settle() { await new Promise(setImmediate); return this.render(); },
     find(label) { return nodes(tree).find(node => node.props.label === label || node.props.accessibilityLabel === label); },
     alerts() { return nodes(tree).filter(node => node.props.accessibilityRole === 'alert'); },
+    ofType: type => nodes(tree).filter(node => node.type === type),
     writes: () => writes,
     pushes: () => pushes,
     replacements: () => replacements,
     task: () => tasks.find(item => item.id === 'task-1'),
   };
 }
+
+test('Task detail keeps safe-area/keyboard scrolling and permanent edit labels on Android and iOS', async () => {
+  for (const platform of ['android', 'ios']) {
+    const app = fixture({ platform }); app.render(); await app.settle();
+    assert.equal(app.ofType('SafeAreaView').length, 1);
+    assert.equal(app.ofType('KeyboardAvoidingView')[0].props.behavior, platform === 'ios' ? 'padding' : undefined);
+    assert.equal(app.ofType('ScrollView')[0].props.keyboardShouldPersistTaps, 'handled');
+    app.find('Edit task details').props.onPress(); await app.settle();
+    for (const label of ['Edit task title', 'Add a note (optional)']) {
+      assert.ok(app.ofType('Text').some(node => node.props.children === label));
+      assert.ok(app.find(label));
+    }
+    assert.equal(app.writes(), 0);
+  }
+});
 
 test('Task detail loading state uses localized loading copy', () => {
   assert.match(outputText, /accessibilityLabel: copy\.historyPage\?\.loading \?\? taskCopy\.eyebrow/);

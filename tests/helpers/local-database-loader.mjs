@@ -6,6 +6,15 @@ const modules = {
 };
 
 export async function resolve(specifier, context, nextResolve) {
+  if (specifier === '@/features/onboarding/setup-definition') {
+    return nextResolve(new URL('../../src/features/onboarding/setup-definition.ts', import.meta.url).href, context);
+  }
+  if (specifier === '@/features/settings/presentation-preferences') {
+    return nextResolve(new URL('../../src/features/settings/presentation-preferences.ts', import.meta.url).href, context);
+  }
+  if (specifier === '@/features/tasks/task-planning') {
+    return nextResolve(new URL('../../src/features/tasks/task-planning.ts', import.meta.url).href, context);
+  }
   if (Object.hasOwn(modules, specifier)) {
     return { url: `data:text/javascript,${encodeURIComponent(modules[specifier])}`, shortCircuit: true };
   }

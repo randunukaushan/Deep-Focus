@@ -52,6 +52,11 @@ Personalisation must not rearrange core navigation unpredictably. Disabled modul
 
 ## 3. Optional onboarding and editable personalisation
 
+Current native scope is superseded by the October 20, 2026 owner amendment in
+the decision register: five steps including language, then focus duration, break
+duration, appearance and motion. Review is separate. The 7–10-step schema below
+is retained as an older expansion proposal, not authority to add questions now.
+
 Two independent layers: essential consent/account requirements when applicable, and optional product personalisation. Skipping the second does not waive the first. Guest/local entry, minimum age and account requirements remain an explicit scope/legal decision; do not manufacture consent from questionnaire answers.
 
 First screen offers app language, accessibility options and **Use defaults**. Language can be selected without completing assessment. Proposed question schema:

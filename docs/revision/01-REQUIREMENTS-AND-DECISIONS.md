@@ -173,6 +173,36 @@ remains excluded. Android verification is in scope; iOS/AWS Device Farm checks
 remain `NOT_RUN` until separately available. Previously approved SQLite
 migration, goal calculations and ages 15–17 development decisions are unchanged.
 
+### Native preview planning metadata — 2026-10-19
+
+For the preview Profile controls the owner explicitly delegated the choice of
+persistence approach for personal words, Off and focus display. Chosen bounded
+implementation: owner-isolated device-local presentation preferences, no cloud
+or session-history copy of personal words, at most 240 Unicode code points,
+system appearance by default, system reduced-motion always respected, focus
+words opt-in and stable per session. Explicit Save applies changes. SQLite20
+adds a separate local table; no remote settings contract is expanded. Failed
+load blocks preference edits, not core focus. Review/device gates remain open.
+
+The owner explicitly requested the app UI match the existing browser preview,
+and approved adding optional estimated task minutes and a separate planned
+date in the current task's structured reply. For this local implementation,
+estimates are optional whole minutes 1..480 (the preview form bounds); planned
+dates are YYYY-MM-DD calendar labels, not deadlines. Existing dueAt is unchanged.
+This approval does not activate metadata cloud sync, change remote schemas,
+claim independent review, or authorize production rollout/data deletion.
+
+### Development backend activation authorization — 2026-10-19
+
+The owner explicitly requested finishing the mobile/backend/database connection
+and then stated: “හරි එහෙනම් ඕක හදලා ඊලගට බැකෙන්ඩ් සහ ඩේටාබේස් කනෙක්ට් කරන්න රිවිව් අවශ්‍ය නෑ”.
+For this task on `deep-focus-dev` only, the owner waives the independent-review
+prerequisite and authorizes development Edge deployment, required server secret
+configuration, mobile wiring and synthetic integration checks. Preserve unrelated
+accounts/data and existing credentials. Self-review and actual test evidence are
+still required. This does not mark an independent review completed, authorize
+production release, introduce paid services or change the real-minor boundary.
+
 ## Approval record
 
 On 2026-09-14 the owner replied “ඔව් දිගටම කරගෙන යන්න” to the explicit question asking approval of “Supabase backend/database/auth + Next.js website/portal”, and requested deeper Sri Lanka student/teacher research. ADR-001's provider selection and ADR-002's framework selection are therefore approved. A later “හරි කරගෙන යන්න” continues that same documentation/research work; it is not blanket approval of unrelated ADRs.
@@ -402,3 +432,27 @@ Settings language control so the user can change it later. This decision is
 about interface language only; it does not select a curriculum, country,
 education stage or account language, and it does not waive translation,
 accessibility or device-rendering QA.
+
+### October 20 five-step onboarding and whole-app visual alignment amendment
+
+The owner explicitly authorizes language first plus four important questions
+chosen by the implementer, real answer-driven app changes, whole-native-app UI
+alignment with the existing browser preview (including screens without a preview),
+and a subsequent polish pass. This supersedes DF-014's 7–10 question direction
+and the earlier structured seven-question reply for this implementation.
+
+The selected five steps are interface language; future focus duration
+(25/45/60 minutes or keep current); future break duration (5/10/15 minutes or
+keep current); system/light/dark appearance or keep current; system/reduced motion
+or keep current. Review is not a sixth question. Language is saved before other
+questions; other changes require exact reviewed, selected confirmation. Motion
+never disables the OS reduce-motion preference. Skip preserves current settings;
+redo uses current values and does not rewrite prior work or sessions.
+
+Theme/motion remain owner-scoped device presentation data, not cloud settings.
+No role/education collection, AI call, permissions, provider/dependency change,
+account mutation or deployment is authorized. The five-step definition is version
+2; retain old version-1 assessment records without pretending they are v2 answers.
+The implementation and evidence sequence is tracked in
+[the task packet](evidence/ONBOARDING-AND-AUTH-POLISH-2026-10-20.md).
+Independent review, device/accessibility/translation and release gates remain.

@@ -10,8 +10,9 @@ test('teacher assignment saving state uses locale copy', () => {
   assert.match(copy, /saving: 'சேமிக்கப்படுகிறது…'/);
   assert.match(copy, /saving: 'සුරකිමින්…'/);
   assert.match(source, /getTeacherAssignmentCopy\(locale\)/);
-  assert.match(source, /saving \? text\.saving : text\.save/);
+  assert.match(source, /loading=\{saving\} loadingAccessibilityLabel=\{text\.saving\}/);
   assert.match(source, /name="arrow-back"/);
-  assert.match(source, /accessibilityRole="alert" style=\{styles\.error\}/);
+  assert.match(source, /accessibilityRole="alert" themeColor="textPrimary"/);
+  assert.match(source, /<SectionHeading eyebrow=\{text.eyebrow\}/);
   assert.equal(source.includes("saving ? '…' : text.save"), false);
 });

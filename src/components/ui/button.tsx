@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
+import { accentTextColor } from '@/theme/action-colors';
 import { Fonts } from '@/constants/theme';
 import {
     LetterSpacingEm,
@@ -58,8 +59,9 @@ export function Button({
   const theme = useTheme();
   const isDisabled = disabled || loading;
 
-  const containerStyle = getContainerStyle(variant, accentColor);
-  const labelColor = getLabelColor(variant, theme.text, accentColor);
+  const actionColor = accentColor ?? theme.primary ?? Palette.mintPrimary;
+  const containerStyle = getContainerStyle(variant, actionColor);
+  const labelColor = getLabelColor(variant, theme.text, actionColor);
   const disabledBackground = theme.backgroundElement;
   const disabledText = theme.textSecondary;
   const accessibleName = accessibilityLabel ?? label;
@@ -131,8 +133,8 @@ function getContainerStyle(variant: ButtonVariant, accentColor: string = Palette
     case 'primary':
     default:
       return {
-        backgroundColor: Palette.mintPrimary,
-        borderColor: Palette.mintPrimary,
+        backgroundColor: accentColor,
+        borderColor: accentColor,
       };
   }
 }
@@ -146,7 +148,7 @@ function getLabelColor(variant: ButtonVariant, themeText: string, accentColor: s
       return themeText;
 
     case 'primary':
-      return Palette.deepNavy;
+      return accentTextColor(accentColor);
 
     case 'destructive':
     default:

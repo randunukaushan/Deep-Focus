@@ -14087,6 +14087,13 @@ Illustrations should support the message rather than become the primary source o
 
 #### Progress Indicator
 
+Owner amendment, 2026-10-20: the native onboarding now targets five setup steps
+including language first, followed by focus duration, break duration, appearance
+and motion. Review follows those steps but is not a sixth question. Illustrative
+counts elsewhere are historical, not the current count. See the decision register's
+October 20 amendment and the active onboarding/polish task packet. This amendment
+does not assert that the new flow is already implemented or device-verified.
+
 The onboarding flow should clearly communicate progress.
 
 Example:
@@ -14847,7 +14854,10 @@ Skipping an optional question should not reduce unrelated application functional
 
 #### Progress Indicator
 
-The assessment should clearly communicate progress.
+The assessment should clearly communicate progress. For the current native
+five-step scope, include language as step 1 and the four preference questions
+as steps 2–5. The seven-question illustration below is historical, superseded
+by the October 20, 2026 decision-register amendment; review is separate.
 
 Example:
 
