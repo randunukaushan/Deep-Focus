@@ -35,6 +35,14 @@ lists remaining boundaries; its summary cannot invent approval.
 
 ## Lookup by task
 
+For later global education/pack direction, use the
+[planning reference](GLOBAL_EDUCATION_COUNTRY_PACK_ARCHITECTURE.md) and
+[proposed UX/education backlog](PROPOSED_PRODUCT_FLOWS_AND_EDUCATION_FEATURES.md).
+Their current-scope crosswalk preserves admitted V1 Sri Lanka/teacher/classroom,
+locales/resources and no-pack use; it neither admits a global platform nor
+defers already approved work. V1/dated owner decisions and education11 remain
+scope authority; no country rollout, legal or hosted acceptance is inferred.
+
 For a dated product-assurance evidence inventory and historical finding
 disposition, use the [assurance pack](assurance/README.md). It supplements
 canonical scope/security/DoD/release contracts, does not replace them or claim

@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-22 — PR #17 global education planning reconciliation
+
+- Reconcile pack/global direction and proposed UX backlog with current V1
+  Sri Lanka/general learner, independent teacher, bounded classroom, si/ta/en,
+  local-default/optional paid-cloud and required four-surface scope.
+- Keep broader pack/institution/grade/dashboard/academic-AI/market expansion
+  proposals separate; preserve current five-step onboarding, navigation,
+  semantic color/safety/age authority without source or normative policy change.
+- [Planning reference](GLOBAL_EDUCATION_COUNTRY_PACK_ARCHITECTURE.md) and
+  [actual checks/review](revision/evidence/PR17-EDUCATION-RECONCILIATION-2026-10-22.md).
+  Documentation only; no country activation, curriculum import or release approval.
+
 ## 2026-10-22 — PR #15 verifier Windows checkout correction
 
 - Normalize historical snapshots before banner parsing and verify LF/CRLF
