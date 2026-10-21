@@ -19,6 +19,8 @@ Deep Focus is intended to help users:
 
 Artificial intelligence should act as a supporting layer rather than a requirement for core focus functionality.
 
+Confirmed education/resource boundary (2026-09-14): students organise their study work and teachers organise preparation, marking and class commitments around their own resources. Deep Focus supplies no academic material library. Local resource use is the default; optional paid cloud requires explicit selection, verified entitlement and approved commercial/security contracts. Resource organisation must work without a cohort or AI content ingestion. Detailed proposed flow: [own resources and work planning](revision/12-LOCAL-RESOURCES-AND-WORK-PLANNING.md).
+
 The core focus experience should remain useful and reliable even when AI features are unavailable.
 
 Deep Focus should evolve gradually. Features described in this blueprint represent product direction and should be prioritized according to user value, technical feasibility, project resources, and the requirements of each development phase.
@@ -1191,7 +1193,13 @@ Where technically supported, God Mode may:
 - Strengthen distraction warnings
 - Apply the strongest platform-supported focus protections selected by the user
 
-God Mode should never prevent access to essential device functionality or create a situation where a user cannot safely exit when necessary.
+Owner-confirmed September 17 boundary: users may disable ordinary End early
+through pre-session Settings, but a separate Emergency exit must remain available.
+God Mode must never prevent essential device use or become an unbreakable lock.
+Exact interaction and active-session setting behavior require the proposed
+[safety contract](revision/19-SAFETY-AND-COMMITMENT-CONTRACT.md) to be frozen;
+the preference does not authorize arbitrary
+exit delays, permission from another person, or an XP penalty.
 
 The exact behavior of God Mode may differ between platforms according to operating-system restrictions.
 
@@ -1260,24 +1268,18 @@ Deep Focus should avoid excessive, manipulative, or engagement-driven notificati
 
 ---
 
-### 7. Focus Bet
+### 7. Commitment Without XP Stakes
 
-Focus Bet is an optional gamification feature designed to increase personal commitment through earned in-app experience points.
+The historical Focus Bet proposal is superseded by the owner's September 16
+no-penalty decision (DF-076). Do not reserve, stake, deduct or forfeit earned XP
+because a user misses work or ends a session early, including an emergency exit.
+An incomplete session not earning a completion reward is different from removing
+previously earned XP. Existing eligible rewards remain governed by verified,
+duplicate-safe progression rules.
 
-Before beginning an eligible focus session, users may choose to stake a limited amount of earned XP.
-
-Depending on the final reward rules:
-
-- Successfully completing the session may provide bonus XP
-- Ending the session early may reduce or forfeit some or all of the staked XP
-- Participation should remain completely optional
-- Appropriate limits should prevent unhealthy or excessive use
-
-Focus Bet should use only non-monetary in-app progression resources.
-
-It should not involve real money, purchasable stakes, cash-equivalent rewards, or gambling-style financial mechanics.
-
-The feature should encourage healthy commitment rather than punish users for legitimate interruptions or emergencies.
+An optional private commitment reminder is a future proposal, not a selected
+replacement feature or an approved bonus-XP formula. No money, purchased stakes,
+cash-equivalent rewards or wagering mechanics are introduced.
 
 ---
 
@@ -1458,32 +1460,18 @@ Leaderboards are a potential future capability rather than a requirement for the
 
 ---
 
-### 7. Focus Bet
+### 7. Non-Punitive Commitment Rules
 
-Focus Bet is an optional commitment-based gamification feature.
+The earlier Focus Bet stake/loss design is rejected under DF-076. Gamification
+must not create an XP escrow, stake, loss multiplier or missed-work deduction.
+Ending early records the actual eligible result without fabricating completion
+and without subtracting previously earned XP. No bonus formula or replacement
+commitment module is selected here.
 
-Users may voluntarily stake a limited amount of earned Focus XP before beginning an eligible focus session.
-
-Depending on the final reward rules:
-
-- Successful session completion may provide bonus XP
-- Ending the session early may reduce or forfeit some or all of the staked XP
-- Participation should remain completely optional
-- Appropriate limits should prevent excessive or unhealthy use
-
-Focus Bet should use only earned, non-monetary in-app progression resources.
-
-It should not involve:
-
-- Real-money stakes
-- Purchasable betting credits
-- Cash-equivalent rewards
-- Financial wagering
-- Gambling-style monetary mechanics
-
-The system should account for legitimate interruptions and should not create excessive punishment or pressure.
-
-Focus Bet should encourage commitment to meaningful work rather than risky or compulsive behavior.
+This rule covers ordinary and emergency exits and optional future challenges.
+Do not imply that a private, non-monetary stake is acceptable merely because it
+is not cash. Real-money stakes, purchased betting credits, cash-equivalent rewards
+and financial wagering remain excluded as well.
 
 ---
 
@@ -1854,7 +1842,8 @@ Users should not be able to purchase representations of achievements that imply 
 
 Focus XP and other achievement-based progression systems should remain separate from real-money wagering or cash-equivalent rewards.
 
-Paid content should not transform Focus Bet or other commitment features into financial gambling mechanics.
+Paid content must not reintroduce the rejected Focus Bet stake/loss design or
+turn commitment features into financial gambling mechanics.
 
 Purchases should primarily provide additional functionality, services, or clearly identified cosmetic customization rather than artificial productivity status.
 
@@ -2173,9 +2162,10 @@ detect medical, psychological, attention, fatigue, or burnout conditions.
 
 ### AI Access
 
-The first five eligible AI actions are introductory free actions. Additional
-actions may be granted after trusted rewarded-ad verification. Grant size and
-validity remain server-configured until exact values are approved.
+The owner approved limited free AI allowance plus optional paid AI access on
+September 16, with allowance/renewal/prices deferred. Unobtrusive launch ads are
+required, not an ads-free release. Rewarded grants are one candidate format and
+require trusted verification if chosen; exact ad design/eligibility remains open.
 
 Rewarded advertising must remain optional, must not interrupt active focus or
 recovery, and must never use private productivity data as an advertising product.

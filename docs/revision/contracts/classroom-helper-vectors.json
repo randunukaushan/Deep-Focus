@@ -1,0 +1,72 @@
+{
+  "contractVersion": 1,
+  "task": "HC-00",
+  "syntheticOnly": true,
+  "executionAuthorized": false,
+  "independentReview": "PENDING",
+  "policyFixture": { "cursorSeconds": 600, "inviteSeconds": 900, "commandSeconds": 86400 },
+  "canonical": [
+    { "id": "HC-C01", "raw": "{\"b\":2,\"a\":1}", "expected": "{\"a\":1,\"b\":2}" },
+    { "id": "HC-C02", "raw": " { \"a\": 1.0, \"b\": 2 } ", "expected": "{\"a\":1,\"b\":2}" },
+    { "id": "HC-C03", "raw": "{\"b\":\"\\u0061\",\"a\":[true,null,false]}", "expected": "{\"a\":[true,null,false],\"b\":\"a\"}" },
+    { "id": "HC-C04", "raw": "{\"t\":\"සිංහල தமிழ்\"}", "expected": "{\"t\":\"සිංහල தமிழ்\"}" },
+    { "id": "HC-C05", "raw": "{\"z\":{\"b\":1,\"a\":0},\"a\":\"é\"}", "expected": "{\"a\":\"é\",\"z\":{\"a\":0,\"b\":1}}" },
+    { "id": "HC-C06", "raw": "{\"a\":\"é\"}", "expected": "{\"a\":\"é\"}" },
+    { "id": "HC-C07", "raw": "{\"a\":1,\"a\":2}", "expected": null },
+    { "id": "HC-C08", "raw": "{\"x\":{\"a\":1,\"\\u0061\":2}}", "expected": null },
+    { "id": "HC-C09", "raw": "{\"x\":\"\\ud800\"}", "expected": null },
+    { "id": "HC-C10", "raw": "{\"x\":9007199254740992}", "expected": null },
+    { "id": "HC-C11", "raw": "{\"x\":1e999}", "expected": null },
+    { "id": "HC-C12", "raw": "{\"x\":1} trailing", "expected": null },
+    { "id": "HC-C13", "raw": "{\"x\":0.5}", "expected": null },
+    { "id": "HC-C14", "raw": "{\"x\":\"\\ud83d\\ude00\"}", "expected": "{\"x\":\"😀\"}" },
+    { "id": "HC-C15", "raw": "{\"2\":2,\"10\":10}", "expected": "{\"10\":10,\"2\":2}" },
+    { "id": "HC-C16", "raw": "{\"x\":\"\\u0000\"}", "expected": null },
+    { "id": "HC-C17", "raw": "{\"x\":[{\"y\":\"a\\u0000b\"}]}", "expected": null },
+    { "id": "HC-C18", "raw": "{\"a\\u0000b\":1}", "expected": null },
+    { "id": "HC-C19", "raw": "{\"x\":\"\\\\u0000\"}", "expected": "{\"x\":\"\\\\u0000\"}" }
+  ],
+  "commandGolden": {
+    "keyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "canonical": "{\"actorId\":\"10000000-0000-4000-8000-000000000001\",\"command\":{\"commandId\":\"20000000-0000-4000-8000-000000000002\",\"contractVersion\":1,\"expectedVersion\":null,\"payload\":{\"label\":\"Study\"}},\"digestVersion\":1,\"operation\":\"CW-01\",\"scope\":{\"id\":\"10000000-0000-4000-8000-000000000001\",\"kind\":\"creator\"},\"selectors\":{}}",
+    "hmacSha256Hex": "fba0c6c6ba01937c259407e9ded4a12d8f96bb9a49a13ceef0f40a21e8908e57"
+  },
+  "replay": [
+    { "id": "HC-R01", "change": {}, "expected": "REPLAY_CURRENT" },
+    { "id": "HC-R02", "change": { "authenticated": false }, "expected": "AUTH_REQUIRED" },
+    { "id": "HC-R03", "change": { "authorized": false }, "expected": "NOT_FOUND" },
+    { "id": "HC-R04", "change": { "state": "absent" }, "expected": "FRESH_CHECKS_REQUIRED" },
+    { "id": "HC-R05", "change": { "state": "closed" }, "expected": "COMMAND_EXPIRED" },
+    { "id": "HC-R06", "change": { "now": 87400 }, "expected": "COMMAND_EXPIRED" },
+    { "id": "HC-R07", "change": { "sameDigest": false }, "expected": "COMMAND_CONFLICT" },
+    { "id": "HC-R08", "change": { "keyAvailable": false }, "expected": "DEPENDENCY_UNAVAILABLE" },
+    { "id": "HC-R09", "change": { "acceptScopeConflict": true }, "expected": "COMMAND_CONFLICT" },
+    { "id": "HC-R10", "change": { "state": "closed", "keyAvailable": false }, "expected": "COMMAND_EXPIRED" }
+  ],
+  "cursor": [
+    { "id": "HC-P01", "change": {}, "expected": "CONTINUE" },
+    { "id": "HC-P02", "change": { "actor": "B" }, "expected": "VALIDATION_FAILED" },
+    { "id": "HC-P03", "change": { "session": "S2" }, "expected": "VALIDATION_FAILED" },
+    { "id": "HC-P04", "change": { "scope": "C2" }, "expected": "VALIDATION_FAILED" },
+    { "id": "HC-P05", "change": { "operation": "CW-22" }, "expected": "VALIDATION_FAILED" },
+    { "id": "HC-P06", "change": { "limit": 50 }, "expected": "VALIDATION_FAILED" },
+    { "id": "HC-P07", "change": { "now": 1600 }, "expected": "VALIDATION_FAILED" },
+    { "id": "HC-P08", "change": { "authenticated": false }, "expected": "AUTH_REQUIRED" },
+    { "id": "HC-P09", "change": { "authorized": false }, "expected": "NOT_FOUND" },
+    { "id": "HC-P10", "change": { "recordPresent": false }, "expected": "VALIDATION_FAILED" },
+    { "id": "HC-P11", "change": { "now": 999 }, "expected": "VALIDATION_FAILED" },
+    { "id": "HC-P12", "change": { "selectors": { "classId": "C1", "assignmentId": "X2" } }, "expected": "VALIDATION_FAILED" },
+    { "id": "HC-P13", "change": { "orderVersion": 2 }, "expected": "VALIDATION_FAILED" }
+  ],
+  "delivery": [
+    { "id": "HC-I01", "change": {}, "expected": "SAME_TOKEN" },
+    { "id": "HC-I02", "change": { "state": "consumed" }, "expected": "NULL_TOKEN" },
+    { "id": "HC-I03", "change": { "state": "revoked" }, "expected": "NULL_TOKEN" },
+    { "id": "HC-I04", "change": { "now": 1900 }, "expected": "NULL_TOKEN" },
+    { "id": "HC-I05", "change": { "deliveryAvailable": false }, "expected": "DEPENDENCY_UNAVAILABLE" },
+    { "id": "HC-I06", "change": { "authenticated": false }, "expected": "AUTH_REQUIRED" },
+    { "id": "HC-I07", "change": { "authorizedIssuer": false }, "expected": "NOT_FOUND" },
+    { "id": "HC-I08", "change": { "tagValid": false }, "expected": "DEPENDENCY_UNAVAILABLE" },
+    { "id": "HC-I09", "change": { "commandActive": false }, "expected": "COMMAND_EXPIRED" }
+  ]
+}

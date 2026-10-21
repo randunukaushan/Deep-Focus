@@ -1,17 +1,25 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
+import { DeepFocusScene } from '@/components/deep-focus-scene';
+import { FocusDial } from '@/components/ui/focus-dial';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { Palette, Radius, Spacing } from '@/theme/tokens';
 import { useFocusSession } from '@/features/focus/use-focus-session';
-import { appendSessionHistory, clearActiveSession } from '@/features/focus/session-storage';
+import { persistTerminalSession } from '@/features/focus/session-storage';
+import { getSessionCopy } from '@/features/localization/session-copy';
+import { useAppLocale } from '@/features/localization/app-locale-context';
+import { usePresentation } from '@/features/settings/presentation-context';
+import { SteadyFocusWords } from '@/features/focus/steady-focus-words';
+import { getPreviewHomeCopy } from '@/features/localization/preview-home-copy';
 
 function formatTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
@@ -21,69 +29,137 @@ function formatTime(totalSeconds: number) {
 
 export default function ActiveSessionRoute() {
   const router = useRouter();
+  const { locale } = useAppLocale();
+  const text = getSessionCopy(locale);
   const theme = useTheme();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const homeSurface = isDark ? theme.surface : Palette.homeLightSurface;
   const homeBorder = isDark ? theme.border : Palette.homeLightBorder;
-  const homeAction = isDark ? Palette.mintPrimary : Palette.homeLightAction;
-  const { durationMinutes, resume, taskName } = useLocalSearchParams<{ durationMinutes?: string; resume?: string; taskName?: string }>();
-  const duration = Math.max(5, Number(durationMinutes) || 25);
+  const homeAction = theme.primary;
+  const { durationMinutes, resume, taskName, taskId } = useLocalSearchParams<{ durationMinutes?: string; resume?: string; taskName?: string; taskId?: string }>();
+  const requestedDuration = durationMinutes === undefined ? 25 : Number(durationMinutes);
+  const duration = Number.isInteger(requestedDuration) && requestedDuration >= 5 && requestedDuration <= 180 ? requestedDuration : NaN;
   const task = typeof taskName === 'string' ? taskName : '';
-  const { session, projection, pause, resume: resumeSession, cancel, hydrated } = useFocusSession(duration, task);
+  const { session, projection, pause, pauseForBreak, resume: resumeSession, complete, cancel, hydrated, error, canRetrySave, retrySave } = useFocusSession(duration, task, typeof taskId === 'string' ? taskId : undefined, { recoveryError: text.recoveryError, taskUnavailable: text.taskUnavailable, saveFailure: text.saveFailure });
   const resumedFromBreak = useRef(false);
+  const terminalSaveLock = useRef(false);
+  const routeMounted = useRef(false);
+  const [terminalSaveError, setTerminalSaveError] = useState<string | null>(null);
+  const [terminalSaving, setTerminalSaving] = useState(false);
+  const [activeRetrying, setActiveRetrying] = useState(false);
+  const presentation = usePresentation();
+  const preferences = presentation?.preferences;
 
   useEffect(() => {
-    if (resume !== '1' || !hydrated || resumedFromBreak.current || session.status !== 'paused') return;
+    routeMounted.current = true;
+    return () => { routeMounted.current = false; };
+  }, []);
+
+  useEffect(() => {
+    if (resume !== '1' || !hydrated || error || resumedFromBreak.current || session?.status !== 'paused') return;
     resumedFromBreak.current = true;
     resumeSession();
-  }, [hydrated, resume, resumeSession, session.status]);
+  }, [hydrated, error, resume, resumeSession, session?.status]);
+
+  const saveTerminalSession = useCallback(async (terminalSession: NonNullable<typeof session>) => {
+    if (terminalSaveLock.current || (terminalSession.status !== 'completed' && terminalSession.status !== 'cancelled')) return;
+    terminalSaveLock.current = true;
+    setTerminalSaving(true);
+    setTerminalSaveError(null);
+    try {
+      await persistTerminalSession(terminalSession);
+      if (routeMounted.current) {
+        router.replace({ pathname: '/focus/summary', params: { sessionId: terminalSession.id } });
+      }
+    } catch {
+      if (routeMounted.current) setTerminalSaveError(text.terminalSaveFailure);
+    } finally {
+      terminalSaveLock.current = false;
+      if (routeMounted.current) setTerminalSaving(false);
+    }
+  }, [router, text.terminalSaveFailure]);
 
   useEffect(() => {
-    if (session.status !== 'completed' && session.status !== 'cancelled') return;
-    let mounted = true;
-    async function finishPersistence() {
-      await clearActiveSession();
-      await appendSessionHistory(session);
-    if (mounted) router.replace({ pathname: '/focus/summary', params: { status: session.status, focusedSeconds: String(session.focusedDurationSeconds), plannedSeconds: String(session.plannedDurationSeconds), plannedMinutes: String(session.plannedDurationSeconds / 60), taskName: task } });
+    if (!hydrated || error || !session || (session.status !== 'completed' && session.status !== 'cancelled')) return;
+    void saveTerminalSession(session);
+  }, [hydrated, error, session, saveTerminalSession]);
+
+  function retryActiveSave() {
+    setActiveRetrying(true);
+    void retrySave().finally(() => setActiveRetrying(false));
+  }
+
+  function finish(status: 'completed' | 'cancelled') {
+    if (status === 'completed') {
+      if (projection && projection.remainingSeconds > 0) {
+        Alert.alert(text.title, `${formatTime(projection.remainingSeconds)} ${text.remaining}. ${text.continue}`);
+        return;
+      }
+      complete();
     }
-    void finishPersistence();
-    return () => { mounted = false; };
-  }, [router, session, task]);
+    else cancel();
+  }
+
+  const sessionStatusLabel = session?.status === 'paused'
+    ? text.paused
+    : session?.status === 'completed'
+      ? text.complete
+      : session?.status === 'cancelled'
+        ? text.ended
+        : text.inFocus;
+
+  if (!hydrated || error || !session || !projection) {
+    return <SafeAreaView style={[styles.screen, { backgroundColor: theme.background }]}><ScrollView contentContainerStyle={styles.errorContent}>
+      <ThemedText accessibilityRole="header" type="subtitle">{error ? text.sessionAttention : text.loading}</ThemedText>
+      {error ? <ThemedText accessibilityRole="alert">{error}</ThemedText> : null}
+      {canRetrySave ? <Button label={text.retrySave} loading={activeRetrying} onPress={retryActiveSave} /> : null}
+      <Button label={text.returnHome} onPress={() => router.replace('/')} />
+    </ScrollView></SafeAreaView>;
+  }
 
   return (
-      <ThemedView style={[styles.screen, { backgroundColor: isDark ? theme.background : Palette.homeLightBackground }]}>
-      <StatusBar style="auto" />
+      <SafeAreaView style={[styles.screen, { backgroundColor: isDark ? theme.background : Palette.homeLightBackground }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <ScrollView contentContainerStyle={styles.sessionScroll}>
       <View style={styles.content}>
         <View style={styles.header}>
-          <ThemedText themeColor="textSecondary" type="smallBold">FOCUS SESSION</ThemedText>
-          <ThemedText accessibilityRole="header" type="subtitle">Stay with one thing.</ThemedText>
-          <ThemedText themeColor="textSecondary">{task || 'Your chosen focus block'}</ThemedText>
+          <ThemedText themeColor="textSecondary" type="smallBold">{text.eyebrow}</ThemedText>
+          <ThemedText accessibilityRole="header" type="subtitle">{text.title}</ThemedText>
+          <ThemedText themeColor="textSecondary">{session.taskName || text.chosenBlock}</ThemedText>
         </View>
-        <ThemedView accessibilityLabel={`${formatTime(projection.remainingSeconds)} remaining, ${session.status}, ${Math.round(projection.progress * 100)} percent complete`} style={[styles.timerCard, { backgroundColor: homeSurface, borderColor: homeBorder }]}>
-          <View style={[styles.timerIcon, { backgroundColor: Palette.homeLightActionSoft }]}><Ionicons color={homeAction} name="timer-outline" size={24} /></View>
-          <ThemedText style={[styles.timer, { color: theme.text }]}>{formatTime(projection.remainingSeconds)}</ThemedText>
-          <ThemedText themeColor="textSecondary" type="smallBold">{session.status === 'paused' ? 'PAUSED' : 'IN FOCUS'}</ThemedText>
-          <View accessibilityElementsHidden style={[styles.track, { backgroundColor: homeBorder }]}><View style={[styles.fill, { backgroundColor: homeAction, width: `${Math.round(projection.progress * 100)}%` }]} /></View>
-          <ThemedText themeColor="textSecondary" type="small">{Math.round(projection.progress * 100)}% of your focus block</ThemedText>
+        <ThemedView accessibilityLabel={`${formatTime(projection.remainingSeconds)} ${text.remaining}, ${sessionStatusLabel}, ${Math.round(projection.progress * 100)}${text.percentOfBlock}`} accessibilityRole="timer" style={[styles.timerCard, { backgroundColor: homeSurface, borderColor: homeBorder }]}>
+          <FocusDial value={formatTime(projection.remainingSeconds)} caption={sessionStatusLabel} progress={projection.progress} />
+          {preferences && !presentation?.loading ? <SteadyFocusWords key={session.id} preferences={preferences} fallback={getPreviewHomeCopy(locale).encouragement} /> : null}
         </ThemedView>
+        {terminalSaving ? <ThemedText accessibilityRole="text">{text.saving}</ThemedText> : null}
+        {terminalSaveError ? <>
+          <ThemedText accessibilityRole="alert">{terminalSaveError}</ThemedText>
+          <Button fullWidth label={text.retrySave} loading={terminalSaving} onPress={() => { void saveTerminalSession(session); }} />
+        </> : null}
         <View style={styles.actions}>
-          {session.status === 'paused' ? <Button accentColor={homeAction} fullWidth label="Resume Focus" onPress={resumeSession} style={{ backgroundColor: homeAction, borderColor: homeAction }} /> : session.status === 'active' ? <Button accentColor={homeAction} fullWidth label="Pause Focus" onPress={pause} style={{ backgroundColor: homeAction, borderColor: homeAction }} /> : null}
-          {session.status === 'active' ? <Button accentColor={homeAction} fullWidth label="Take a Break" onPress={() => { pause(); router.push({ pathname: '/focus/break', params: { sessionId: session.id } }); }} variant="secondary" /> : null}
+          {session.status === 'paused' ? <Button accentColor={homeAction} fullWidth label={text.resume} onPress={resumeSession} style={{ backgroundColor: homeAction, borderColor: homeAction }} /> : session.status === 'active' ? <Button accentColor={homeAction} fullWidth label={text.pause} onPress={pause} style={{ backgroundColor: homeAction, borderColor: homeAction }} /> : null}
+          {session.status === 'active' ? <Button accentColor={homeAction} fullWidth label={text.break} onPress={async () => { if (await pauseForBreak() && routeMounted.current) router.push('/focus/break'); }} variant="secondary" /> : null}
           {session.status === 'active' || session.status === 'paused' ? <>
-            <Button fullWidth label="End Session" onPress={() => Alert.alert('End Focus Session?', 'Your planned focus period has not been completed.', [{ text: 'Continue Focusing', style: 'cancel' }, { text: 'End Session', style: 'destructive', onPress: cancel }])} variant="destructive" />
+            <Button accentColor={homeAction} fullWidth label={text.completeSession} onPress={() => finish('completed')} variant="secondary" />
+            <Button fullWidth label={text.endSession} onPress={() => Alert.alert(text.endTitle, text.endDetail, [{ text: text.continue, style: 'cancel' }, { text: text.endSession, style: 'destructive', onPress: () => finish('cancelled') }])} variant="destructive" />
           </> : null}
         </View>
+        <View style={styles.scenery}><DeepFocusScene dark={isDark} /></View>
       </View>
-    </ThemedView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { alignSelf: 'center', flex: 1, gap: Spacing.xl, justifyContent: 'center', maxWidth: 560, padding: Spacing.lg, width: '100%' },
-  header: { gap: Spacing.xs },
-  timerCard: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, gap: Spacing.md, padding: Spacing.xl },
+  sessionScroll: { flexGrow: 1 },
+  errorContent: { alignSelf: 'center', flexGrow: 1, justifyContent: 'center', gap: Spacing.md, maxWidth: 560, padding: Spacing.lg, width: '100%' },
+  scenery: { minHeight: 190, overflow: 'hidden', borderRadius: Radius.card },
+  content: { alignSelf: 'center', flexGrow: 1, gap: Spacing.xl, justifyContent: 'center', maxWidth: 560, padding: Spacing.lg, width: '100%', zIndex: 1 },
+  header: { alignItems: 'center', gap: Spacing.xs },
+  timerCard: { alignItems: 'center', borderRadius: Radius.card, gap: Spacing.md },
   timerIcon: { alignItems: 'center', borderRadius: 24, height: 48, justifyContent: 'center', width: 48 },
   timer: { fontSize: 64, fontWeight: '700', letterSpacing: -1, lineHeight: 72 },
   track: { borderRadius: 999, height: 8, overflow: 'hidden', width: '100%' },

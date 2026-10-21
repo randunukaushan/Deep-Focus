@@ -1,0 +1,393 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:deep-focus:plan-management:2026-09-19",
+  "title": "Draft saved-plan management DTOs",
+  "description": "PL-01 document shapes only. Semantic ownership, versions, schedule, binding, transactions and activation gates remain mandatory.",
+  "definitions": {
+    "Id": {
+      "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/Id"
+    },
+    "Version": {
+      "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/Version"
+    },
+    "VersionRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "expectedVersion"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/Id"
+        },
+        "expectedVersion": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/Version"
+        }
+      }
+    },
+    "ReminderKeep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "id",
+        "expectedVersion"
+      ],
+      "properties": {
+        "action": {
+          "const": "keep"
+        },
+        "id": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/Id"
+        },
+        "expectedVersion": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/Version"
+        }
+      }
+    },
+    "ReminderDisable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "id",
+        "expectedVersion"
+      ],
+      "properties": {
+        "action": {
+          "const": "disable"
+        },
+        "id": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/Id"
+        },
+        "expectedVersion": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/Version"
+        }
+      }
+    },
+    "ReminderUpdate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "id",
+        "expectedVersion",
+        "scheduledFor",
+        "timeZone",
+        "enabled"
+      ],
+      "properties": {
+        "action": {
+          "const": "update"
+        },
+        "id": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/Id"
+        },
+        "expectedVersion": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/Version"
+        },
+        "scheduledFor": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/UtcInstant"
+        },
+        "timeZone": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/TimeZone"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ReminderCreate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "id",
+        "taskId",
+        "scheduledFor",
+        "timeZone",
+        "delivery"
+      ],
+      "properties": {
+        "action": {
+          "const": "create"
+        },
+        "id": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/Id"
+        },
+        "taskId": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/Id"
+        },
+        "scheduledFor": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/UtcInstant"
+        },
+        "timeZone": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/TimeZone"
+        },
+        "delivery": {
+          "const": "local_device"
+        }
+      }
+    },
+    "ReminderAction": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/ReminderKeep"
+        },
+        {
+          "$ref": "#/definitions/ReminderDisable"
+        },
+        {
+          "$ref": "#/definitions/ReminderUpdate"
+        },
+        {
+          "$ref": "#/definitions/ReminderCreate"
+        }
+      ]
+    },
+    "PlanEditInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedVersion",
+        "plan",
+        "taskVersions",
+        "reminderActions"
+      ],
+      "properties": {
+        "expectedVersion": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/Version"
+        },
+        "plan": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/PlanCreate"
+        },
+        "taskVersions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/definitions/VersionRef"
+          }
+        },
+        "reminderActions": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/definitions/ReminderAction"
+          }
+        }
+      }
+    },
+    "PlanActionInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "expectedVersion",
+        "reminderVersions"
+      ],
+      "properties": {
+        "action": {
+          "enum": [
+            "archive",
+            "restore",
+            "delete"
+          ]
+        },
+        "expectedVersion": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/Version"
+        },
+        "reminderVersions": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/definitions/VersionRef"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "restore"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "reminderVersions": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ReminderResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "action",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/Id"
+        },
+        "action": {
+          "enum": [
+            "keep",
+            "update",
+            "disable",
+            "create"
+          ]
+        },
+        "version": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/Version"
+        }
+      }
+    },
+    "MutationReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mutationId",
+        "command",
+        "targetId",
+        "previousVersion",
+        "entityVersion",
+        "state",
+        "committedThrough",
+        "updatedAt",
+        "reminderResults"
+      ],
+      "properties": {
+        "mutationId": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/Id"
+        },
+        "command": {
+          "enum": [
+            "plan.edit",
+            "plan.archive",
+            "plan.restore",
+            "plan.delete"
+          ]
+        },
+        "targetId": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/Id"
+        },
+        "previousVersion": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/Version"
+        },
+        "entityVersion": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/Version"
+        },
+        "state": {
+          "enum": [
+            "active",
+            "archived",
+            "deleted"
+          ]
+        },
+        "committedThrough": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "updatedAt": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/UtcInstant"
+        },
+        "reminderResults": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/definitions/ReminderResult"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "command": {
+                "const": "plan.edit"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "active"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "command": {
+                "const": "plan.archive"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "archived"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "command": {
+                "const": "plan.restore"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "active"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "command": {
+                "const": "plan.delete"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "deleted"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "MutationResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/MutationReceipt"
+        }
+      }
+    }
+  }
+}

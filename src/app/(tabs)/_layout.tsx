@@ -1,44 +1,48 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { useColorScheme } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 import { Colors } from '@/constants/theme';
+import { useAppLocale } from '@/features/localization/app-locale-context';
 
 export default function TabsLayout() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  const { copy } = useAppLocale();
 
   return (
     <NativeTabs
       backgroundColor={colors.background}
       indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}>
+      iconColor={{ default: colors.textSecondary, selected: colors.primary }}
+      tintColor={colors.primary}
+      labelStyle={{ default: { color: colors.textSecondary }, selected: { color: colors.primary } }}>
       <NativeTabs.Trigger name="home">
-        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>{copy.tabs.home}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="home-outline" />}
         />
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="plan">
+        <NativeTabs.Trigger.Label>{copy.tabs.plan}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="list-outline" />}
+        />
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="focus">
-        <NativeTabs.Trigger.Label>Focus</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>{copy.tabs.focus}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="timer-outline" />}
         />
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="analytics">
-        <NativeTabs.Trigger.Label>Analytics</NativeTabs.Trigger.Label>
+      <NativeTabs.Trigger name="progress">
+        <NativeTabs.Trigger.Label>{copy.tabs.progress}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="bar-chart-outline" />}
         />
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="rewards">
-        <NativeTabs.Trigger.Label>Rewards</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="ribbon-outline" />}
-        />
-      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
-        <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>{copy.tabs.profile}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={<NativeTabs.Trigger.VectorIcon family={Ionicons} name="person-outline" />}
         />

@@ -5,21 +5,26 @@ defines navigation structure only; feature behavior remains governed by
 `V1_FEATURE_SCOPE.md` and the dedicated UI, architecture, data, API, security,
 and testing specifications.
 
-The current visual token direction uses Deep Focus Navy surfaces (`#0F2537`,
-`#17354A`, and `#1B3B54`) with Deep Focus Mint (`#7FE5B6`) for primary actions
-and highlights. AI-only context may use the supporting Lavender accent
-(`#A78BFA`) together with a label or icon.
+On September 15, 2026 the owner approved Home / Plan / Focus / Progress / Profile,
+with Rewards inside Progress, and the supplied blue/navy/coral brand direction.
+This supersedes the old Analytics/Rewards bottom tabs and mint-primary direction.
+Exact production tokens, final assets and accessibility evidence remain ADR-003
+gates; approving a direction is not proof that it is implemented or tested.
+This map reconciles those approved mobile destinations, not the full expanded
+release scope. January Website/Account Portal routes are counted separately below.
 
 ## 1. Route-count rules
 
-The V1 navigation architecture contains **26 full-screen routes**: 23 required
+The V1 navigation architecture contains **27 full-screen routes**: 24 required
 routes and three conditional routes. The native splash, dialogs, bottom sheets,
 overlays, and temporary states are not counted as full-screen routes.
 
 Authentication is part of V1. Password recovery is conditional on the selected
 authentication flow, email verification is conditional on the approved policy,
 and session details are conditional on the supported history-detail experience.
-No authentication provider is selected by this map.
+Supabase Auth is now selected in the decision register. Exact verification,
+recovery and session policies still need their contracts. Expo SecureStore is
+selected for mobile credentials; its adapter/configuration still needs validation.
 
 ## 2. Canonical full-screen routes
 
@@ -30,30 +35,35 @@ No authentication provider is selected by this map.
 | 03 | `/auth/sign-up` | Sign Up | Required | Welcome or Sign In | Verification or onboarding |
 | 04 | `/auth/forgot-password` | Forgot Password | Conditional | Sign In | Sign In |
 | 05 | `/auth/verify-email` | Email Verification | Conditional | Sign Up | Onboarding |
-| 06 | `/onboarding` | Onboarding Introduction | Required | Welcome or verification | Personal Assessment |
-| 07 | `/onboarding/assessment` | Personal Assessment | Required | Onboarding | Productivity Profile |
-| 08 | `/onboarding/productivity-profile` | Productivity Profile | Required | Assessment | Home |
+| 06 | `/onboarding` | Onboarding Introduction | Required | Welcome or verification | Personal Assessment or defaults to Home |
+| 07 | `/onboarding/assessment` | Personal Assessment | Required route; answers optional | Onboarding or edit preferences | Productivity Profile or defaults to Home |
+| 08 | `/onboarding/productivity-profile` | Productivity Profile | Required | Assessment | Confirm selected preferences to Home, or retain defaults |
 | 09 | `/home` (`/` redirects here) | Home | Required tab | Main application | Contextual workflow |
 | 10 | `/focus` | Focus | Required tab | Main navigation | Session Setup or recovery |
-| 11 | `/analytics` | Analytics | Required tab | Main navigation | History or contextual detail |
-| 12 | `/rewards` | Rewards | Required tab | Main navigation | Contextual reward detail |
+| 11 | `/progress` | Progress | Required tab | Main navigation | History, Rewards or contextual detail |
+| 12 | `/progress/rewards` | Rewards | Required nested route | Progress | Contextual reward detail or Progress |
 | 13 | `/profile` | Profile | Required tab | Main navigation | Settings |
-| 14 | `/tasks` | Tasks | Required | Home or session setup | Task detail or previous route |
+| 14 | `/tasks` | Tasks | Required | Plan, Home or session setup | Task detail or previous route |
 | 15 | `/tasks/[taskId]` | Task Detail | Required | Tasks or contextual task card | Tasks, edit, or Session Setup |
-| 16 | `/goals` | Goals | Required | Home or Profile | Goal detail or previous route |
+| 16 | `/goals` | Goals | Required | Plan, Home or Profile | Goal detail or previous route |
 | 17 | `/goals/[goalId]` | Goal Detail | Required | Goals or contextual goal card | Goals, edit, or related task |
 | 18 | `/focus/setup` | Session Setup | Required | Home, Focus, task, or goal | Active Session |
 | 19 | `/focus/session` | Active Focus Session | Required | Session Setup or recovery | Break, Summary, or safe exit |
 | 20 | `/focus/recovery` | Session Recovery | Required | Startup/resume state check | Active Session or safe resolution |
 | 21 | `/focus/break` | True Zen Break | Required | Completed session | Session Summary |
 | 22 | `/focus/summary` | Session Summary | Required | Completed/cancelled session or break | Home or Session Setup |
-| 23 | `/analytics/history` | Session History | Required | Analytics | Session Detail or Analytics |
-| 24 | `/analytics/history/[sessionId]` | Session Detail | Conditional | Session History | Session History |
+| 23 | `/progress/history` | Session History | Required | Progress | Session Detail or Progress |
+| 24 | `/progress/history/[sessionId]` | Session Detail | Conditional | Session History | Session History |
 | 25 | `/profile/settings` | Settings | Required | Profile | Profile |
 | 26 | `/plan-my-day` | Plan My Day | Required | Home | Home or confirmed plan context |
+| 27 | `/plan` | Plan | Required tab | Main navigation | Tasks, Goals or an approved planning workflow |
 
-The five canonical bottom-navigation destinations are Home, Focus, Analytics,
-Rewards, and Profile. AI is contextual and must not become a permanent tab.
+The five canonical bottom-navigation destinations, in order, are Home, Plan,
+Focus, Progress and Profile. AI is contextual and must not become a permanent tab.
+Plan composes existing task/goal entry points; the new tab does not itself approve
+every proposed calendar, education or automatic planning feature. Required
+onboarding routes do not make assessment answers mandatory. Users may skip to
+documented defaults and edit preferences later; skipping does not grant consent.
 
 ## 3. Route groups
 
@@ -64,13 +74,13 @@ Root Stack
 ├── Onboarding
 ├── Main tabs
 │   ├── Home
+│   ├── Plan
 │   ├── Focus
-│   ├── Analytics
-│   ├── Rewards
+│   ├── Progress
 │   └── Profile
 ├── Tasks and Goals
 ├── Focus-session workflow
-├── Analytics history
+├── Progress history and Rewards
 ├── Settings
 └── Plan My Day
 ```
@@ -96,7 +106,7 @@ destinations unless a later approved decision changes them:
   and invalid-recovery conditions are states of their owning route;
 - permission education appears contextually before an operating-system prompt;
 - `Break Down This Task` is a conditional task-context proposal workflow;
-- `Review My Day Lite` is a conditional Home or Analytics review experience.
+- `Review My Day Lite` is a conditional Home or Progress review experience.
 
 `Plan My Day` uses a dedicated route because it is a required, multi-step,
 proposal-first V1 workflow. Its generation, review, editing, rejection, retry,
@@ -107,8 +117,9 @@ and explicit confirmation are states of that route rather than separate screens.
 ```text
 Launch
 → initialize
-→ recover an active session when valid
-→ otherwise resolve authentication and onboarding state
+→ resolve permitted identity and its local data namespace
+→ recover only that identity's valid active session
+→ otherwise resolve authentication and optional personalization state
 → main application
 ```
 
@@ -117,8 +128,8 @@ Welcome
 → Sign Up or Sign In
 → verification when required
 → Onboarding
-→ Personal Assessment
-→ Productivity Profile
+→ Personal Assessment, or skip to defaults
+→ Productivity Profile preview and confirmation when assessment is chosen
 → Home
 ```
 
@@ -146,7 +157,8 @@ Home
 
 The following decisions are intentionally not made by this document:
 
-- authentication provider and credential implementation;
+- credential implementation and exact Supabase Auth configuration (provider
+  selection itself is already approved);
 - whether email verification is mandatory for the selected authentication flow;
 - the final modal or full-screen presentation of task and goal create/edit forms;
 - dedicated presentation details for conditional AI features;
@@ -161,3 +173,35 @@ V1 destinations.
 Voice AI, long-form AI chat, automatic rescheduling, AI weekly planning, social
 leaderboards, community challenges, advanced integrations, and other capabilities
 listed in `POST_V1_FEATURE_SCOPE.md` are not V1 routes.
+
+## 8. Required separate web surfaces
+
+The Public Website and Account Portal are required for January 1, 2027 under
+[V1 scope](V1_FEATURE_SCOPE.md). They are not included in the 27 mobile routes
+above. Next.js is selected, but the
+[proposed web route map](revision/05-WEB-AND-INTEGRATIONS.md) still needs its
+bounded route/content/configuration freeze before implementation. A full browser
+focus/planning app and teacher LMS remain separate future surfaces.
+
+## 9. Existing implementation and compatibility migration
+
+The current source still has Home / Focus / Analytics / Rewards / Profile tabs.
+This documentation change does not rename those files or migrate application data.
+Keep all existing analytics, reward and history functionality when implementing
+the approved navigation. Preserve old entry URLs through compatibility redirects:
+
+| Existing entry | Approved destination |
+| --- | --- |
+| `/analytics` | `/progress` |
+| `/rewards` | `/progress/rewards` |
+| `/analytics/history` | `/progress/history` |
+| `/analytics/history/[sessionId]` | `/progress/history/[sessionId]` |
+
+Redirects are not additional full-screen destinations. Validate and preserve the
+session identifier, enforce ordinary ownership checks at the destination, and
+replace the old history entry so Back does not loop. Do not alter persisted
+session IDs or storage keys to rename a screen. Update route files, internal links,
+tab labels/accessibility labels, notification/deep-link targets and route tests
+in one bounded implementation task. Verify cold/warm links, unknown IDs,
+signed-out/account-switched access, Back behavior and session recovery on both
+mobile platforms. None of these runtime checks has been performed by this edit.

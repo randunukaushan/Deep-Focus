@@ -1,0 +1,314 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Deep Focus rewards, goal progress and AI confirmation slice",
+    "version": "0.1.0-draft",
+    "description": "Six proposed inventory operations, not full V1 API or deployment. External schemas use JSON Schema draft-07. No generation/revision/provider callback operations are added."
+  },
+  "servers": [
+    {
+      "url": "/v1"
+    }
+  ],
+  "security": [
+    {
+      "UserBearer": []
+    }
+  ],
+  "paths": {
+    "/rewards": {
+      "get": {
+        "operationId": "getRewards",
+        "x-registry-id": "EX-18",
+        "x-active-account-required": true,
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Owned, validated response; document fixtures do not prove runtime truth.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Private content; never persist in shared caches.",
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "rewards-ai.schema.json#/definitions/RewardsResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/rewards/history": {
+      "get": {
+        "operationId": "getRewardHistory",
+        "x-registry-id": "EX-19",
+        "x-active-account-required": true,
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "backend-extensions.schema.json#/definitions/Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned, validated response; document fixtures do not prove runtime truth.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Private content; never persist in shared caches.",
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "rewards-ai.schema.json#/definitions/RewardHistoryResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-query-schema": "backend-extensions.schema.json#/definitions/ListQuery"
+      }
+    },
+    "/goals/{id}/progress": {
+      "get": {
+        "operationId": "getGoalProgress",
+        "x-registry-id": "EX-20",
+        "x-active-account-required": true,
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned, validated response; document fixtures do not prove runtime truth.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Private content; never persist in shared caches.",
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "rewards-ai.schema.json#/definitions/GoalProgressResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/ai/usage": {
+      "get": {
+        "operationId": "getAiUsage",
+        "x-registry-id": "EX-31",
+        "x-active-account-required": true,
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Owned, validated response; document fixtures do not prove runtime truth.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Private content; never persist in shared caches.",
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "rewards-ai.schema.json#/definitions/AiUsageResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/ai/proposals/{id}/apply": {
+      "post": {
+        "operationId": "applyAiProposal",
+        "x-registry-id": "EX-32",
+        "x-active-account-required": true,
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned, validated response; document fixtures do not prove runtime truth.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Private content; never persist in shared caches.",
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "rewards-ai.schema.json#/definitions/ProposalApplyResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "backend-extensions.schema.json#/definitions/ProposalConfirmation"
+              }
+            }
+          }
+        },
+        "x-atomic-selected-apply": true,
+        "x-generation-unit-debit": 0
+      }
+    },
+    "/ai/proposals/{id}": {
+      "get": {
+        "operationId": "getAiProposal",
+        "x-registry-id": "EX-33",
+        "x-active-account-required": true,
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned, validated response; document fixtures do not prove runtime truth.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Private content; never persist in shared caches.",
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "rewards-ai.schema.json#/definitions/ProposalResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "UserBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Supabase user access JWT"
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Safe error; object ownership checked before detailed disclosure.",
+        "headers": {
+          "Cache-Control": {
+            "description": "Private content; never persist in shared caches.",
+            "schema": {
+              "type": "string",
+              "const": "private, no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "personal-api.schema.json#/definitions/Error"
+            }
+          }
+        }
+      }
+    }
+  }
+}

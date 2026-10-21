@@ -4,6 +4,11 @@ This document defines the security, authentication, authorization, privacy, cred
 
 Security should be integrated into the application architecture rather than treated as a final step before release.
 
+The [backend contract and BE-T01–18 matrix](revision/14-BACKEND-API-DATABASE-BUILD-CONTRACT.md)
+concretize proposed identity, ownership, idempotency and cookie/API boundaries.
+Those are future integration/security tests, not passed tests. Local JSON DTO
+checks cannot prove RLS, authentication, account isolation or production security.
+
 This specification should be used together with:
 
 - `ARCHITECTURE.md`
@@ -406,7 +411,9 @@ Core security behavior should remain predictable.
 
 ### Authentication Provider
 
-The final authentication provider should be selected during implementation according to the approved backend architecture.
+Supabase Auth was selected by the project owner on 2026-09-14, together with Supabase PostgreSQL and Next.js Website/Portal. See the [approval record](revision/01-REQUIREMENTS-AND-DECISIONS.md). Provider selection is not deployed security: verification rules, factors, token/session lifecycle, server authorisation, RLS and recovery need explicit configuration and negative tests. Hosting/region and retention gates remain open. The owner approved development for ages 15–17, while real-minor pilot and release access must remain disabled until qualified legal review is complete. This is not a legal consent, age-assurance, store-rating or feature-eligibility determination; no real-minor data or pilot is authorized meanwhile.
+
+For own-resource planning, local mode must not transmit resource files/metadata through sync, telemetry, remote scanning or AI. Optional paid cloud requires explicit resource selection, verified entitlement, owner isolation, quotas and separately approved processing/retention rules. Local account isolation and native backup behaviour also require installed-build tests; local storage alone is not an encryption or recovery guarantee. See [12](revision/12-LOCAL-RESOURCES-AND-WORK-PLANNING.md).
 
 Regardless of provider, Deep Focus should avoid tightly coupling application business logic to provider-specific authentication details when a clean abstraction is practical.
 
@@ -440,6 +447,13 @@ Documentation should use placeholders such as:
 rather than real values.
 
 ### Mobile Token Storage
+
+Expo SecureStore is the owner-selected mobile login credential store as of
+2026-09-15; Expo SQLite is selected for domain data, not token storage. Exact
+key/accessibility/backup/refresh settings require the security contract and
+installed-build verification. SecureStore selection alone does not prove that
+uninstall, biometric changes or account switching preserve/revoke credentials
+in the desired way.
 
 Sensitive persistent authentication credentials should use secure platform-supported storage where required.
 
@@ -1135,6 +1149,18 @@ Provider-managed authentication records should also be handled according to the 
 
 The exact deletion process should preserve required integrity while avoiding unnecessary retention.
 
+The proposed [operations recovery protocol](revision/16-BACKEND-EXTENSIONS-AND-OPERATIONS.md)
+section 11 pre-issues a deletion-job status credential at challenge creation,
+before final confirmation, then activates it atomically with account freeze/job
+creation. Challenge alone never authorizes deletion. This avoids reopening normal
+account access after a lost confirmation response; only the bound job's coarse
+status remains accessible. Receipt storage/expiry/key/replay policies require
+security review before implementation and do not override owner ADR-011 gates.
+Never put secret-bearing challenge, download or provider-management responses in
+ordinary plaintext mutation receipts, sync payloads, telemetry or page props.
+The current SQL prototype does not implement their encrypted response capsules,
+durable jobs or minimal retained status records. No security certification implied.
+
 ---
 
 ## 9. Secrets and Environment Variables
@@ -1626,6 +1652,14 @@ The application should not continue exposing another user's private cached accou
 
 ### Local Storage Principles
 
+Saved-plan detail is proposed in [PL-04](revision/30-MOBILE-PLAN-STORAGE-OUTBOX-RECOVERY.md):
+account/environment partitions and callback-generation fences, frozen outbox
+intent, quarantined stale copies and atomic sanitized mirror installation.
+Unknown safety after a privacy reset is not permission to replay old payloads.
+SQLite selection does not establish encryption/backup policy; SecureStore is for
+credentials, not plan bodies. Retention/import/reinstall and native-alert policies
+plus actual device/server and independent review remain gates, not completed tests.
+
 Deep Focus local storage should:
 
 - Use secure storage for sensitive credentials
@@ -1828,9 +1862,20 @@ Application behavior should not falsely promise immediate removal from every bac
 
 ### Data Export
 
-User data export may be introduced if required by product, platform, or legal requirements.
+The January Account Portal design includes an owned asynchronous export workflow;
+see [backend lifecycle](revision/16-BACKEND-EXTENSIONS-AND-OPERATIONS.md) and
+[portal runbook](revision/17-WEBSITE-PORTAL-AND-RELEASE-RUNBOOK.md). Its legal scope,
+retention, recent-auth settings and production implementation remain gated.
+Do not claim export is available until the real job/download and isolation tests
+pass, or treat a fake download button as satisfying the portal contract.
 
-V1 should not build a complex export system unless it is required for launch.
+[Outer artifact](revision/28-ACCOUNT-EXPORT-ARTIFACT-CONTRACT.md) defines fourteen
+allowlisted sections and a required disposition inventory for other retained data.
+Never label unavailable/unknown data as not collected, expose auth/storage tables
+wholesale, or claim a contract-scoped download fulfils all legal access duties.
+Separate-process dispositions need reviewed, functioning access paths. Private
+revocable delivery, current epoch/account checks and explicit local-only limits
+remain necessary; checksums are not authorization and delivered bytes cannot be recalled.
 
 The database and data model should nevertheless remain structured enough to support future export functionality.
 
@@ -2722,9 +2767,56 @@ When security-related implementation changes affect these documents, the relevan
 
 ---
 
-## 23. V1 AI Proposal and Rewarded-Unlock Security
+## 23. V1 AI Proposal, Entitlement and Advertising Security
 
 ### Proposal Generation Is Not Authorization
+
+The proposed [reward/AI wire contract](revision/22-REWARD-GOAL-AND-AI-WIRE-CONTRACT.md)
+specifies EX-31–33 with strict usage/confirmation/output shapes, one atomic selected
+apply, current object ownership/version checks and durable duplicate prevention.
+It is a reviewed-by-author design, not independent security review or deployed
+proof. Raw prompts/provider output are not client DTOs; model text is untrusted
+data even after user confirmation. [23](revision/23-AI-GENERATION-RECOVERY-AND-REVISION.md)
+adds draft generation/reservation/fencing, cancellation-race and manual-revision
+lifecycle rules. Exact retention, strict wire/provider contracts and actual
+integration remain gated. Zero new generation allowance is not an apply charge.
+
+[24](revision/24-DAILY-PLAN-AND-GENERATION-WIRE-CONTRACT.md) adds strict Plan My Day
+generation/status/cancel/revision/plan-read DTOs and contractVersion 2 plan.create
+with optional reminders. A reviewed plan is not verified activity: no XP/session
+creation on save. All block/task/reminder references, times, version, digest and
+explicit selection are checked before atomic persistence. New plan storage/feed/
+export/deletion and client capability support must be integrated before enabling
+this draft; the schema alone does not approve real personal-data storage.
+
+[25](revision/25-SAVED-PLAN-LIFECYCLE-AND-PRIVACY.md) extends the proposed privacy
+boundary to known explanation copies, archived plans, historical change payloads,
+materialized snapshots/exports, stale workers and offline outboxes. Old signed
+download URLs are not assumed revocable. Require a tested suppression boundary,
+reviewed retention, current ownership and account-state checks before activation;
+synthetic epoch examples do not establish real erasure or authorization.
+
+[26](revision/26-SAVED-PLAN-MANAGEMENT-WIRE.md) specifies current-plan read and
+explicit keep/update/disable/create reminder intents with optimistic version pins.
+Plan-Contract-Version is a compatibility header, never authorization. Recheck
+ownership/account state before receipt access, then exact versions/dependencies
+before writes; minimal replay receipts cannot return erased schedule content.
+Schema checks do not establish transaction, erasure, OS delivery or access safety.
+
+[27](revision/27-PLAN-REPLICATION-SNAPSHOT-EXPORT-WIRE.md) makes v2 cursor/job/
+snapshot/export epoch binding and mid-batch reset explicit, with atomic complete
+groups. Digests detect corruption relative to a trusted commitment; they are not
+access grants or protection against a malicious server. Legacy suppression is
+also required. Offline cached data/already delivered exports cannot be remotely
+recalled by assertion. Revocable delivery, worker fencing, local reset/outbox
+safety and real owner/account-state denial still need independent integration review.
+
+[29](revision/29-PLAN-DATABASE-RPC-TEST-PACKET.md) specifies the future isolated
+role/RPC/migration evidence. Test actual privileged and ordinary roles, gateway
+actor proof, all function grants/overloads and search-path behavior; neither
+RLS alone nor a client-supplied owner/context is authorization. Deterministic
+multi-connection races and independent post-commit reads are required. The packet
+executes no SQL and does not satisfy pending qualified security review.
 
 AI-generated plans and task breakdowns are untrusted proposals. A model-generated
 instruction must never authorize a write by itself.
@@ -2734,11 +2826,12 @@ The confirmed apply boundary must:
 - authenticate the user again through the ordinary request boundary;
 - verify ownership of every referenced task, goal, reminder, or other resource;
 - accept only supported action types and fields;
-- revalidate user-edited values;
+- validate user edits into a new stored version/digest and obtain fresh review;
 - apply only the exact submitted and confirmed items;
 - use ordinary trusted task and reminder services;
 - enforce idempotency and duplicate protection;
-- return safe item-level outcomes without leaking unrelated data.
+- return exact selected acknowledgements on atomic success, or a safe error
+  without partial writes; never leak unrelated data.
 
 An opaque proposal identifier must not be predictable or usable by another user.
 If proposal state is signed or stored temporarily, it must have an appropriate
@@ -2746,21 +2839,31 @@ expiration and must not contain unnecessary private context.
 
 ### AI Action Entitlements
 
-The mobile client must not be authoritative for introductory, consumed, or
-rewarded AI action counts.
+The mobile client must not be authoritative for free, paid, consumed, or
+conditionally selected rewarded AI action counts. Limited free AI + optional
+paid AI is approved; amount, renewal, prices and provider contracts remain open.
 
 Trusted infrastructure must enforce:
 
-- exactly one five-action introductory grant per eligible user;
+- idempotent free allowance grants under the approved amount/period policy,
+  not the superseded fixed-five assumption;
+- paid grants only from verified purchase/entitlement evidence, with replay,
+  refund and expiry rules defined before paid implementation;
 - atomic successful-request completion and action consumption;
 - idempotent retries;
-- no consumption for provider timeout, malformed response, internal failure, or
-  user cancellation under the approved V1 contract;
+- no consumption for terminal provider timeout, malformed response, internal
+  failure or accepted cancellation; a transport disconnect is not a terminal
+  failure, and cancellation after committed completion is not a refund;
 - supported feature availability before provider work begins.
 
 Concurrent requests must not overspend the same remaining action.
 
 ### Rewarded Advertisement Verification
+
+Rewarded access is a candidate format, not the only approved way to obtain more
+AI access. The owner requires unobtrusive launch ads, but provider/format/
+placement/frequency/age eligibility remain undecided. This section applies when
+rewarded access is selected; it does not authorize an SDK or production delivery.
 
 A client SDK callback, local flag, screenshot, or boolean is not trusted proof of
 a completed rewarded advertisement.
@@ -2784,7 +2887,7 @@ platform-policy, consent, and data-flow review.
 
 ### Advertising Safety Boundary
 
-Rewarded advertising must not:
+Any selected advertising format must not:
 
 - interrupt an active Focus Session or True Zen Break;
 - use private tasks, goals, assessment answers, focus history, or AI prompts as
@@ -2803,7 +2906,36 @@ Any later retention of AI content requires an explicit purpose, limited retentio
 period, user-facing privacy treatment where required, access control, deletion
 behavior, and documented approval.
 
+An asynchronous job's minimized input snapshot and short-lived structured result
+are also personal content, not mere operational metadata. 23 explicitly gates
+their retention/access policy and the separate request/revision deduplication
+barrier. Do not retain raw rendered prompts/provider responses or use content
+expiry to permit another debit/execution on an old key. A late provider callback
+cannot resurrect a terminal failed/cancelled request. Production evidence is NOT RUN.
+
 ---
+
+## Bounded classroom security reconciliation — September 30
+
+Owner approval admits bounded sharing, not private learner surveillance.
+[Lifecycle](revision/39-BOUNDED-CLASSROOM-SHARING-CONTRACT.md),
+[wire/data](revision/40-CLASSROOM-WIRE-DATA-AND-TRANSACTION-TESTS.md) and
+[operation/table review matrix](revision/41-CLASSROOM-RECONCILIATION-AND-SQL-TEST-PREPARATION.md)
+remain DRAFT / HIGH / REVIEW_PENDING. Their presence here is scoped reference
+reconciliation, not independent security acceptance or approved legal policy.
+
+Class predicates supplement, never replace, private ownership. Validate the
+current actor, membership, permitted operation, lifecycle and exact selected
+copy inside the trusted boundary, including retries. Educator role is not a
+profile preference. Leave/revoke/withdraw close subsequent access; they cannot
+recall delivered bytes. Own privacy controls require separate authorization.
+
+No private Task/notes/schedule/focus-history join in educator projections; no
+tokens in logs, export or ordinary receipts. Grants, callable functions, views,
+RLS and privileged runtime bypass paths all require actual negative tests.
+Eligibility/retention and export coverage require reviewed policy; collected
+classroom data cannot be marked not_collected to fit an old export schema.
+No real-minor pilot, credential change or production operation is authorized.
 
 # Conclusion
 

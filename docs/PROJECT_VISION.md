@@ -8,6 +8,8 @@ This vision acts as the foundation for every decision made throughout the design
 
 Every feature, interface, AI capability, and user experience should align with the principles defined in this document to ensure that Deep Focus continues to grow with a clear and consistent purpose.
 
+Owner clarification (2026-09-14): the shared value is to organise the work people need to do and make carrying it out easier. Education means student study-work and teacher teaching-work organisation using their own resources, not Deep Focus-supplied videos, papers, notes or other academic materials. Resource storage is local by default, with optional paid cloud direction accepted subject to cost, privacy, capacity and release decisions. See the [decision register](revision/01-REQUIREMENTS-AND-DECISIONS.md); this clarification does not promote every proposed feature into V1.
+
 ---
 
 ## 1. Introduction
@@ -346,7 +348,11 @@ Metrics should not encourage:
 - Excessive work duration
 - Manipulative reward systems
 
-Well-being, stress, fatigue, or burnout-related indicators should be treated as supportive user-reported or behavioral signals unless a feature has been appropriately validated for stronger claims.
+Use clearly attributed voluntary self-reports and factual work/break observations,
+not inferred health-risk or mental-energy scores. The owner confirmed no unverified
+health predictions. A future stronger health-related proposal needs separate
+owner scope approval and appropriate evidence/privacy/safety review; broad future
+vision or generic model validation is not permission to introduce it.
 
 Product metrics should guide improvement without being presented as medical or psychological diagnoses.
 
@@ -394,8 +400,10 @@ The approved V1 AI direction is:
 - `Break Down This Task` is included only after core stability is demonstrated;
 - `Review My Day Lite` is included only when release quality and time permit;
 - every generated plan or task change remains a proposal until the user confirms it;
-- the first five eligible AI actions are introductory free actions;
-- later AI access may use trusted rewarded-ad verification without interrupting focus or recovery;
+- limited free AI allowance and an optional paid AI add-on are owner-approved;
+  allowance amounts/renewal and prices remain open;
+- initial release includes unobtrusive ads without interrupting focus or recovery;
+  exact formats/placements/provider/age eligibility remain gated;
 - voice AI, long-form chat, automatic rescheduling, and weekly AI planning remain post-V1.
 
 The canonical feature boundaries and release checkpoints are defined in
