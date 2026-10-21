@@ -1,5 +1,10 @@
 # Deep Focus Development Guide
 
+For current task execution use [AI execution policy](ai/AI_EXECUTION_POLICY.md)
+and [Definition of Done](ai/DEFINITION_OF_DONE.md); use the
+[documentation map](DOCUMENTATION_MAP.md) to choose relevant sections. This guide
+retains technical/workflow context, not a second risk or completion policy.
+
 
 
 This document defines the development workflow, coding standards, project structure, and engineering best practices for the Deep Focus project.
@@ -7,6 +12,15 @@ This document defines the development workflow, coding standards, project struct
 It serves as the primary development reference for developers, AI coding assistants, and future contributors, helping ensure that implementation remains consistent, maintainable, secure, accessible, and aligned with the overall Deep Focus architecture.
 
 Every meaningful change to the project should follow the principles and standards defined in this guide.
+
+For the documentation revision, consult the [readiness sheet](revision/18-IMPLEMENTATION-READINESS-AND-OWNER-DECISIONS.md),
+[backend operations](revision/16-BACKEND-EXTENSIONS-AND-OPERATIONS.md) and
+[Website/Portal runbook](revision/17-WEBSITE-PORTAL-AND-RELEASE-RUNBOOK.md).
+They specify proposed migration/job/auth/release work and exact gates. The
+repository does not yet contain a configured Next.js project, and no Supabase
+deployment has been established by this work. Do not run nonexistent web build/test commands or auto-apply SQL stored
+under `docs/revision/contracts`. Establish actual tooling and authorized isolated
+targets before using those examples as implementation commands.
 
 ---
 
@@ -673,7 +687,9 @@ Clean, consistent, and well-structured code supports a reliable and scalable Dee
 
 Git should be used consistently throughout the Deep Focus project to maintain a clean development history, protect project stability, and support effective collaboration.
 
-Every meaningful change should be committed with a clear and descriptive message.
+When committing is authorized, use focused commits with clear messages. A
+documentation/development request alone does not authorize commit, push, pull,
+merge, publication or deployment.
 
 ---
 
@@ -685,11 +701,12 @@ The GitHub repository serves as the primary source of truth for the project.
 
 Developers should:
 
-- Pull the latest changes before starting work
+- Inspect current branch/dirty state first; integrate incoming changes only when
+  authorized and safe for existing work
 - Keep the local repository synchronized
 - Review incoming changes before integrating them
 - Resolve merge conflicts carefully
-- Push completed work regularly
+- Push completed work only within explicit task authority
 - Avoid committing generated, temporary, or sensitive files
 
 The `main` branch should represent the latest stable and reviewed state of the project.
@@ -817,14 +834,15 @@ The resulting `main` branch should remain functional after every accepted merge.
 
 ---
 
-After a successful commit:
+After a successful authorized commit, and only if push is also authorized:
 
 - Push changes to the appropriate remote branch
 - Verify that the push completed successfully
 - Confirm that the remote repository reflects the intended changes
 - Review automated checks when available
 
-Completed work should be pushed regularly to reduce the risk of lost work and keep collaboration synchronized.
+Regular pushes may support collaboration when authorized; this recommendation
+does not authorize a remote write, branch change or overwrite of another person's work.
 
 ---
 
@@ -1035,16 +1053,12 @@ Documentation should be updated when the change affects architecture, user behav
 
 ---
 
-A feature or change should be considered complete only when:
-
-- Required functionality has been implemented
-- Relevant testing has passed
-- Critical known issues have been resolved
-- Code has been reviewed
-- Accessibility requirements have been considered
-- Documentation has been updated where necessary
-- No sensitive information has been introduced
-- The change is ready to be committed and pushed
+Apply [Definition of Done](ai/DEFINITION_OF_DONE.md), including actual acceptance,
+accessibility/security evidence, required independent review and explicit
+unverified limitations. Implementation alone is not verification or release
+readiness. Commit/push are separate authorized actions, not completion criteria
+for every local task. Do not maintain another checklist here that could drift
+from the evidence policy.
 
 Incomplete work should not be presented as completed functionality.
 

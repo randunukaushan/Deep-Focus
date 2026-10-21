@@ -1,0 +1,25 @@
+{
+  "contractVersion": 1,
+  "task": "PL-04",
+  "executionAuthorized": false,
+  "independentReview": "PENDING",
+  "states": ["queued", "in_flight", "unknown", "acknowledged", "settled", "needs_review", "rejected", "cancelled", "privacy_blocked"],
+  "terminalInReference": ["settled", "needs_review", "rejected", "cancelled", "privacy_blocked"],
+  "transitions": [
+    {"from": "queued", "event": "dispatch", "to": "in_flight", "guard": "dispatch_permitted"},
+    {"from": "unknown", "event": "dispatch", "to": "in_flight", "guard": "dispatch_permitted"},
+    {"from": "queued", "event": "cancel", "to": "cancelled", "guard": "never_attempted"},
+    {"from": "in_flight", "event": "response_lost", "to": "unknown", "guard": "attempted"},
+    {"from": "in_flight", "event": "receipt", "to": "acknowledged", "guard": "matching_receipt"},
+    {"from": "unknown", "event": "receipt", "to": "acknowledged", "guard": "matching_receipt"},
+    {"from": "in_flight", "event": "conflict", "to": "needs_review", "guard": "definitive_result"},
+    {"from": "in_flight", "event": "reject", "to": "rejected", "guard": "definitive_result"},
+    {"from": "acknowledged", "event": "reconcile", "to": "settled", "guard": "mirror_reconciled"},
+    {"from": "queued", "event": "privacy_reset", "to": "privacy_blocked", "guard": "reset_required"},
+    {"from": "in_flight", "event": "privacy_reset", "to": "privacy_blocked", "guard": "reset_required"},
+    {"from": "unknown", "event": "privacy_reset", "to": "privacy_blocked", "guard": "reset_required"},
+    {"from": "acknowledged", "event": "privacy_reset", "to": "privacy_blocked", "guard": "reset_required"}
+  ],
+  "runtimeScenarios": {"prefix": "MP-T", "count": 20, "status": "NOT_RUN"},
+  "limits": "Synthetic command-state illustration only. No SQLite, HTTP, cryptographic intent hash, auth, OS, privacy purge, concurrency or real device execution. Quarantine release and fresh-intent confirmation are outside this reference; terminal means no automatic transition here, not deletion of unresolved evidence."
+}

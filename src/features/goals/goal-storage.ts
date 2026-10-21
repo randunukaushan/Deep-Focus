@@ -1,42 +1,24 @@
-import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
+import { deleteGoal as deleteLocalGoal, loadGoals as loadLocalGoals, saveGoals as saveLocalGoals, updateGoalDefinition as updateLocalGoalDefinition } from '@/features/storage/local-database';
 
 import type { Goal } from './goal-types';
 
-const GOALS_FILE = 'deep-focus-goals.json';
-
-function goalsPath() {
-  return FileSystem.documentDirectory ? `${FileSystem.documentDirectory}${GOALS_FILE}` : null;
-}
-
 export async function loadGoals(): Promise<Goal[]> {
   if (Platform.OS === 'web') return [];
-  const path = goalsPath();
-  if (!path) return [];
-  try {
-    const info = await FileSystem.getInfoAsync(path);
-    if (!info.exists) return [];
-    const parsed: unknown = JSON.parse(await FileSystem.readAsStringAsync(path));
-    return Array.isArray(parsed) ? parsed.filter(isGoal) : [];
-  } catch {
-    return [];
-  }
+  return loadLocalGoals();
 }
 
 export async function saveGoals(goals: Goal[]) {
   if (Platform.OS === 'web') return;
-  const path = goalsPath();
-  if (!path) return;
-  try { await FileSystem.writeAsStringAsync(path, JSON.stringify(goals)); } catch { /* local persistence is best effort */ }
+  await saveLocalGoals(goals);
 }
 
-function isGoal(value: unknown): value is Goal {
-  if (!value || typeof value !== 'object') return false;
-  const goal = value as Partial<Goal>;
-  return typeof goal.id === 'string' && typeof goal.title === 'string' && goal.title.trim().length > 0
-    && (goal.type === 'focus_time' || goal.type === 'session_count')
-    && (goal.period === 'weekly' || goal.period === 'monthly')
-    && (goal.status === 'active' || goal.status === 'completed' || goal.status === 'cancelled' || goal.status === 'expired')
-    && typeof goal.targetValue === 'number' && goal.targetValue > 0
-    && typeof goal.createdAt === 'string' && typeof goal.updatedAt === 'string';
+export async function updateGoalDefinition(goalId: string, expectedUpdatedAt: string, title: string, targetValue: number): Promise<Goal | null> {
+  if (Platform.OS === 'web') return null;
+  return updateLocalGoalDefinition(goalId, expectedUpdatedAt, title, targetValue);
+}
+
+export async function deleteGoal(goalId: string, expectedUpdatedAt: string): Promise<boolean> {
+  if (Platform.OS === 'web') return false;
+  return deleteLocalGoal(goalId, expectedUpdatedAt);
 }

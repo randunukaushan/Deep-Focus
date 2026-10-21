@@ -1,0 +1,1336 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:deep-focus:classroom:2026-09-30",
+  "title": "Bounded classroom wire DTOs — DRAFT",
+  "description": "CW-00 documentation only. Engineering representation caps, not measured production quotas. Domain authorization, actual IANA validity, privacy, locks and policy checks are separate. No SQL or app implementation.",
+  "definitions": {
+    "Id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "Version": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647
+    },
+    "Instant": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "Title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "\\S"
+    },
+    "Instructions": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000,
+      "pattern": "\\S"
+    },
+    "FeedbackText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000,
+      "pattern": "\\S"
+    },
+    "DisplayName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "\\S"
+    },
+    "TimeZone": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[A-Za-z0-9_+./-]+$"
+    },
+    "Token": {
+      "type": "string",
+      "minLength": 43,
+      "maxLength": 43,
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "Cursor": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "PageQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 20
+        },
+        "cursor": {
+          "$ref": "#/definitions/Cursor"
+        }
+      }
+    },
+    "Due": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "at",
+            "timeZone"
+          ],
+          "properties": {
+            "at": {
+              "$ref": "#/definitions/Instant"
+            },
+            "timeZone": {
+              "$ref": "#/definitions/TimeZone"
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "AssignmentContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "instructions",
+        "due"
+      ],
+      "properties": {
+        "title": {
+          "$ref": "#/definitions/Title"
+        },
+        "instructions": {
+          "$ref": "#/definitions/Instructions"
+        },
+        "due": {
+          "$ref": "#/definitions/Due"
+        }
+      }
+    },
+    "Selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "progress"
+      ],
+      "properties": {
+        "progress": {
+          "enum": [
+            "not_started",
+            "in_progress",
+            "completed"
+          ]
+        }
+      }
+    },
+    "FeedbackContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text"
+      ],
+      "properties": {
+        "text": {
+          "$ref": "#/definitions/FeedbackText"
+        }
+      }
+    },
+    "ClassView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classId",
+        "label",
+        "state",
+        "version",
+        "educatorDisplayName",
+        "membershipId",
+        "membershipVersion",
+        "role"
+      ],
+      "properties": {
+        "classId": {
+          "$ref": "#/definitions/Id"
+        },
+        "label": {
+          "$ref": "#/definitions/Title"
+        },
+        "state": {
+          "enum": [
+            "active",
+            "archived"
+          ]
+        },
+        "version": {
+          "$ref": "#/definitions/Version"
+        },
+        "educatorDisplayName": {
+          "$ref": "#/definitions/DisplayName"
+        },
+        "membershipId": {
+          "$ref": "#/definitions/Id"
+        },
+        "membershipVersion": {
+          "$ref": "#/definitions/Version"
+        },
+        "role": {
+          "enum": [
+            "educator",
+            "learner"
+          ]
+        }
+      }
+    },
+    "MembershipView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "membershipId",
+        "classId",
+        "version",
+        "state",
+        "role",
+        "displayName"
+      ],
+      "properties": {
+        "membershipId": {
+          "$ref": "#/definitions/Id"
+        },
+        "classId": {
+          "$ref": "#/definitions/Id"
+        },
+        "version": {
+          "$ref": "#/definitions/Version"
+        },
+        "state": {
+          "enum": [
+            "active",
+            "left",
+            "revoked"
+          ]
+        },
+        "role": {
+          "enum": [
+            "educator",
+            "learner"
+          ]
+        },
+        "displayName": {
+          "$ref": "#/definitions/DisplayName"
+        }
+      }
+    },
+    "AssignmentView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assignmentId",
+        "classId",
+        "version",
+        "revision",
+        "state",
+        "content"
+      ],
+      "properties": {
+        "assignmentId": {
+          "$ref": "#/definitions/Id"
+        },
+        "classId": {
+          "$ref": "#/definitions/Id"
+        },
+        "version": {
+          "$ref": "#/definitions/Version"
+        },
+        "revision": {
+          "$ref": "#/definitions/Version"
+        },
+        "state": {
+          "enum": [
+            "published",
+            "closed",
+            "withdrawn"
+          ]
+        },
+        "content": {
+          "$ref": "#/definitions/AssignmentContent"
+        }
+      }
+    },
+    "AcceptanceView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "linkId",
+        "assignmentId",
+        "acceptedRevision",
+        "taskId",
+        "taskState",
+        "acceptedAt"
+      ],
+      "properties": {
+        "linkId": {
+          "$ref": "#/definitions/Id"
+        },
+        "assignmentId": {
+          "$ref": "#/definitions/Id"
+        },
+        "acceptedRevision": {
+          "$ref": "#/definitions/Version"
+        },
+        "taskId": {
+          "$ref": "#/definitions/Id"
+        },
+        "taskState": {
+          "enum": [
+            "present",
+            "deleted"
+          ]
+        },
+        "acceptedAt": {
+          "$ref": "#/definitions/Instant"
+        }
+      }
+    },
+    "SubmissionShared": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submissionId",
+        "classId",
+        "assignmentId",
+        "assignmentRevision",
+        "version",
+        "state",
+        "membershipId",
+        "displayName",
+        "selection",
+        "receivedAt"
+      ],
+      "properties": {
+        "submissionId": {
+          "$ref": "#/definitions/Id"
+        },
+        "classId": {
+          "$ref": "#/definitions/Id"
+        },
+        "assignmentId": {
+          "$ref": "#/definitions/Id"
+        },
+        "assignmentRevision": {
+          "$ref": "#/definitions/Version"
+        },
+        "version": {
+          "$ref": "#/definitions/Version"
+        },
+        "state": {
+          "const": "shared"
+        },
+        "membershipId": {
+          "$ref": "#/definitions/Id"
+        },
+        "displayName": {
+          "$ref": "#/definitions/DisplayName"
+        },
+        "selection": {
+          "$ref": "#/definitions/Selection"
+        },
+        "receivedAt": {
+          "$ref": "#/definitions/Instant"
+        }
+      }
+    },
+    "SubmissionWithdrawn": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submissionId",
+        "classId",
+        "assignmentId",
+        "version",
+        "state"
+      ],
+      "properties": {
+        "submissionId": {
+          "$ref": "#/definitions/Id"
+        },
+        "classId": {
+          "$ref": "#/definitions/Id"
+        },
+        "assignmentId": {
+          "$ref": "#/definitions/Id"
+        },
+        "version": {
+          "$ref": "#/definitions/Version"
+        },
+        "state": {
+          "const": "withdrawn"
+        }
+      }
+    },
+    "FeedbackView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "feedbackId",
+        "submissionId",
+        "submissionVersion",
+        "version",
+        "content",
+        "receivedAt"
+      ],
+      "properties": {
+        "feedbackId": {
+          "$ref": "#/definitions/Id"
+        },
+        "submissionId": {
+          "$ref": "#/definitions/Id"
+        },
+        "submissionVersion": {
+          "$ref": "#/definitions/Version"
+        },
+        "version": {
+          "$ref": "#/definitions/Version"
+        },
+        "content": {
+          "$ref": "#/definitions/FeedbackContent"
+        },
+        "receivedAt": {
+          "$ref": "#/definitions/Instant"
+        }
+      }
+    },
+    "InviteAvailable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inviteId",
+        "classId",
+        "version",
+        "state",
+        "expiresAt",
+        "token"
+      ],
+      "properties": {
+        "inviteId": {
+          "$ref": "#/definitions/Id"
+        },
+        "classId": {
+          "$ref": "#/definitions/Id"
+        },
+        "version": {
+          "$ref": "#/definitions/Version"
+        },
+        "state": {
+          "const": "issued"
+        },
+        "expiresAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "token": {
+          "$ref": "#/definitions/Token"
+        }
+      }
+    },
+    "InviteClosed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inviteId",
+        "classId",
+        "version",
+        "state",
+        "expiresAt",
+        "token"
+      ],
+      "properties": {
+        "inviteId": {
+          "$ref": "#/definitions/Id"
+        },
+        "classId": {
+          "$ref": "#/definitions/Id"
+        },
+        "version": {
+          "$ref": "#/definitions/Version"
+        },
+        "state": {
+          "enum": [
+            "consumed",
+            "revoked",
+            "expired"
+          ]
+        },
+        "expiresAt": {
+          "$ref": "#/definitions/Instant"
+        },
+        "token": {
+          "type": "null"
+        }
+      }
+    },
+    "InvitePreview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classId",
+        "label",
+        "educatorDisplayName",
+        "policyVersion"
+      ],
+      "properties": {
+        "classId": {
+          "$ref": "#/definitions/Id"
+        },
+        "label": {
+          "$ref": "#/definitions/Title"
+        },
+        "educatorDisplayName": {
+          "$ref": "#/definitions/DisplayName"
+        },
+        "policyVersion": {
+          "$ref": "#/definitions/Version"
+        }
+      }
+    },
+    "Error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "code",
+            "messageKey",
+            "requestId",
+            "retryable"
+          ],
+          "properties": {
+            "code": {
+              "enum": [
+                "VALIDATION_FAILED",
+                "AUTH_REQUIRED",
+                "NOT_FOUND",
+                "POLICY_REQUIRED",
+                "VERSION_CONFLICT",
+                "INVALID_TRANSITION",
+                "COMMAND_CONFLICT",
+                "COMMAND_EXPIRED",
+                "INVITATION_UNAVAILABLE",
+                "RATE_LIMITED",
+                "DEPENDENCY_UNAVAILABLE"
+              ]
+            },
+            "messageKey": {
+              "type": "string",
+              "pattern": "^errors\\.[A-Za-z0-9.]+$",
+              "maxLength": 120
+            },
+            "requestId": {
+              "$ref": "#/definitions/Id"
+            },
+            "retryable": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "SubmissionView": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/SubmissionShared"
+        },
+        {
+          "$ref": "#/definitions/SubmissionWithdrawn"
+        }
+      ]
+    },
+    "InviteView": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/InviteAvailable"
+        },
+        {
+          "$ref": "#/definitions/InviteClosed"
+        }
+      ]
+    },
+    "SubmissionWithFeedback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submission",
+        "feedback"
+      ],
+      "properties": {
+        "submission": {
+          "$ref": "#/definitions/SubmissionView"
+        },
+        "feedback": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/FeedbackView"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "submission": {
+                "properties": {
+                  "state": {
+                    "const": "withdrawn"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "feedback": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "CreateClass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "commandId",
+        "expectedVersion",
+        "payload"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "commandId": {
+          "$ref": "#/definitions/Id"
+        },
+        "expectedVersion": {
+          "type": "null"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "label"
+          ],
+          "properties": {
+            "label": {
+              "$ref": "#/definitions/Title"
+            }
+          }
+        }
+      }
+    },
+    "ArchiveClass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "commandId",
+        "expectedVersion",
+        "payload"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "commandId": {
+          "$ref": "#/definitions/Id"
+        },
+        "expectedVersion": {
+          "$ref": "#/definitions/Version"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {}
+        }
+      }
+    },
+    "IssueInvite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "commandId",
+        "expectedVersion",
+        "payload"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "commandId": {
+          "$ref": "#/definitions/Id"
+        },
+        "expectedVersion": {
+          "$ref": "#/definitions/Version"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {}
+        }
+      }
+    },
+    "RevokeInvite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "commandId",
+        "expectedVersion",
+        "payload"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "commandId": {
+          "$ref": "#/definitions/Id"
+        },
+        "expectedVersion": {
+          "$ref": "#/definitions/Version"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {}
+        }
+      }
+    },
+    "PreviewInvite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "token"
+      ],
+      "properties": {
+        "token": {
+          "$ref": "#/definitions/Token"
+        }
+      }
+    },
+    "AcceptInvite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "commandId",
+        "expectedVersion",
+        "payload"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "commandId": {
+          "$ref": "#/definitions/Id"
+        },
+        "expectedVersion": {
+          "type": "null"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "token",
+            "policyVersion",
+            "classDisplayName"
+          ],
+          "properties": {
+            "token": {
+              "$ref": "#/definitions/Token"
+            },
+            "policyVersion": {
+              "$ref": "#/definitions/Version"
+            },
+            "classDisplayName": {
+              "$ref": "#/definitions/DisplayName"
+            }
+          }
+        }
+      }
+    },
+    "RevokeMember": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "commandId",
+        "expectedVersion",
+        "payload"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "commandId": {
+          "$ref": "#/definitions/Id"
+        },
+        "expectedVersion": {
+          "$ref": "#/definitions/Version"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {}
+        }
+      }
+    },
+    "LeaveClass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "commandId",
+        "expectedVersion",
+        "payload"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "commandId": {
+          "$ref": "#/definitions/Id"
+        },
+        "expectedVersion": {
+          "$ref": "#/definitions/Version"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {}
+        }
+      }
+    },
+    "PublishAssignment": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "commandId",
+            "expectedVersion",
+            "payload"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": 1
+            },
+            "commandId": {
+              "$ref": "#/definitions/Id"
+            },
+            "expectedVersion": {
+              "type": "null"
+            },
+            "payload": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "assignmentId",
+                "content"
+              ],
+              "properties": {
+                "assignmentId": {
+                  "type": "null"
+                },
+                "content": {
+                  "$ref": "#/definitions/AssignmentContent"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "commandId",
+            "expectedVersion",
+            "payload"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": 1
+            },
+            "commandId": {
+              "$ref": "#/definitions/Id"
+            },
+            "expectedVersion": {
+              "$ref": "#/definitions/Version"
+            },
+            "payload": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "assignmentId",
+                "content"
+              ],
+              "properties": {
+                "assignmentId": {
+                  "$ref": "#/definitions/Id"
+                },
+                "content": {
+                  "$ref": "#/definitions/AssignmentContent"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "AssignmentLifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "commandId",
+        "expectedVersion",
+        "payload"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "commandId": {
+          "$ref": "#/definitions/Id"
+        },
+        "expectedVersion": {
+          "$ref": "#/definitions/Version"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action"
+          ],
+          "properties": {
+            "action": {
+              "enum": [
+                "close",
+                "withdraw"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "AcceptAssignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "commandId",
+        "expectedVersion",
+        "payload"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "commandId": {
+          "$ref": "#/definitions/Id"
+        },
+        "expectedVersion": {
+          "type": "null"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "assignmentRevision",
+            "copyDue"
+          ],
+          "properties": {
+            "assignmentRevision": {
+              "$ref": "#/definitions/Version"
+            },
+            "copyDue": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "SubmitProgress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "commandId",
+        "expectedVersion",
+        "payload"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "commandId": {
+          "$ref": "#/definitions/Id"
+        },
+        "expectedVersion": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Version"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "assignmentRevision",
+            "selection",
+            "policyVersion"
+          ],
+          "properties": {
+            "assignmentRevision": {
+              "$ref": "#/definitions/Version"
+            },
+            "selection": {
+              "$ref": "#/definitions/Selection"
+            },
+            "policyVersion": {
+              "$ref": "#/definitions/Version"
+            }
+          }
+        }
+      }
+    },
+    "WithdrawSubmission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "commandId",
+        "expectedVersion",
+        "payload"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "commandId": {
+          "$ref": "#/definitions/Id"
+        },
+        "expectedVersion": {
+          "$ref": "#/definitions/Version"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {}
+        }
+      }
+    },
+    "PublishFeedback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "commandId",
+        "expectedVersion",
+        "payload"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "commandId": {
+          "$ref": "#/definitions/Id"
+        },
+        "expectedVersion": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Version"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "submissionVersion",
+            "content"
+          ],
+          "properties": {
+            "submissionVersion": {
+              "$ref": "#/definitions/Version"
+            },
+            "content": {
+              "$ref": "#/definitions/FeedbackContent"
+            }
+          }
+        }
+      }
+    },
+    "AssignmentQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "revision": {
+          "$ref": "#/definitions/Version"
+        }
+      }
+    },
+    "ClassViewResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/ClassView"
+        }
+      }
+    },
+    "MembershipViewResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/MembershipView"
+        }
+      }
+    },
+    "AssignmentViewResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/AssignmentView"
+        }
+      }
+    },
+    "AcceptanceViewResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/AcceptanceView"
+        }
+      }
+    },
+    "SubmissionViewResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/SubmissionView"
+        }
+      }
+    },
+    "SubmissionWithFeedbackResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/SubmissionWithFeedback"
+        }
+      }
+    },
+    "FeedbackViewResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/FeedbackView"
+        }
+      }
+    },
+    "InviteViewResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/InviteView"
+        }
+      }
+    },
+    "InvitePreviewResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/InvitePreview"
+        }
+      }
+    },
+    "ClassList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data",
+        "nextCursor"
+      ],
+      "properties": {
+        "data": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/definitions/ClassView"
+          }
+        },
+        "nextCursor": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Cursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "AssignmentList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data",
+        "nextCursor"
+      ],
+      "properties": {
+        "data": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/definitions/AssignmentView"
+          }
+        },
+        "nextCursor": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Cursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "SubmissionList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data",
+        "nextCursor"
+      ],
+      "properties": {
+        "data": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/definitions/SubmissionWithFeedback"
+          }
+        },
+        "nextCursor": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Cursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "MembershipList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data",
+        "nextCursor"
+      ],
+      "properties": {
+        "data": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/definitions/MembershipView"
+          }
+        },
+        "nextCursor": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Cursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

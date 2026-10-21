@@ -247,6 +247,11 @@ Quality, maintainability, and user value should take priority over development s
 
 ## 4. Contribution Workflow
 
+Execution authority, risk, READY/STOP and escalation are defined once in
+[AI execution policy](ai/AI_EXECUTION_POLICY.md); evidence/review/completion in
+[Definition of Done](ai/DEFINITION_OF_DONE.md). The workflow below is a
+contribution overview, not a competing procedure or permission to mutate Git.
+
 ---
 
 Every contribution should follow a consistent workflow to maintain project quality, reduce avoidable errors, and simplify collaboration.
@@ -274,9 +279,9 @@ Self-Review
         ↓
 Update Documentation
         ↓
-Commit
+Commit (when authorized)
         ↓
-Push
+Push (when authorized)
 ```
 
 Small contributions may require less preparation, but relevant verification and review should not be skipped.
@@ -365,7 +370,8 @@ Small internal changes that do not affect documented behavior may not require do
 
 ---
 
-After implementation, testing, and review are complete:
+After implementation, testing, and required review are complete, and the task
+explicitly authorizes commit/push:
 
 - Create a focused and meaningful commit
 - Use the project's approved commit message conventions
@@ -374,6 +380,9 @@ After implementation, testing, and review are complete:
 - Review automated checks when available
 
 Each commit should represent one logical change whenever practical.
+
+Do not commit or push merely because a local documentation/code task is complete.
+Preserve dirty work and keep unauthorized remote actions out of the handoff.
 
 Significant collaborative changes should follow the branch and Pull Request practices defined in `DEVELOPMENT_GUIDE.md`.
 
@@ -642,16 +651,12 @@ New unrelated work should normally be handled separately rather than added to an
 
 ---
 
-A Pull Request should be considered ready to merge when:
-
-- Required implementation is complete
-- Critical review feedback has been resolved
-- Relevant testing has passed
-- Automated checks pass where available
-- Documentation is updated where required
-- No known critical regression remains
-- Security and privacy concerns have been addressed
-- The resulting target branch is expected to remain stable
+A Pull Request is ready to merge only when the applicable
+[Definition of Done](ai/DEFINITION_OF_DONE.md) gates are satisfied for the current
+diff, required checks/review findings are resolved, and integration is authorized.
+HIGH/CRITICAL changes cannot substitute author self-review for independent review.
+Re-run affected evidence after changes; check target-branch compatibility and
+preserve other contributors' work. A passing build alone is not merge readiness.
 
 A Pull Request should not be merged simply because implementation is finished if important review or testing issues remain unresolved.
 

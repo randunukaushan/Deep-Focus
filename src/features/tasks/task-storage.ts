@@ -1,39 +1,39 @@
-import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 
 import type { Task } from './task-types';
-
-const TASKS_FILE = 'deep-focus-tasks.json';
-
-function pathForTasks() {
-  return FileSystem.documentDirectory ? `${FileSystem.documentDirectory}${TASKS_FILE}` : null;
-}
+import { completeTask as completeLocalTask, deleteTask as deleteLocalTask, loadTasks as loadLocalTasks, saveTasks as saveLocalTasks, updateTaskArchive as updateLocalTaskArchive, updateTaskDetails as updateLocalTaskDetails, updateTaskTitle as updateLocalTaskTitle } from '@/features/storage/local-database';
 
 export async function loadTasks(): Promise<Task[]> {
   if (Platform.OS === 'web') return [];
-  const path = pathForTasks();
-  if (!path) return [];
-  try {
-    const info = await FileSystem.getInfoAsync(path);
-    if (!info.exists) return [];
-    const parsed: unknown = JSON.parse(await FileSystem.readAsStringAsync(path));
-    return Array.isArray(parsed) ? parsed.filter(isTask) : [];
-  } catch {
-    return [];
-  }
+  return loadLocalTasks();
 }
 
 export async function saveTasks(tasks: Task[]) {
   if (Platform.OS === 'web') return;
-  const path = pathForTasks();
-  if (!path) return;
-  try { await FileSystem.writeAsStringAsync(path, JSON.stringify(tasks)); } catch { /* local persistence is best effort */ }
+  await saveLocalTasks(tasks);
 }
 
-function isTask(value: unknown): value is Task {
-  if (!value || typeof value !== 'object') return false;
-  const task = value as Partial<Task>;
-  return typeof task.id === 'string' && typeof task.title === 'string' && task.title.trim().length > 0
-    && (task.status === 'pending' || task.status === 'in_progress' || task.status === 'completed' || task.status === 'cancelled')
-    && typeof task.createdAt === 'string' && typeof task.updatedAt === 'string';
+export async function updateTaskTitle(taskId: string, expectedUpdatedAt: string, title: string): Promise<string | null> {
+  if (Platform.OS === 'web') return null;
+  return updateLocalTaskTitle(taskId, expectedUpdatedAt, title);
+}
+
+export async function completeTask(taskId: string, expectedUpdatedAt: string): Promise<{ task: Task; outcome: 'completed' | 'already_completed' } | null> {
+  if (Platform.OS === 'web') return null;
+  return completeLocalTask(taskId, expectedUpdatedAt);
+}
+
+export async function updateTaskDetails(taskId: string, expectedUpdatedAt: string, title: string, description: string, priority: Task['priority'], goalId?: string | null, dueAt?: string | null): Promise<string | null> {
+  if (Platform.OS === 'web') return null;
+  return updateLocalTaskDetails(taskId, expectedUpdatedAt, title, description, priority, goalId, dueAt);
+}
+
+export async function updateTaskArchive(taskId: string, expectedUpdatedAt: string, archivedAt: string | null): Promise<string | null> {
+  if (Platform.OS === 'web') throw new Error('TASK_STORAGE_UNAVAILABLE: local SQLite tasks are not available on web');
+  return updateLocalTaskArchive(taskId, expectedUpdatedAt, archivedAt);
+}
+
+export async function deleteTask(taskId: string, expectedUpdatedAt: string): Promise<boolean> {
+  if (Platform.OS === 'web') return false;
+  return deleteLocalTask(taskId, expectedUpdatedAt);
 }

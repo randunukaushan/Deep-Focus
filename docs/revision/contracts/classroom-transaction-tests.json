@@ -1,0 +1,313 @@
+{
+  "contractVersion": 1,
+  "task": "CW-00",
+  "executionAuthorized": false,
+  "independentReview": "PENDING",
+  "databaseTarget": "UNSELECTED_ISOLATED_SYNTHETIC_ONLY",
+  "tests": [
+    {
+      "id": "TX-01",
+      "operation": "CW-01",
+      "given": "Eligible E1 and no class; same create command K on two connections.",
+      "interleaving": "A begins and pauses before commit; B sends K; release A, then B.",
+      "expected": "Exactly one class and educator membership; same class identity; no duplicate audit intent.",
+      "sourceCases": [
+        "CT-01",
+        "CT-02"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-02",
+      "operation": "CW-08",
+      "given": "One issued token; eligible A and B with distinct commands.",
+      "interleaving": "A locks class/invite; B waits; commit A; resume B.",
+      "expected": "Only A redeems; B receives generic unavailable; no B membership or account enumeration.",
+      "sourceCases": [
+        "CT-05",
+        "CT-06"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-03",
+      "operation": "CW-08",
+      "given": "Issued token and policy denied for A.",
+      "interleaving": "Inject failure after eligibility check and before membership insert; retry with unchanged denied policy.",
+      "expected": "Token remains unused; no membership/redemption/receipt committed.",
+      "sourceCases": [
+        "CT-06"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-04",
+      "operation": "CW-06",
+      "given": "Token issued; A joining while educator revokes token.",
+      "interleaving": "Run revoke-first and join-first schedules with class lock barriers.",
+      "expected": "Revoke-first denies join; join-first records membership, revoke cannot silently remove it.",
+      "sourceCases": [
+        "CT-04",
+        "CT-07"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-05",
+      "operation": "CW-15",
+      "given": "A active in C1 with accepted assignment and report ready.",
+      "interleaving": "Commit membership revocation first; release waiting submit.",
+      "expected": "Submit denied; no report/receipt inserted and no private Task changed.",
+      "sourceCases": [
+        "CT-07",
+        "CT-21"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-06",
+      "operation": "CW-15",
+      "given": "A active; submit obtains required locks first.",
+      "interleaving": "Submit commits; revoke then commits; replay submit/read afterward.",
+      "expected": "Receipt remains restricted; later ordinary teacher access denied; no stale cached content returned.",
+      "sourceCases": [
+        "CT-07",
+        "CT-18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-07",
+      "operation": "CW-11",
+      "given": "X current version 1; two authorized edits from E1.",
+      "interleaving": "Send both with expectedVersion 1 using separate connections.",
+      "expected": "One new revision/version only; loser receives conflict with no private-schedule change.",
+      "sourceCases": [
+        "CT-08",
+        "CT-09"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-08",
+      "operation": "CW-14",
+      "given": "A has no acceptance for X and both devices confirm same revision.",
+      "interleaving": "Use different command IDs concurrently; force each to attempt create.",
+      "expected": "One private Task/link; both authorized results reference same identity; no teacher acceptance metric.",
+      "sourceCases": [
+        "CT-11"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-09",
+      "operation": "CW-14",
+      "given": "Valid first assignment acceptance.",
+      "interleaving": "Inject rollback separately after Task, link, and private receipt insert before commit.",
+      "expected": "All three effects absent after each rollback; source assignment unchanged; retry can commit once.",
+      "sourceCases": [
+        "CT-12"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-10",
+      "operation": "CW-20",
+      "given": "Acceptance commits but mobile receives timeout and restarts.",
+      "interleaving": "Before revocation, reuse that command ID to accept another assignment; then revoke membership and recover the original receipt.",
+      "expected": "Cross-assignment command reuse conflicts with no second receipt; owner A recovers only the original private pointer; B denied; no new Task or class content.",
+      "sourceCases": [
+        "CT-13",
+        "CT-20"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-11",
+      "operation": "CW-14",
+      "given": "A accepted X; private task T later deleted.",
+      "interleaving": "Retry original accept and a fresh accept command; recover private receipt.",
+      "expected": "Return permitted deleted-link state without recreating T; no bypass via fresh command ID.",
+      "sourceCases": [
+        "CT-14"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-12",
+      "operation": "CW-15",
+      "given": "Report r1; A prepares two different progress amendments.",
+      "interleaving": "Run both expectedVersion 1 concurrently and replay one ID with changed content.",
+      "expected": "Exactly one next revision; stale amendment and altered-command replay conflict; no silent overwrite.",
+      "sourceCases": [
+        "CT-17"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-13",
+      "operation": "CW-16",
+      "given": "A shared report; E1 preparing feedback.",
+      "interleaving": "Run withdrawal-first and feedback-first using lock barriers.",
+      "expected": "Withdrawal-first prevents feedback; feedback-first may commit but becomes inaccessible after withdrawal.",
+      "sourceCases": [
+        "CT-18",
+        "CT-22"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-14",
+      "operation": "CW-15",
+      "given": "Report withdrawn at r2, queued old submit still exists.",
+      "interleaving": "Replay old command; then send freshly confirmed r2 re-share.",
+      "expected": "Old replay cannot expose selection; new valid share r3 contains only new selection, no restored feedback.",
+      "sourceCases": [
+        "CT-18"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-15",
+      "operation": "CW-17",
+      "given": "Report r1 changed to r2 before E1 feedback commit.",
+      "interleaving": "Try feedback for r1; then authorized current-revision correction.",
+      "expected": "Stale target conflicts; feedback never silently retargets or modifies private Task.",
+      "sourceCases": [
+        "CT-22"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-16",
+      "operation": "CW-04",
+      "given": "Class C1 active with accepted private Tasks.",
+      "interleaving": "Race archive against invite/publish/submit; then try leave/withdraw.",
+      "expected": "No new work after archive wins; leave/withdraw still work; private Tasks unaffected.",
+      "sourceCases": [
+        "CT-19"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-17",
+      "operation": "CW-18",
+      "given": "E1/C1, E2/C2, A/B membership fixtures and foreign IDs.",
+      "interleaving": "Read through API, direct grants, views and callable functions; forge class/assignment/submission links.",
+      "expected": "No foreign row/content/existence leak; learner view contains only own report; no private Task joins.",
+      "sourceCases": [
+        "CT-03",
+        "CT-15"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-18",
+      "operation": "CW-05",
+      "given": "Invite issued, successful response lost, encrypted delivery copy retained.",
+      "interleaving": "Replay same issue command; then consume/expire/revoke and replay again.",
+      "expected": "Same token only while issued/authorized; closed response has null token; no plaintext log/receipt copy.",
+      "sourceCases": [
+        "CT-04",
+        "CT-05"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-19",
+      "operation": "CW-15",
+      "given": "Expired auth/changed policy and command already stored.",
+      "interleaving": "Replay using another account, stale policy, or archived class.",
+      "expected": "Recheck current authority before result projection; no old access through idempotency cache.",
+      "sourceCases": [
+        "CT-07",
+        "CT-20",
+        "CT-21"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-20",
+      "operation": "CW-22",
+      "given": "Membership list spans pages; member revoked between reads.",
+      "interleaving": "Reuse cursor under different actor/class/filter and continue after revocation.",
+      "expected": "Cursor bound to authorized scope; mismatch denied and current access rechecked on every page.",
+      "sourceCases": [
+        "CT-03",
+        "CT-20"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-21",
+      "operation": "CW-16",
+      "given": "Withdraw/leave/account deletion tombstones and isolated backup fixture.",
+      "interleaving": "Restore disposable backup then apply reviewed privacy recovery before enabling access.",
+      "expected": "No withdrawn data/access resurrected; required account/class-family export exclusions explicit.",
+      "sourceCases": [
+        "CT-23"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-22",
+      "operation": "CW-14",
+      "given": "Same private Task later edited while client accepts/replays receipt.",
+      "interleaving": "Crash after server commit; merge into mobile after a newer Task version exists.",
+      "expected": "Never overwrite newer local/private work with old snapshot; pointer recovery then ordinary versioned sync.",
+      "sourceCases": [
+        "CT-13",
+        "CT-14"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-23",
+      "operation": "CW-08",
+      "given": "Concurrent invite issue/join and account policy revocation; cross-class commands.",
+      "interleaving": "Force both lock acquisition orders and a database deadlock/serialization abort.",
+      "expected": "No unsafe commit; bounded retry of full same intent with fresh authorization; no network calls under locks.",
+      "sourceCases": [
+        "CT-07",
+        "CT-20"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "TX-24",
+      "operation": "CW-15",
+      "given": "Shared progress contains only permitted categorical value.",
+      "interleaving": "Inject private Task fields into requests and synthetic dirty response projections; inspect receipts/logs/export.",
+      "expected": "Strict shape rejection/redaction; no schedule/notes/files/focus history/XP or private acceptance evidence exposed.",
+      "sourceCases": [
+        "CT-15",
+        "CT-16"
+      ],
+      "status": "NOT_RUN",
+      "evidence": []
+    }
+  ]
+}
