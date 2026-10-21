@@ -1,93 +1,95 @@
-import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
+import {
+  appendSessionHistory as appendLocalSessionHistory,
+  clearActiveSession as clearLocalActiveSession,
+  loadActiveSession as loadLocalActiveSession,
+  loadFinalizedSession as loadLocalFinalizedSession,
+  loadPendingSummaryHandoff as loadLocalPendingSummaryHandoff,
+  clearPendingSummaryHandoff as clearLocalPendingSummaryHandoff,
+  claimTerminalAchievementPresentation as claimLocalTerminalAchievementPresentation,
+  loadTasks as loadLocalTasks,
+  loadSessionHistory as loadLocalSessionHistory,
+  loadTerminalProgression as loadLocalTerminalProgression,
+  persistTerminalSession as persistLocalTerminalSession,
+  saveActiveSession as saveLocalActiveSession,
+} from '@/features/storage/local-database';
 
 import type { FocusSession } from './session-types';
 
-const ACTIVE_FILE = 'deep-focus-active-session.json';
-const HISTORY_FILE = 'deep-focus-session-history.json';
-
-function pathFor(fileName: string) {
-  return FileSystem.documentDirectory ? `${FileSystem.documentDirectory}${fileName}` : null;
-}
-
 export async function saveActiveSession(session: FocusSession) {
-  if (Platform.OS === 'web') return;
-  const path = pathFor(ACTIVE_FILE);
-  if (!path) return;
-  await safely(() => FileSystem.writeAsStringAsync(path, JSON.stringify(session)));
+  if (Platform.OS === 'web') throw new Error('Active-session storage is unavailable on web');
+  await saveLocalActiveSession(session);
 }
 
-export async function loadActiveSession(): Promise<FocusSession | null> {
-  if (Platform.OS === 'web') return null;
-  const path = pathFor(ACTIVE_FILE);
-  if (!path) return null;
-  return (await safely(async () => {
-    const info = await FileSystem.getInfoAsync(path);
-    if (!info.exists) return null;
-    const raw = await FileSystem.readAsStringAsync(path);
-    return parseSession(raw);
-  }, null)) ?? null;
+export async function loadActiveSession(strict = false): Promise<FocusSession | null> {
+  if (Platform.OS === 'web') {
+    if (strict) throw new Error('Active-session storage is unavailable on web');
+    return null;
+  }
+  return loadLocalActiveSession(strict);
+}
+
+export async function loadFocusableTask(taskId: string) {
+  if (Platform.OS === 'web') throw new Error('Task-linked focus is unavailable on web');
+  if (!taskId.trim()) throw new RangeError('INVALID_TASK_ID');
+  const tasks = await loadLocalTasks();
+  return tasks.find((task) => task.id === taskId && task.status !== 'completed' && task.status !== 'cancelled') ?? null;
+}
+
+/** Reads only a durable terminal session in the current owner namespace. */
+export async function loadFinalizedSession(sessionId: string) {
+  if (Platform.OS === 'web') throw new Error('Session history storage is unavailable on web');
+  if (!sessionId.trim()) throw new RangeError('INVALID_SESSION_ID');
+  return loadLocalFinalizedSession(sessionId);
+}
+
+/** Reads the owner-scoped terminal session that still needs a Summary handoff. */
+export async function loadPendingSummaryHandoff() {
+  if (Platform.OS === 'web') throw new Error('Session summary storage is unavailable on web');
+  return loadLocalPendingSummaryHandoff();
+}
+
+/** Clears only the matching Summary handoff; it never touches progression or history. */
+export async function clearPendingSummaryHandoff(sessionId: string) {
+  if (Platform.OS === 'web') throw new Error('Session summary storage is unavailable on web');
+  if (!sessionId.trim()) throw new RangeError('INVALID_SESSION_ID');
+  await clearLocalPendingSummaryHandoff(sessionId);
+}
+
+/** Reads only the persisted progression event owned by this terminal session. */
+export async function loadTerminalProgression(sessionId: string) {
+  if (Platform.OS === 'web') throw new Error('Session progression storage is unavailable on web');
+  if (!sessionId.trim()) throw new RangeError('INVALID_SESSION_ID');
+  return loadLocalTerminalProgression(sessionId);
+}
+
+/** Claims one calm, owner-scoped Summary presentation without replaying progression. */
+export async function claimTerminalAchievementPresentation(sessionId: string) {
+  if (Platform.OS === 'web') throw new Error('Session progression storage is unavailable on web');
+  if (!sessionId.trim()) throw new RangeError('INVALID_SESSION_ID');
+  return claimLocalTerminalAchievementPresentation(sessionId);
 }
 
 export async function clearActiveSession() {
-  if (Platform.OS === 'web') return;
-  const path = pathFor(ACTIVE_FILE);
-  if (!path) return;
-  await safely(async () => {
-    const info = await FileSystem.getInfoAsync(path);
-    if (info.exists) await FileSystem.deleteAsync(path, { idempotent: true });
-  });
+  if (Platform.OS === 'web') throw new Error('Active-session storage is unavailable on web');
+  await clearLocalActiveSession();
 }
 
 export async function appendSessionHistory(session: FocusSession) {
-  if (Platform.OS === 'web') return;
-  const path = pathFor(HISTORY_FILE);
-  if (!path) return;
-  await safely(async () => {
-    const existing = await readHistory(path);
-    if (existing.some((item) => item.id === session.id)) return;
-    await FileSystem.writeAsStringAsync(path, JSON.stringify([...existing, session]));
-  });
+  if (Platform.OS === 'web') throw new Error('Session history storage is unavailable on web');
+  await appendLocalSessionHistory(session);
+}
+
+/** Persist history before removing the active recovery record. Safe to retry. */
+export async function persistTerminalSession(session: FocusSession) {
+  if (session.status !== 'completed' && session.status !== 'cancelled') {
+    throw new RangeError('Only terminal sessions can be finalized');
+  }
+  if (Platform.OS === 'web') throw new Error('Session storage is unavailable on web');
+  await persistLocalTerminalSession(session);
 }
 
 export async function loadSessionHistory(): Promise<FocusSession[]> {
   if (Platform.OS === 'web') return [];
-  const path = pathFor(HISTORY_FILE);
-  if (!path) return [];
-  return safely(() => readHistory(path), []);
-}
-
-async function readHistory(path: string) {
-  const info = await FileSystem.getInfoAsync(path);
-  if (!info.exists) return [];
-  const raw = await FileSystem.readAsStringAsync(path);
-  const parsed: unknown = JSON.parse(raw);
-  return Array.isArray(parsed) ? parsed.filter(isFocusSession) : [];
-}
-
-function parseSession(raw: string): FocusSession | null {
-  const parsed: unknown = JSON.parse(raw);
-  return isFocusSession(parsed) && (parsed.status === 'active' || parsed.status === 'paused') ? parsed : null;
-}
-
-function isFocusSession(value: unknown): value is FocusSession {
-  if (!value || typeof value !== 'object') return false;
-  const session = value as Partial<FocusSession>;
-  return typeof session.id === 'string'
-    && (session.status === 'active' || session.status === 'paused' || session.status === 'completed' || session.status === 'cancelled')
-    && typeof session.plannedDurationSeconds === 'number'
-    && typeof session.focusedDurationSeconds === 'number'
-    && typeof session.pausedDurationSeconds === 'number'
-    && typeof session.createdAt === 'string'
-    && typeof session.startedAt === 'string';
-}
-
-async function safely<T>(operation: () => Promise<T>): Promise<T | undefined>;
-async function safely<T>(operation: () => Promise<T>, fallback: T): Promise<T>;
-async function safely<T>(operation: () => Promise<T>, fallback?: T): Promise<T | undefined> {
-  try {
-    return await operation();
-  } catch {
-    return fallback;
-  }
+  return loadLocalSessionHistory();
 }

@@ -1,117 +1,104 @@
-# Deep Focus V1 Feature Matrix
+# Deep Focus V1 feature matrix
 
-This document tracks the implementation state of the approved Deep Focus V1 scope.
+Snapshot: **2026-10-22, Asia/Colombo**. Inspected main:
+`7916d81180ddcfd0901c1869a648541516e1f9aa` (PR #14 merged after PR #20).
+This is an implementation/evidence inventory, not a new scope or release approval.
+[V1 scope](V1_FEATURE_SCOPE.md), dated [owner decisions](revision/01-REQUIREMENTS-AND-DECISIONS.md)
+and the [release map](revision/32-JANUARY-RELEASE-SCOPE-AND-DECISIONS.md) govern
+admission. Later scope is not automatically promoted by a module or route.
 
-It exists to prevent confusion between **documented target scope** and **currently implemented behavior**. A feature may be approved for V1 without being fully implemented yet.
+## Reading the status
 
-`V1_FEATURE_SCOPE.md` remains the canonical source for **what belongs in V1**. This matrix tracks **how far each V1 area has been implemented and verified**.
+- **Local slice**: source and local behavior exist; not a complete feature claim.
+- **Boundary only**: adapter, intent, contract or fixtures exist; not a live service.
+- **Partial**: required behavior or acceptance remains incomplete.
+- **Not established**: this audit has no sufficient execution/acceptance evidence.
+- **Tests present** names repository tests; a filename alone is not a passing run.
+- **Release: NOT_READY** applies to every required row below. No device, hosted,
+  commercial, legal, accessibility or independent-review gate is passed by this table.
 
----
+Source links describe the named snapshot; future main changes require refresh.
+The exact current checks and inherited test provenance are recorded in
+[PR #19 evidence](revision/evidence/PR19-STATUS-RECONCILIATION-2026-10-22.md).
+The earlier full 1776/1776 suite is [dated PR #14 evidence](revision/evidence/PR14-BREAK-RECOVERY-2026-10-21.md),
+not a new full-suite run for this docs-only change. See also the
+[current core audit](V1_CORE_FOCUS_AUDIT.md) and
+[superseded October 15 audit](revision/evidence/V1-CORE-FOCUS-AUDIT-2026-10-15-HISTORICAL.md).
 
-## Status Legend
+## A. Mobile foundation and core productivity
 
-| Status | Meaning |
-| --- | --- |
-| ✅ Complete | Implemented for the tracked layer and evidence exists |
-| 🟡 Partial | Some implementation exists, but the tracked layer is incomplete |
-| ⚪ Planned | Approved/documented, but implementation evidence is not yet sufficient |
-| 🔴 Blocked | Cannot progress because of a known dependency or unresolved decision |
-| ❓ Unverified | May exist, but has not yet been confirmed in code/tests |
+All rows in this section are retained V1 scope. The five-step setup amendment
+supersedes older onboarding question-count examples; no mandatory new survey.
 
-A row may only become **Release Ready = ✅** after applicable UI, business logic, persistence/synchronization, accessibility, security, and test requirements are verified.
+| Area | UI / logic at baseline | Persistence / sync | Tests present / evidence | Remaining gap; release NOT_READY |
+| --- | --- | --- | --- | --- |
+| Splash, Welcome, startup | [Root auth/onboarding/recovery routing](../src/app/_layout.tsx), [Welcome](../src/app/welcome.tsx) local slice | Current-owner recovery; not a hosted session guarantee | [Startup/Home checks](../tests/components/home-session-recovery.test.mjs), [entry presentation](../tests/components/entry-presentation.test.mjs) | Actual cold/warm launch, deep links and Back-stack on Android/iOS |
+| Onboarding / personalization | [Versioned setup definition](../src/features/onboarding/setup-definition.ts): language plus four real preference choices; optional legacy assessment retained | [SQLite settings/drafts](../src/features/storage/local-database.ts), owner-scoped, confirmed application | [Setup flow](../tests/domain/setup-flow.test.mjs), [setup storage](../tests/domain/setup-preferences-storage.test.mjs) | Real-device flow, translation, accessibility; answers are not proven behavioral facts |
+| Home dashboard | [Home screen](../src/features/home/home-screen.tsx), persisted activity and recovery actions | Local data reads; no full cloud freshness guarantee | [Home recovery checks](../tests/components/home-session-recovery.test.mjs) | Full required metric/state coverage and device evidence |
+| Focus session | [Setup](../src/app/focus/setup.tsx), [engine](../src/features/focus/session-engine.ts), [hook](../src/features/focus/use-focus-session.ts): timestamps, validated duration, stable task ID, guarded completion/cancel | [SQLite21](../src/features/storage/local-database.ts); active pointer, durable terminal transaction and outbox | [Engine](../tests/domain/session-engine.test.mjs), [boundaries](../tests/domain/session-boundaries.test.mjs) | Native interruptions/clocks; hosted reconciliation and release safety acceptance |
+| True Zen Break | [Recovery hook](../src/features/focus/use-break-recovery.ts): original deadline, explicit clock/error/retry, no automatic focus resume | Owner/session/pause-bound SQLite active break; idempotent start and atomic resume/terminal cleanup | [Real synthetic SQLite](../tests/domain/break-recovery-storage.test.mjs), [controller](../tests/domain/break-recovery-controller.test.mjs) | Android/iOS force-close/reopen and accessibility; active break is not completed-break history or trusted credit |
+| Session Summary | [Summary](../src/app/focus/summary.tsx) reads terminal record; local XP/level, achievement receipt, streak, explicit linked-task completion | Durable Summary handoff and achievement-presentation receipt; no automatic task completion | [Summary data](../tests/domain/session-summary-data.test.mjs), [support presentation](../tests/components/focus-support-presentation.test.mjs) | Full goal/break-summary coverage and native/error/provider acceptance |
+| Tasks | [Task storage](../src/features/tasks/task-storage.ts), create/edit/complete/archive/delete and planning fields local slice | Owner-scoped SQLite; stable task/session/goal links; history preserved; sync remains separate | [Task detail](../tests/components/task-detail.test.mjs), [ownership](../tests/domain/local-database-ownership.test.mjs) | Cross-device synchronization and installed-build interactions |
+| Goals | [Goal progress](../src/features/goals/goal-progress.ts), period bounds, supported edit/delete and local reconciliation | SQLite preserves linked tasks/history; no claim every local contribution is remotely verified | [Goal progress](../tests/domain/goal-progress.test.mjs), [ownership](../tests/domain/local-database-ownership.test.mjs) | Hosted contribution/duplicate evidence and full native lifecycle |
+| Streaks | [Streak](../src/features/progress/streak.ts) computes current/longest using local-day rules | Derived from durable session history; not independent UI-only increments | [Streak cases](../tests/domain/streak.test.mjs) | Device timezone/DST and remote reconciliation acceptance |
+| XP, levels, achievements | [Progression rules](../src/features/progress/progression-rules.ts) and [SQLite transaction](../src/features/storage/local-database.ts) implement local duplicate-safe progression/receipts | Owner-scoped local processing; server fixtures exist separately, not production trust | [Progression](../tests/domain/progression-rules.test.mjs), [SQLite ownership](../tests/domain/local-database-ownership.test.mjs) | Independent qualified review and hosted end-to-end trusted grants |
+| Analytics / Progress — mandatory | [Progress route](../src/app/(tabs)/progress/index.tsx), [aggregation](../src/features/progress/progress-analytics.ts): period filters, averages, tasks/goals/streak and local XP/level | Local sessions/tasks/goals/reward reads; conflicting duplicate detection | [Calculations](../tests/domain/progress-analytics.test.mjs), [UI states](../tests/components/progress.test.mjs), [filters](../tests/components/progress-filter-accessibility.test.mjs) | Recovery-break metrics, complete offline/cloud freshness semantics and actual accessibility |
+| Session History | [Canonical Progress history](../src/app/(tabs)/progress/history.tsx); old analytics URLs retained as aliases | Local terminal history and supported detail lookup | [History](../tests/components/session-history.test.mjs), [navigation](../tests/navigation/navigation-contract.test.mjs) | Complete filter, back/deep-link and installed-build state acceptance |
+| Profile / settings | [Profile](../src/app/(tabs)/profile.tsx), [settings](../src/app/profile/settings.tsx): local account/preferences controls | Owner-scoped settings and device-only presentation; not all settings/providers wired | [Settings](../tests/components/settings.test.mjs), [localized accessibility](../tests/components/settings-accessibility-locale.test.mjs) | Full account/privacy/provider, sound/haptics and device acceptance |
+| Notifications | Reminder contracts/storage/server handlers exist; native scheduling/delivery not established | Reminder intents are not OS permission, alarm or delivery proof | [Reminder applier](../tests/domain/postgres-reminder-applier.test.mjs) | Installed OS adapter, permission/denial, scheduling, cancel/reboot and timezone tests |
+| Authentication / account | Auth routes and [existing owner activation](../src/features/auth/session-owner-activation.ts) source slice; provider selection is already recorded | SecureStore adapter and local owner namespaces; hosted/provider configuration still needs evidence | [Auth service](../tests/domain/auth-service.test.mjs), [owner activation](../tests/domain/session-owner-activation.test.mjs), [SQLite ownership](../tests/domain/local-database-ownership.test.mjs) | Live callbacks, revocation/expiry and hosted authorization; no policy changed by this audit |
+| Offline / sync / recovery | Local continuity plus [account sync runtime](../src/features/sync/account-sync-runtime.ts) and adapters | Durable outbox/snapshot/pull primitives; runtime explicitly does not activate itself at startup | [Sync runtime](../tests/domain/account-sync-runtime.test.mjs), [SQLite sync](../tests/domain/sqlite-v2-sync-storage.test.mjs) | Complete mobile↔hosted multi-device operation, conflict/retry and privacy lifecycle |
 
----
+## B. Required January surfaces and admitted extensions
 
-## V1 Feature Matrix
+| Area / scope placement | Current evidence | Boundary / remaining gap; release NOT_READY |
+| --- | --- | --- |
+| Public Website — required | [Next.js app](../web/src/app/page.tsx), localized public content and [web tests](../web/tests/public-pages.test.mjs) | Development content is not publication, hosting/domain, approved claims or commercial/legal readiness |
+| Account Portal — required, not replaceable by a landing page | [Account route](../web/src/app/account/page.tsx), [portal component](../web/src/components/account-portal.tsx), browser client adapter exist | Partial account/auth UI is not full supported settings/subscription/privacy integration. Older web README describes an earlier public-only slice; current source shows a portal candidate, not a complete deployed portal |
+| Sinhala / Tamil / English — launch locales | [Locale definitions](../src/features/localization/app-locale.ts), mobile copy modules and web locale content | Source and string consistency do not establish fluent translation or device/script/layout acceptance; language does not choose country/consent |
+| Sri Lanka learner education — admitted O/L, A/L, higher stage | [Education metadata](../src/features/education/education-metadata.ts), profile/resource metadata slices; [tests](../tests/domain/education-metadata.test.mjs) | Not a complete curriculum/exam/country-pack implementation or accreditation; age gates remain separate |
+| Independent personal-teacher organizer — admitted | [Teacher assignment draft](../src/features/education/teacher-assignment-draft.ts), [route](../src/app/education/teacher-assignment.tsx), [storage tests](../tests/domain/teacher-assignment-storage.test.mjs) | Local draft is not a real class, invite, delivery or full teacher workspace |
+| Bounded classroom sharing — September 29 V1 amendment | [Classroom policy](../src/features/education/classroom-policy.ts), [local helpers](../src/features/education/classroom-local.ts), [tests](../tests/domain/classroom-local.test.mjs) and proposed contracts | Invitation/assignment/explicit private-plan adoption/selected progress/feedback require reviewed real end-to-end service. No full LMS, chat, file distribution or private timetable/history disclosure |
+| User-owned local resources — local default | [Resource storage](../src/features/resources/resource-storage.ts), [route](../src/app/resources/index.tsx), [SQLite tests](../tests/domain/resource-storage.test.mjs) | PDF/JPG/PNG, links and book/page direction is not complete native import/viewer/permission/backup evidence; app supplies no academic content library |
+| Optional paid Cloud Resources — required January capability, user-optional | [Cloud intent/disabled adapter](../src/features/resources/cloud-resource-adapter.ts), [tests](../tests/domain/cloud-resource-adapter.test.mjs) | Upload/download deliberately disabled; no live storage, consent/entitlement/quota/billing/retention/operations acceptance. Cannot silently drop or invent commercial success |
+| Plan My Day — required AI | [Proposal/confirm route](../src/app/plan-my-day.tsx), [planner](../src/features/planning/ai-planner.ts), [SQLite plan tests](../tests/domain/plan-storage.test.mjs) | Deterministic/mock and transport boundaries are not a configured, evaluated live provider or full trusted usage/replication. Confirm exact proposals; core works without AI |
+| Break Down This Task / Review My Day Lite — conditional V1 | [Scope §11/checkpoint §13](V1_FEATURE_SCOPE.md); no complete released implementation established here | Preserve conditional placement, not a mandatory release-ready claim; no autonomous task changes or medical diagnosis |
+| Limited free AI + optional paid AI, unobtrusive launch ads — existing direction | [Entitlement policy](../src/features/monetization/entitlement-policy.ts), [ad policy](../src/features/monetization/ad-policy.ts) boundaries and tests | Prices/allowances/providers/placements/eligibility still gated. Rewarded unlock only if selected; client ad claims cannot grant trusted usage; no ads during focus/break |
+| Commitment / ordinary exit / Emergency exit — retained safety direction | [Scope §4](V1_FEATURE_SCOPE.md) and dated [decisions](revision/01-REQUIREMENTS-AND-DECISIONS.md) | Current cancel action does not prove full configurable commitment modes/Emergency-exit acceptance. Early exit remains cancellation, no missed-work XP penalty |
+| Ages 15–17 development, not live access approval | [October 6 boundary](revision/01-REQUIREMENTS-AND-DECISIONS.md) | Real-minor pilot/release access remains disabled pending qualified legal review and separately implemented controls; target 15+ is not consent or ad/payment/cloud eligibility |
+| Accessibility / privacy / security — release blockers | Semantic UI, reduced-motion/localization code, local negative fixtures and backend test modules exist | No whole-app accessibility, hosted security, penetration/compliance or production data-lifecycle certification |
+| Android + iOS release — both required | Expo SDK56 source, existing package/build setup; [release runbook](revision/08-VERIFICATION-AND-RELEASE.md) | Named release-candidate builds, actual device lifecycle, stores, operations/support and owner release approval still required |
 
-| V1 Area | Required for V1 | Designed / Documented | UI | Logic | Persistence / Sync | Tests | Release Ready | Current Evidence / Notes |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Splash / Welcome / startup routing | Yes | ✅ | 🟡 | 🟡 | N/A | ❓ | ❌ | Welcome/startup routes exist; full release routing still requires verification. |
-| Home / daily dashboard | Yes | ✅ | 🟡 | 🟡 | 🟡 | ❓ | ❌ | Home route exists, but full V1 dashboard coverage and verified data wiring need review. |
-| Core Focus Session | Yes — highest priority | ✅ | 🟡 | 🟡 | 🟡 | ❓ | ❌ | Focus UI and focus feature modules exist. V1 still requires full lifecycle, recovery, background/foreground, idempotent completion, and persistence verification. |
-| True Zen Break / recovery | Yes | ✅ | 🟡 | 🟡 | 🟡 | ❓ | ❌ | Approved in V1 docs; implementation coverage requires a focused audit. |
-| Session Summary / Done | Yes | ✅ | 🟡 | 🟡 | 🟡 | ❓ | ❌ | Session-history and completion data exist; final V1 summary behavior and task-completion separation need verification. |
-| Tasks | Yes | ✅ | 🟡 | 🟡 | 🟡 | ❓ | ❌ | Task routes exist. Full create/edit/complete/archive, due date, priority, goal/session links, offline/sync coverage need verification. |
-| Goals | Yes | ✅ | 🟡 | 🟡 | 🟡 | ❓ | ❌ | Goal routes exist. Full goal lifecycle and progress-from-verified-activity need verification. |
-| Streaks | Yes | ✅ | 🟡 | 🟡 | 🟡 | ❓ | ❌ | V1 scope requires current/longest streak and duplicate-safe local-day handling; implementation completeness not yet confirmed. |
-| XP / Levels / Achievements / Rewards | Yes | ✅ | 🟡 | 🟡 | 🟡 | ❓ | ❌ | Rewards route exists. Duplicate-safe reward processing and complete V1 achievement rules need verification. |
-| Analytics / Progress | **Yes — mandatory** | ✅ | 🟡 | 🟡 | 🟡 | ❓ | ❌ | Existing Analytics screen already shows total focus time, completed sessions, Focus/Plan %, a progress summary, and session history access. Full V1 scope still needs daily/weekly/monthly summaries, average duration, task completion, goal progress, streak/XP/level integration, period filters, and robust offline/error states. |
-| Session History | Yes | ✅ | ✅/🟡 | 🟡 | 🟡 | ❓ | ❌ | Dedicated `analytics/history` route exists and reads persisted session history. Full filtering/state coverage still needs verification. |
-| Profile | Yes | ✅ | 🟡 | 🟡 | 🟡 | ❓ | ❌ | Profile route exists; complete V1 account/profile behaviors require audit. |
-| Settings | Yes | ✅ | 🟡 | 🟡 | 🟡 | ❓ | ❌ | V1 requires focus/break defaults, appearance, notifications, sound/haptics, reduced motion, AI preference, privacy/account controls. Complete implementation not yet verified. |
-| Notifications | Yes | ✅ | ⚪/🟡 | ⚪/🟡 | 🟡 | ❓ | ❌ | Required by scope; implementation coverage must be audited. |
-| Accessibility | Yes — release blocker | ✅ | 🟡 | N/A | N/A | ❓ | ❌ | Existing screens include some accessibility labels/roles. Full screen-reader, dynamic type, contrast, focus order, reduced motion, and touch-target verification is still required. |
-| Authentication / account foundation | Yes | ✅ | 🟡 | 🟡 | 🟡 | ❓ | ❌ | Auth routes exist; secure storage, ownership boundaries, sign-out/account switching, and full authorization need verification. |
-| Offline / synchronization / recovery | Yes — release blocker | ✅ | N/A | 🟡 | 🟡 | ❓ | ❌ | Session storage/history exists. Full pending-sync persistence, retries, restart recovery, conflict/duplicate safety, and account-isolation must be verified. |
-| Security / privacy hardening | Yes — release blocker | ✅ | N/A | 🟡 | 🟡 | ❓ | ❌ | Strong documented requirements exist; code-level and backend verification remains required. |
-| `Plan My Day` AI | **Yes — required AI feature** | ✅ | 🟡 | 🟡 | 🟡 | ❓ | ❌ | `src/app/plan-my-day.tsx` exists. V1 requires proposal → review → explicit confirmation, minimum context, validation, graceful failure, and no silent state changes. |
-| `Break Down This Task` AI | Conditional V1 | ✅ | ⚪/🟡 | ⚪/🟡 | ⚪/🟡 | ❓ | ❌ | Only stays in V1 if core stability and release quality allow. |
-| `Review My Day Lite` AI | Conditional V1 | ✅ | ⚪/🟡 | ⚪/🟡 | ⚪/🟡 | ❓ | ❌ | Only stays in V1 if time and quality permit after higher-priority work. |
-| AI access / rewarded unlock | Yes if V1 AI access model is used | ✅ | ⚪/🟡 | ⚪/🟡 | ⚪/🟡 | ❓ | ❌ | Must be server-authoritative; client-only ad completion cannot grant trusted usage. Needs implementation verification. |
-| Android release readiness | Yes | ✅ | N/A | N/A | N/A | ❓ | ❌ | Requires final build, device regression, store configuration, privacy/security checks, and release QA. |
-| iOS release readiness | Yes | ✅ | N/A | N/A | N/A | ❓ | ❌ | Requires iOS build/test path, store configuration, privacy/security checks, and release QA. |
+Full productivity web, desktop, wearables and wider enterprise/LMS directions
+remain later unless a separate exact owner amendment changes placement. This
+matrix neither selects a scope cut nor promises the January date.
 
----
+## Analytics reconciliation — source present, acceptance still partial
 
-## Analytics / Progress — Mandatory V1 Completion Checklist
+The former checklist marked averages, period summaries, task/goal/streak/XP
+integration, filter controls and calculation tests as absent/unknown. At this
+snapshot the aggregation and Progress route contain these local slices:
 
-Analytics is confirmed as a **mandatory V1 feature**, not an optional enhancement.
+- `today`, `week`, `month`, `all` windows; local-day/timezone filtering;
+- total focus time (including measured cancelled-session time), completed-session
+  count, completed-session average and Focus/Plan ratio;
+- task-completion counts/rate using the implemented cohort semantics;
+- goal progress, current/longest streak, owner-local XP/level reads;
+- weekly activity chart with labels, history entry and loading/empty/error/retry UI;
+- duplicate/conflicting record validation and calculation/UI test files.
 
-The existing screen already provides a useful partial slice. V1 completion should cover:
+This is not a pass for every metric definition, timezone/device interaction,
+offline freshness, remote trust or accessibility requirement. Recovery-break
+analytics and full break/goal Summary integration remain unestablished. Do not
+restore the old "no tests" checklist or convert local code into release ticks.
 
-- [x] total focus time from completed saved sessions;
-- [x] completed focus-session count;
-- [x] Focus / Plan percentage based on saved session data;
-- [x] basic progress summary;
-- [x] link to session history;
-- [ ] daily summary;
-- [ ] weekly summary;
-- [ ] monthly summary;
-- [ ] average focus duration;
-- [ ] daily / weekly activity visualization or equivalent accessible presentation;
-- [ ] task-completion analytics;
-- [ ] goal-progress analytics;
-- [ ] current and longest streak integration;
-- [ ] XP and level progress integration;
-- [ ] recovery-break information where supported;
-- [ ] time-period filters;
-- [ ] loading-state verification;
-- [ ] empty-state verification;
-- [ ] offline-state behavior;
-- [ ] error and retry behavior;
-- [ ] accessibility verification;
-- [ ] automated/integration tests for analytics calculations and update flow;
-- [ ] regression check that completed focus sessions update analytics exactly once.
+## Dependency-safe next work — recommendation, not new approval
 
-### Analytics principle
-
-The Progress / Analytics screen should be the single V1 analytics center. Do not create duplicate progress systems elsewhere unless a small summary is contextually useful on Home or Session Summary.
-
----
-
-## Current Implementation Tracking Rules
-
-1. **Do not mark a feature complete because it appears in documentation.**
-2. **Do not mark a feature complete because a screen file exists.** UI, logic, persistence, failure states, accessibility, and tests may still be incomplete.
-3. Update this matrix only from repository evidence, executed tests, or explicitly recorded manual verification.
-4. When a feature is partially implemented, note the missing layer rather than using a single misleading percentage.
-5. `CHANGELOG.md` should only record completed user-visible changes; this matrix may record partial work.
-6. A feature becomes **Release Ready** only after the applicable Definition of Done in `AGENTS.md`, `TESTING_STRATEGY.md`, and `V1_IMPLEMENTATION_PLAN.md` is satisfied.
-7. This matrix does not add or remove V1 features. Scope changes still require explicit product-owner approval and updates to `V1_FEATURE_SCOPE.md`.
-
----
-
-## Immediate Next Audit Order
-
-To turn the current yellow/unknown states into verified status, audit in this order:
-
-1. Core Focus Session lifecycle and persistence.
-2. Tasks and Goals end-to-end behavior.
-3. Analytics / Progress full V1 gap list.
-4. Streak / XP / rewards update path from verified completion.
-5. Settings, notifications, profile, and accessibility.
-6. `Plan My Day` proposal/confirmation and failure behavior.
-7. Offline/sync/recovery and account-isolation hardening.
-8. Android + iOS release verification.
-
-This order follows V1 dependency risk rather than visual polish.
+1. Obtain actual Android/iOS focus/break/restart/Back/accessibility evidence and
+   qualified review for the affected high-risk implementation; fix evidenced defects.
+2. Reconcile the next bounded mobile↔hosted integration gap with its contracts,
+   ownership/privacy and replay evidence; adapters are not a complete sync service.
+3. Complete required Website/Portal, education/resources and commercial lanes
+   through their existing gates; measure effort before any owner-approved deferral.
+4. Refresh this matrix for the next named commit. Keep release acceptance separate
+   from document merge, full-suite count, provider selection and prototype polish.

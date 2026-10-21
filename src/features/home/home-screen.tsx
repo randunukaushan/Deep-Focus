@@ -1,263 +1,154 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
-import { Image, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useCallback, useEffect, useState } from 'react';
-
+import { useCallback, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
-import { MaxContentWidth } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { DeepFocusScene } from '@/components/deep-focus-scene';
 import { useTheme } from '@/hooks/use-theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Palette, Radius, Spacing, Typography } from '@/theme/tokens';
 import { loadActiveSession, loadSessionHistory } from '@/features/focus/session-storage';
+import { loadTasks } from '@/features/tasks/task-storage';
+import { localPlanningDate, summarizeTaskPlan } from '@/features/tasks/task-planning';
+import type { Task } from '@/features/tasks/task-types';
+import { useAppLocale } from '@/features/localization/app-locale-context';
+import { getPreviewHomeCopy } from '@/features/localization/preview-home-copy';
+import { getProgressCopy } from '@/features/localization/progress-copy';
+import { usePresentation } from '@/features/settings/presentation-context';
+import { defaultPresentationPreferences, motivationPhrase } from '@/features/settings/presentation-preferences';
 
-type QuickAction = {
-  label: string;
-  detail: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  route: Href;
-};
-
-const QUICK_ACTIONS: QuickAction[] = [
-  { label: 'Tasks', detail: 'Choose what matters next', icon: 'checkbox-outline', route: '/tasks' },
-  { label: 'Goals', detail: 'Keep your direction clear', icon: 'flag-outline', route: '/goals' },
-  { label: 'Plan My Day', detail: 'Create a calm starting point', icon: 'sparkles-outline', route: '/plan-my-day' },
-];
-
-function getGreeting(hour: number) {
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
-}
-
-function formatFocusTime(totalSeconds: number) {
+function formatFocusTime(totalSeconds: number, units: { hour: string; minute: string }) {
   const minutes = Math.floor(totalSeconds / 60);
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  return remainingMinutes === 0 ? `${hours}h` : `${hours}h ${remainingMinutes}m`;
+  return minutes < 60 ? `${minutes} ${units.minute}` : `${Math.floor(minutes / 60)} ${units.hour} ${minutes % 60} ${units.minute}`;
 }
 
 export function HomeScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const { height } = useWindowDimensions();
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const refreshClock = () => setNow(new Date());
-    const interval = setInterval(refreshClock, 60_000);
-    return () => clearInterval(interval);
-  }, []);
-  const hour = now.getHours();
-  const isNight = hour >= 18 || hour < 6;
-  const isMorning = hour >= 6 && hour < 12;
-  const calmGreeting = isMorning
-    ? 'A calmer start to the day.'
-    : isNight
-      ? 'Make space for a quieter evening.'
-      : 'Make room for the work that matters today.';
-  // Keep the complete home overview visible on common phone viewports while
-  // retaining the scroll fallback for smaller screens and larger text sizes.
-  const compact = height < 900;
-  const homeBackground = isDark ? theme.background : Palette.homeLightBackground;
-  const homeSurface = isDark ? theme.surface : Palette.homeLightSurface;
-  const homeBorder = isDark ? theme.border : Palette.homeLightBorder;
-  const homeAction = isDark ? Palette.mintPrimary : Palette.homeLightAction;
-  const homeActionSoft = isDark ? theme.background : Palette.homeLightActionSoft;
-  const greeting = getGreeting(now.getHours());
-  const dateLabel = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+  const dark = useColorScheme() === 'dark';
+  const { copy, locale } = useAppLocale();
+  const text = getPreviewHomeCopy(locale);
+  const presentation = usePresentation();
+  const encouragement = motivationPhrase(presentation?.preferences ?? defaultPresentationPreferences, text.encouragement);
+  const progressText = getProgressCopy(locale);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [taskLoading, setTaskLoading] = useState(true);
+  const [taskError, setTaskError] = useState(false);
+  const retryTasks = useRef<() => void>(() => {});
   const [todayProgress, setTodayProgress] = useState({ focusedSeconds: 0, sessionsCompleted: 0 });
-  const [pausedSession, setPausedSession] = useState<Awaited<ReturnType<typeof loadActiveSession>>>(null);
+  const [progressError, setProgressError] = useState(false);
+  const [progressLoading, setProgressLoading] = useState(true);
+  const [recoverableSession, setRecoverableSession] = useState<Awaited<ReturnType<typeof loadActiveSession>>>(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const planRoute = '/(tabs)/plan' as const;
 
   useFocusEffect(useCallback(() => {
     let active = true;
-    void loadActiveSession().then((session) => {
-      if (active) setPausedSession(session?.status === 'paused' ? session : null);
-    });
+    setSessionLoading(true);
+    setProgressLoading(true);
+    void loadActiveSession(true).then((session) => {
+      if (active) setRecoverableSession(session?.status === 'active' || session?.status === 'paused' ? session : null);
+    }).catch(() => { if (active) router.replace('/focus/recovery'); })
+      .finally(() => { if (active) setSessionLoading(false); });
+    const readTasks = async () => {
+      setTaskLoading(true); setTaskError(false);
+      try { const stored = await loadTasks(); if (active) setTasks(stored); }
+      catch { if (active) setTaskError(true); }
+      finally { if (active) setTaskLoading(false); }
+    };
+    retryTasks.current = () => { void readTasks(); };
+    void readTasks();
     void loadSessionHistory().then((sessions) => {
       if (!active) return;
       const today = new Date().toDateString();
-      const completedToday = sessions.filter((session) => session.status === 'completed'
-        && session.completedAt
-        && new Date(session.completedAt).toDateString() === today);
-      setTodayProgress({
-        focusedSeconds: completedToday.reduce((total, session) => total + session.focusedDurationSeconds, 0),
-        sessionsCompleted: completedToday.length,
-      });
-    });
-    return () => { active = false; };
-  }, []));
+      const completedToday = sessions.filter(session => session.status === 'completed' && session.completedAt && new Date(session.completedAt).toDateString() === today);
+      setTodayProgress({ focusedSeconds: completedToday.reduce((sum, session) => sum + session.focusedDurationSeconds, 0), sessionsCompleted: completedToday.length });
+      setProgressError(false);
+    }).catch(() => { if (active) setProgressError(true); }).finally(() => { if (active) setProgressLoading(false); });
+    return () => { active = false; retryTasks.current = () => {}; };
+  }, [router]));
 
-  const hasProgress = todayProgress.sessionsCompleted > 0;
-  const progressLabel = hasProgress
-    ? `${formatFocusTime(todayProgress.focusedSeconds)} focused · ${todayProgress.sessionsCompleted} ${todayProgress.sessionsCompleted === 1 ? 'session' : 'sessions'} completed.`
-    : 'No sessions completed yet — your first focused block starts the day.';
+  const visible = summarizeTaskPlan(tasks, 'today', localPlanningDate()).tasks;
+  const priority = visible.find(task => task.status !== 'completed');
+  const others = visible.filter(task => task.id !== priority?.id).slice(0, 2);
+  const units = { hour: copy.home.hoursUnit, minute: copy.home.minutesUnit };
+  const quickActions: { label: string; detail: string; icon: keyof typeof Ionicons.glyphMap; route: Href }[] = [
+    { label: copy.home.tasks, detail: copy.home.tasksDetail, icon: 'checkbox-outline', route: '/tasks' },
+    { label: copy.home.goals, detail: copy.home.goalsDetail, icon: 'flag-outline', route: '/goals' },
+    { label: copy.home.plan, detail: copy.home.planDetail, icon: 'sparkles-outline', route: '/plan-my-day' },
+  ];
 
-  return (
-    <ThemedView style={[styles.screen, { backgroundColor: homeBackground }]}>
-      <View accessibilityElementsHidden pointerEvents="none" style={styles.landscape}>
-        <View style={[styles.sun, isMorning && styles.morningSun, { backgroundColor: isDark || isNight ? Palette.navySurfaceElevated : isMorning ? '#FFD08A' : Palette.lightSurface }]} />
-        {isNight ? <Ionicons color={isDark ? '#A9C8E6' : '#7EAED2'} name="moon" size={42} style={styles.moon} /> : null}
-        <View style={[styles.mountainBack, { backgroundColor: isDark || isNight ? Palette.navySurface : Palette.homeLightBorder }]} />
-        <View style={[styles.mountainFront, { backgroundColor: isDark || isNight ? Palette.navySurfaceElevated : Palette.homeLightActionSoft }]} />
+  function returnToSession() {
+    if (!recoverableSession) return;
+    router.push({ pathname: '/focus/session', params: {
+      durationMinutes: String(recoverableSession.plannedDurationSeconds / 60),
+      taskName: recoverableSession.taskName || '',
+      ...(recoverableSession.status === 'paused' ? { resume: '1' } : {}),
+    } });
+  }
+
+  return <ThemedView style={styles.screen}>
+    <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}><View style={styles.content}>
+      <View style={styles.topBar}>
+        <View style={styles.brand}><Image accessible={false} source={require('@/assets/branding/deep-focus-logo.png')} style={styles.logo} /><ThemedText type="smallBold" style={styles.wordmark}>DEEP FOCUS</ThemedText></View>
+        <Pressable accessibilityLabel={copy.home.settings} accessibilityRole="button" onPress={() => router.push('/profile/settings')} style={[styles.iconButton, { borderColor: theme.border, backgroundColor: theme.surface }]}><Ionicons accessible={false} name="settings-outline" size={20} color={theme.text} /></Pressable>
       </View>
-      <ScrollView contentContainerStyle={[styles.scrollContent, compact && styles.scrollContentCompact]} contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false}>
-        <View style={[styles.content, compact && styles.contentCompact]}>
-          <View style={styles.topBar}>
-            <View style={styles.topBarSpacer} />
-            <View style={styles.brandIdentity}>
-              <View style={styles.brandLogoFrame}><Image source={require('@/assets/branding/deep-focus-logo.png')} style={styles.brandLogoImage} /></View>
-              <View style={styles.brandBlock}><ThemedText style={[styles.eyebrow, styles.brandMark, { color: homeAction }]}>DEEP FOCUS</ThemedText>{!compact ? <ThemedText themeColor="textSecondary" type="small">Focus on what matters.</ThemedText> : null}</View>
-            </View>
-            <Pressable accessibilityLabel="Open settings" accessibilityRole="button" onPress={() => router.push('/profile/settings')} style={({ pressed }) => [styles.settingsButton, { backgroundColor: homeSurface, borderColor: homeBorder }, pressed && styles.pressed]}><Ionicons color={theme.text} name="settings-outline" size={22} /></Pressable>
-          </View>
-          <View style={[styles.introduction, compact && styles.introductionCompact]}>
-            <ThemedText style={[styles.greeting, compact && styles.greetingCompact, { color: isMorning && !isDark ? Palette.homeMorningAccent : theme.text }]} accessibilityRole="header">{greeting}.</ThemedText>
-            <ThemedText themeColor="textSecondary">{calmGreeting}</ThemedText>
-            {!compact ? <ThemedText style={styles.dateLabel} themeColor="textMuted" type="small">{dateLabel}</ThemedText> : null}
-          </View>
-
-          <View accessibilityLabel="Start a new focus session" style={[styles.heroCard, { backgroundColor: homeSurface, borderColor: homeBorder }]}>
-            <View style={[styles.heroGlow, { backgroundColor: isDark ? Palette.navySurfaceElevated : Palette.homeLightActionSoft }]} />
-            <View style={[styles.heroContent, compact && styles.heroContentCompact]}>
-              <View style={styles.heroHeader}>
-                <View style={[styles.heroIcon, { backgroundColor: homeAction }]}><Ionicons color={Palette.deepNavy} name="timer-outline" size={22} /></View>
-                <View style={styles.heroLabelGroup}>
-                  <ThemedText style={[styles.heroKicker, { color: isDark ? Palette.darkTextSecondary : Palette.lightTextSecondary }]}>YOUR NEXT FOCUS BLOCK</ThemedText>
-                  <ThemedText style={[styles.heroMeta, { color: homeAction }]}>25 MIN · RECOMMENDED</ThemedText>
-                </View>
-              </View>
-              <ThemedText style={[styles.heroTitle, compact && styles.heroTitleCompact, { color: isDark ? Palette.darkTextPrimary : Palette.lightTextPrimary }]}>A calm 25-minute start.</ThemedText>
-              <ThemedText numberOfLines={compact ? 1 : undefined} style={[styles.heroCopy, { color: isDark ? Palette.darkTextSecondary : Palette.lightTextSecondary }]}>Choose one meaningful task. We will take care of the rest.</ThemedText>
-              <Button
-                accessibilityLabel="Start a 25 minute focus session"
-                fullWidth
-                label="Start Focus Session"
-                onPress={() => router.push('/focus/setup')}
-                style={{ backgroundColor: homeAction, borderColor: homeAction }}
-              />
-              <View style={[styles.heroFacts, { borderTopColor: homeBorder }, compact && styles.heroFactsCompact]}>
-                <View style={styles.heroFact}><Ionicons color={homeAction} name="timer-outline" size={compact ? 18 : 20} /><ThemedText type="smallBold">25 min</ThemedText>{!compact ? <ThemedText themeColor="textSecondary" type="small">Suggested</ThemedText> : null}</View>
-                <View style={[styles.heroFactDivider, { backgroundColor: homeBorder }]} />
-                <View style={styles.heroFact}><Ionicons color={homeAction} name="options-outline" size={compact ? 18 : 20} /><ThemedText type="smallBold">5–180 min</ThemedText>{!compact ? <ThemedText themeColor="textSecondary" type="small">Flexible</ThemedText> : null}</View>
-                <View style={[styles.heroFactDivider, { backgroundColor: homeBorder }]} />
-                <View style={styles.heroFact}><Ionicons color={homeAction} name="shield-checkmark-outline" size={compact ? 18 : 20} /><ThemedText type="smallBold">Local</ThemedText>{!compact ? <ThemedText themeColor="textSecondary" type="small">Private</ThemedText> : null}</View>
-              </View>
-            </View>
-          </View>
-
-          {pausedSession ? <View accessibilityLabel={`Paused focus session: ${pausedSession.taskName || 'Focus session'}`} style={[styles.recoveryCard, { backgroundColor: homeActionSoft, borderColor: homeBorder }]}>
-            <View style={styles.recoveryCopy}>
-              <ThemedText style={[styles.sectionEyebrow, { color: homeAction }]} type="smallBold">FOCUS SESSION PAUSED</ThemedText>
-              <ThemedText type="subtitle">{pausedSession.taskName || 'Focus session'}</ThemedText>
-              <ThemedText themeColor="textSecondary" type="small">{formatFocusTime(Math.max(0, pausedSession.plannedDurationSeconds - pausedSession.focusedDurationSeconds))} remaining</ThemedText>
-            </View>
-            <Button label="Continue" onPress={() => router.push({ pathname: '/focus/session', params: { durationMinutes: String(pausedSession.plannedDurationSeconds / 60), taskName: pausedSession.taskName || '' } })} />
-          </View> : null}
-
-          <ThemedView accessibilityLabel={`Today’s focus progress. ${progressLabel}`} style={[styles.progressCard, { backgroundColor: homeSurface, borderColor: homeBorder }, compact && styles.progressCardCompact]}>
-            <View style={styles.cardHeading}>
-              <View>
-                <ThemedText style={[styles.sectionEyebrow, { color: homeAction }]} type="smallBold">YOUR FOCUS SO FAR</ThemedText>
-                <ThemedText style={compact && styles.cardTitleCompact} type="subtitle">{hasProgress ? formatFocusTime(todayProgress.focusedSeconds) : 'No focus time yet.'}</ThemedText>
-              </View>
-              <View style={[styles.statusIcon, { backgroundColor: homeActionSoft }]}><Ionicons color={homeAction} name="leaf-outline" size={20} /></View>
-            </View>
-            <View style={styles.progressMetrics}>
-              <View style={styles.progressMetric}><ThemedText themeColor="textSecondary" type="smallBold">FOCUS TIME</ThemedText><ThemedText style={compact && styles.metricValueCompact} type="subtitle">{formatFocusTime(todayProgress.focusedSeconds)}</ThemedText></View>
-              <View style={[styles.progressDivider, { backgroundColor: homeBorder }]} />
-              <View style={styles.progressMetric}><ThemedText themeColor="textSecondary" type="smallBold">BLOCKS</ThemedText><ThemedText style={compact && styles.metricValueCompact} type="subtitle">{todayProgress.sessionsCompleted}</ThemedText></View>
-            </View>
-            {!compact ? <ThemedText themeColor="textSecondary" type="small">{progressLabel}</ThemedText> : null}
-          </ThemedView>
-
-          <View style={styles.sectionHeader}>
-            <ThemedText style={[styles.sectionEyebrow, { color: homeAction }]} type="smallBold">QUICK ACTIONS</ThemedText>
-            <ThemedText themeColor="textSecondary" type="small">Keep your day clear.</ThemedText>
-          </View>
-
-          <View style={styles.quickActions}>
-            {QUICK_ACTIONS.map((action) => (
-              <Pressable accessibilityHint={action.detail} accessibilityLabel={action.label} accessibilityRole="button" key={action.label} onPress={() => router.push(action.route)} style={({ pressed }) => [styles.quickAction, { backgroundColor: homeSurface, borderColor: homeBorder }, compact && styles.quickActionCompact, pressed && styles.pressed]}>
-                <View style={[styles.actionIcon, { backgroundColor: homeActionSoft }]}><Ionicons color={homeAction} name={action.icon} size={22} /></View>
-                <View style={styles.actionCopy}>
-                  <ThemedText type="smallBold">{action.label}</ThemedText>
-                  <ThemedText numberOfLines={compact ? 1 : 2} themeColor="textSecondary" type="small">{action.detail}</ThemedText>
-                </View>
-                <Ionicons color={theme.textMuted} name="chevron-forward" size={18} style={styles.quickActionChevron} />
-              </Pressable>
-            ))}
-          </View>
-
-        </View>
-      </ScrollView>
-    </ThemedView>
-  );
+      <View style={styles.heading}><ThemedText type="small" themeColor="textSecondary">{text.greeting}</ThemedText><ThemedText accessibilityRole="header" type="title" style={styles.title}>{text.title}</ThemedText></View>
+      <View style={styles.hero}>
+        <DeepFocusScene dark={dark} />
+        <View style={styles.heroCopy}><ThemedText style={{ color: theme.textSecondary }} type="smallBold">{text.chapter}</ThemedText><ThemedText style={[styles.heroTitle, { color: theme.text }]} type="subtitle">{text.hero}</ThemedText></View>
+        <View style={styles.heroNote}><ThemedText type="small" style={styles.noteText}>{text.note}</ThemedText></View>
+      </View>
+      <View style={styles.sectionRow}><ThemedText accessibilityRole="header" type="smallBold">{recoverableSession ? copy.home.focusSession : text.next}</ThemedText><Button label={text.viewPlan} variant="ghost" onPress={() => router.push(planRoute)} /></View>
+      <ThemedView style={[styles.priority, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        {recoverableSession ? <>
+          <ThemedText type="smallBold" themeColor="textSecondary">{recoverableSession.status === 'paused' ? copy.home.pausedKicker : copy.home.focusSession}</ThemedText>
+          <ThemedText type="subtitle" style={styles.priorityTitle}>{recoverableSession.taskName || copy.home.focusSession}</ThemedText>
+          <ThemedText themeColor="textSecondary" type="small">{formatFocusTime(Math.max(0, recoverableSession.plannedDurationSeconds - recoverableSession.focusedDurationSeconds), units)} {copy.home.remaining}</ThemedText>
+          <Button fullWidth label={text.returnToFocus} onPress={returnToSession} />
+        </> : taskLoading || sessionLoading ? <ThemedText accessibilityLiveRegion="polite">{copy.tasks.loading}</ThemedText> : taskError ? <>
+          <ThemedText accessibilityRole="alert">{copy.tasks.loadError}</ThemedText><Button label={copy.tasks.retry} onPress={() => retryTasks.current()} />
+        </> : <>
+          <View style={[styles.badge, { backgroundColor: dark ? theme.surfaceElevated : Palette.homeLightActionSoft }]}><ThemedText type="small" style={{ color: theme.textSecondary }}>{text.oneThing}</ThemedText></View>
+          <ThemedText type="subtitle" style={styles.priorityTitle}>{priority?.title ?? text.breathingRoom}</ThemedText>
+          <ThemedText themeColor="textSecondary" type="small">{priority?.estimatedMinutes ? `${priority.estimatedMinutes} ${copy.focus.minutes}` : priority ? copy.tasks.ready : text.clear}</ThemedText>
+          <Button accessibilityLabel={priority ? copy.home.startFocusAccessibility : text.planNew} fullWidth label={priority ? text.start : text.planNew} onPress={() => priority ? router.push({ pathname: '/focus/setup', params: { taskId: priority.id } }) : router.push(planRoute)} />
+        </>}
+      </ThemedView>
+      <View style={styles.sectionRow}><ThemedText accessibilityRole="header" type="smallBold">{text.also}</ThemedText><Button label={text.add} variant="ghost" onPress={() => router.push(planRoute)} /></View>
+      {!taskLoading && !taskError ? others.length ? others.map(task => <Pressable key={task.id} accessibilityRole="button" accessibilityLabel={`${task.title}. ${task.status === 'completed' ? copy.tasks.completedState : copy.tasks.ready}`} onPress={() => router.push(task.status === 'completed' ? { pathname: '/tasks/[taskId]', params: { taskId: task.id } } : { pathname: '/focus/setup', params: { taskId: task.id } })} style={[styles.taskRow, { borderColor: theme.border }]}>
+        <Ionicons accessible={false} name={task.status === 'completed' ? 'checkmark-circle-outline' : 'ellipse-outline'} size={22} color={theme.textMuted} />
+        <View style={styles.taskCopy}><ThemedText style={task.status === 'completed' ? styles.completed : undefined}>{task.title}</ThemedText><ThemedText type="small" themeColor="textSecondary">{task.estimatedMinutes ? `${task.estimatedMinutes} ${copy.focus.minutes}` : copy.tasks.ready}</ThemedText></View><Ionicons accessible={false} name="chevron-forward" size={18} color={theme.textSecondary} />
+      </Pressable>) : <ThemedText themeColor="textSecondary" type="small">{text.nothingElse}</ThemedText> : null}
+      {encouragement ? <Pressable accessibilityRole="button" accessibilityLabel={encouragement} onPress={() => router.push('/(tabs)/profile')} style={[styles.encouragement, { backgroundColor: dark ? theme.surfaceElevated : Palette.homeLightActionSoft }]}><Ionicons accessible={false} name="leaf-outline" size={22} color={theme.textSecondary} /><ThemedText type="small" style={styles.taskCopy}>{encouragement}</ThemedText></Pressable> : null}
+      <View style={styles.secondary}>
+        <ThemedText accessibilityRole="header" type="smallBold">{copy.home.quickActions}</ThemedText>
+        {quickActions.map(action => <Pressable key={action.label} accessibilityLabel={action.label} accessibilityHint={action.detail} accessibilityRole="button" onPress={() => router.push(action.route)} style={[styles.quickAction, { borderColor: theme.border }]}><Ionicons accessible={false} name={action.icon} size={22} color={theme.primary} /><View style={styles.taskCopy}><ThemedText type="smallBold">{action.label}</ThemedText><ThemedText type="small" themeColor="textSecondary">{action.detail}</ThemedText></View><Ionicons accessible={false} name="chevron-forward" size={18} color={theme.textSecondary} /></Pressable>)}
+        <Button accessibilityLabel={copy.home.startFocusAccessibility} label={copy.home.startFocus} variant="secondary" disabled={sessionLoading} onPress={() => recoverableSession ? returnToSession() : router.push('/focus/setup')} />
+        {progressLoading ? <ThemedText accessibilityLiveRegion="polite">{progressText.loading}</ThemedText> : progressError ? <ThemedText accessibilityRole="alert">{progressText.loadErrorDetail}</ThemedText> : <Pressable accessibilityLabel={copy.home.focusSoFar} accessibilityRole="button" onPress={() => router.push('/(tabs)/progress')} style={styles.progress}><ThemedText type="small" themeColor="textSecondary">{copy.home.focusSoFar}</ThemedText><ThemedText type="smallBold">{formatFocusTime(todayProgress.focusedSeconds, units)} · {todayProgress.sessionsCompleted} {copy.home.blocks}</ThemedText></Pressable>}
+      </View>
+    </View></ScrollView>
+  </ThemedView>;
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, overflow: 'hidden' },
-  landscape: { height: 360, left: 0, overflow: 'hidden', position: 'absolute', right: 0, top: 0 },
-  sun: { borderRadius: 56, height: 112, opacity: 0.65, position: 'absolute', right: 42, shadowColor: '#6D9FC4', shadowOffset: { height: 8, width: 0 }, shadowOpacity: 0.18, shadowRadius: 18, top: 82, width: 112 },
-  morningSun: { right: 30, top: 42 },
-  moon: { opacity: 0.85, position: 'absolute', right: 78, top: 112 },
-  mountainBack: { borderRadius: 48, height: 280, opacity: 0.28, position: 'absolute', right: -60, top: 155, transform: [{ rotate: '42deg' }], width: 330 },
-  mountainFront: { borderRadius: 56, height: 250, left: 45, opacity: 0.72, position: 'absolute', top: 220, transform: [{ rotate: '38deg' }], width: 360 },
-  scrollContent: { flexGrow: 1, alignItems: 'center', padding: Spacing.lg, paddingBottom: Spacing.xxl },
-  scrollContentCompact: { paddingBottom: Spacing.xs, paddingHorizontal: Spacing.md, paddingTop: Spacing.sm },
-  content: { flexGrow: 1, justifyContent: 'space-between', width: '100%', maxWidth: MaxContentWidth },
-  contentCompact: { gap: Spacing.sm, justifyContent: 'flex-start' },
-  topBar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  brandIdentity: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: Spacing.sm, justifyContent: 'center' },
-  brandBlock: { gap: 2 },
-  brandLogoFrame: { backgroundColor: Palette.deepNavy, borderColor: Palette.homeLightAction, borderRadius: 28, borderWidth: 1, height: 56, overflow: 'hidden', width: 56 },
-  brandLogoImage: { height: 180, left: -51, position: 'absolute', top: -37, width: 180 },
-  topBarSpacer: { height: 48, width: 48 },
-  settingsButton: { alignItems: 'center', borderRadius: 24, borderWidth: 1, height: 48, justifyContent: 'center', width: 48 },
-  introduction: { gap: Spacing.xs, paddingVertical: Spacing.sm },
-  introductionCompact: { paddingVertical: Spacing.xs },
-  greeting: { fontSize: 32, fontWeight: '800', letterSpacing: -0.8, lineHeight: 38 },
-  greetingCompact: { fontSize: 28, lineHeight: 34 },
-  dateLabel: { marginTop: Spacing.xs },
-  eyebrow: { color: Palette.mintPrimary, fontSize: Typography.caption.fontSize, fontWeight: '700', letterSpacing: 1.6 },
-  brandMark: { fontSize: 22, letterSpacing: 3.6, lineHeight: 27 },
-  heroCard: { borderRadius: Radius.card, borderWidth: 1, elevation: 2, overflow: 'hidden', position: 'relative', shadowColor: '#6A9DC2', shadowOffset: { height: 5, width: 0 }, shadowOpacity: 0.12, shadowRadius: 12 },
-  heroContent: { gap: Spacing.md, padding: Spacing.lg, zIndex: 1 },
-  heroContentCompact: { gap: Spacing.xs, padding: Spacing.md },
-  heroGlow: { borderRadius: 180, height: 260, opacity: 0.75, position: 'absolute', right: -90, top: -120, width: 260 },
-  heroHeader: { alignItems: 'center', flexDirection: 'row', gap: Spacing.sm },
-  heroIcon: { alignItems: 'center', backgroundColor: Palette.mintPrimary, borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
-  heroLabelGroup: { gap: 2 },
-  heroKicker: { color: Palette.darkTextSecondary, fontSize: Typography.caption.fontSize, fontWeight: '700', letterSpacing: 1.3 },
-  heroMeta: { color: Palette.mintPrimary, fontSize: Typography.caption.fontSize, fontWeight: '700', letterSpacing: 0.8 },
-  heroTitle: { color: Palette.darkTextPrimary, fontSize: 28, fontWeight: '700', lineHeight: 34 },
-  heroTitleCompact: { fontSize: 22, lineHeight: 27 },
-  heroCopy: { color: Palette.darkTextSecondary, fontSize: Typography.body.fontSize, lineHeight: 24 },
-  heroFacts: { alignItems: 'center', borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-between', marginTop: Spacing.xs, paddingTop: Spacing.md },
-  heroFactsCompact: { marginTop: 0, paddingTop: Spacing.sm },
-  heroFact: { alignItems: 'center', flex: 1, gap: 2 },
-  heroFactDivider: { height: 48, width: 1 },
-  progressCard: { borderRadius: Radius.card, borderWidth: 1, elevation: 1, gap: Spacing.md, marginTop: Spacing.xxxl + Spacing.lg + Spacing.xs, padding: Spacing.lg, shadowColor: '#6A9DC2', shadowOffset: { height: 3, width: 0 }, shadowOpacity: 0.08, shadowRadius: 8 },
-  recoveryCard: { alignItems: 'center', borderRadius: Radius.card, borderWidth: 1, flexDirection: 'row', gap: Spacing.md, justifyContent: 'space-between', padding: Spacing.md },
-  recoveryCopy: { flex: 1, gap: Spacing.xs },
-  progressCardCompact: { gap: Spacing.sm, marginTop: 0, padding: Spacing.md },
-  cardTitleCompact: { fontSize: 23, lineHeight: 28 },
-  cardHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  statusIcon: { alignItems: 'center', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
-  progressMetrics: { alignItems: 'center', flexDirection: 'row', gap: Spacing.lg },
-  progressMetric: { flex: 1, gap: Spacing.xs },
-  metricValueCompact: { fontSize: 24, lineHeight: 30 },
-  progressDivider: { height: 48, width: 1 },
-  sectionEyebrow: { color: Palette.mintPrimary, letterSpacing: 1.2 },
-  sectionHeader: { alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'space-between', paddingTop: Spacing.xs },
-  quickActions: { flexDirection: 'row', gap: Spacing.sm },
-  quickAction: { borderRadius: Radius.card, borderWidth: 1, flex: 1, gap: Spacing.sm, minHeight: 154, padding: Spacing.md, position: 'relative' },
-  quickActionCompact: { minHeight: 88, padding: Spacing.sm },
-  quickActionChevron: { position: 'absolute', right: Spacing.sm, top: Spacing.md },
-  actionIcon: { alignItems: 'center', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
-  actionCopy: { flex: 1, gap: 2, justifyContent: 'flex-end' },
-  pressed: { opacity: 0.8 },
+  screen: { flex: 1 }, scroll: { flexGrow: 1, padding: Spacing.lg }, content: { width: '100%', maxWidth: 560, alignSelf: 'center', gap: Spacing.md },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
+  brand: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }, logo: { width: 36, height: 36 }, wordmark: { letterSpacing: 1.5 },
+  iconButton: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  heading: { gap: Spacing.xs }, title: { fontSize: Typography.heading1.fontSize, lineHeight: 40, fontWeight: '700' },
+  hero: { borderRadius: Radius.card, overflow: 'hidden', minHeight: 230, marginTop: Spacing.sm },
+  heroCopy: { padding: Spacing.lg, paddingBottom: 100, width: '80%', gap: Spacing.sm }, heroTitle: { fontSize: Typography.heading3.fontSize, lineHeight: 32 },
+  heroNote: { alignSelf: 'flex-start', position: 'absolute', left: Spacing.md, bottom: Spacing.md, borderRadius: Radius.card, backgroundColor: '#163D62', paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs }, noteText: { color: '#FFFFFF' },
+  sectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: Spacing.sm },
+  priority: { borderRadius: Radius.card, borderWidth: 1, padding: Spacing.md, gap: Spacing.md }, priorityTitle: { fontSize: Typography.heading4.fontSize, lineHeight: 28 },
+  badge: { alignSelf: 'flex-start', borderRadius: Spacing.sm, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs },
+  taskRow: { flexDirection: 'row', gap: Spacing.md, minHeight: 76, alignItems: 'center', paddingVertical: Spacing.md, borderBottomWidth: 1 },
+  taskCopy: { flex: 1, gap: Spacing.xs }, completed: { textDecorationLine: 'line-through', opacity: 0.65 },
+  encouragement: { borderRadius: Radius.card, padding: Spacing.md, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  secondary: { gap: Spacing.md, marginTop: Spacing.lg }, quickAction: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, minHeight: 76, paddingVertical: Spacing.sm, borderBottomWidth: 1 },
+  progress: { minHeight: 64, justifyContent: 'center', gap: Spacing.xs },
 });

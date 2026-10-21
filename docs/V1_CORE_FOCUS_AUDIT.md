@@ -1,196 +1,92 @@
-# Deep Focus V1 — Core Focus Session Audit
+# Deep Focus V1 core focus audit
 
-**Audit date:** 2026-10-15  
-**Scope:** `setup → start → pause/resume → complete/cancel → persist → restart/recover → history/progress exactly once`  
-**Source of truth for required behavior:** `V1_FEATURE_SCOPE.md`, `V1_IMPLEMENTATION_PLAN.md`, `DATA_MODEL.md`, `TESTING_STRATEGY.md`, and `AGENTS.md`.
+Date: **2026-10-22, Asia/Colombo**. Inspected main:
+`7916d81180ddcfd0901c1869a648541516e1f9aa` (includes PR #20 and PR #14).
+Scope: configure → start → pause/resume → complete/cancel → persist → recover
+→ history/progression. Overall: **LOCAL IMPLEMENTATION WITH AUTOMATED EVIDENCE;
+NOT RELEASE READY**. This document is not a new timing, ownership or reward policy.
 
-This audit describes repository evidence on `main`. It does not claim runtime/device verification where only static code inspection was performed.
+Authority: [V1 scope](V1_FEATURE_SCOPE.md), [implementation order](V1_IMPLEMENTATION_PLAN.md),
+[data model](DATA_MODEL.md), [DoD](ai/DEFINITION_OF_DONE.md),
+[testing strategy](TESTING_STRATEGY.md) and dated
+[owner decisions](revision/01-REQUIREMENTS-AND-DECISIONS.md).
+Expanded [feature matrix](V1_FEATURE_MATRIX.md) covers the non-core V1 lanes.
 
----
+## 1. Provenance and evidence limits
 
-## 1. Executive status
+The [October 15 audit](revision/evidence/V1-CORE-FOCUS-AUDIT-2026-10-15-HISTORICAL.md)
+is retained with its original body and labelled historical. Its original inspected
+code SHA and executable test log were not recorded. The PR document SHA is not a
+retroactive code baseline. Its missing-tests/JSON/tick-timer observations and
+product questions must not be read as current failures or fresh instructions.
 
-**Overall status: PARTIAL — NOT RELEASE READY.**
+Current source inspection and the exact checks for this document task are in
+[PR #19 evidence](revision/evidence/PR19-STATUS-RECONCILIATION-2026-10-22.md).
+[PR #14 evidence](revision/evidence/PR14-BREAK-RECOVERY-2026-10-21.md) records the
+earlier 1776/1776 suite, nine disk SQLite cases and type/lint/doc checks on the
+same production tree. That dated run is not a newly run full suite here.
+React/AppState/router substitutes and Node SQLite tests are not native device,
+live provider, production migration or trusted-server acceptance.
 
-The current implementation has a solid local vertical slice: timestamp-based focus timing, pause/resume state, completion/cancellation, local active-session persistence, duplicate-resistant history append, break and summary routes, and a Home recovery card for paused sessions.
+## 2. Requirement reconciliation
 
-However, the V1 contract is not yet satisfied because restart recovery is incomplete for active sessions, persistence failures are silently swallowed, True Zen Break timing is interval-based rather than lifecycle-safe, task association is name-only rather than a durable task identifier, progress/reward side effects are not yet a trusted exactly-once pipeline, and automated tests for the focus engine were not found in the audit search.
-
----
-
-## 2. Requirement-by-requirement audit
-
-| Requirement | Status | Evidence / gap |
+| Requirement | Current local evidence | Remaining boundary |
 | --- | --- | --- |
-| Configure focus duration | ✅ Implemented | Setup supports presets 25/45/60 and custom 5–180 minutes. |
-| Default focus duration from settings | 🟡 Partial | Core hook accepts duration; setup currently initializes to hard-coded 25 rather than loading default focus duration from settings. |
-| Optional task association | 🟡 Partial | Setup/session accept `taskName`; session model stores a task name snapshot, not a durable task ID. |
-| Timestamp-based focus timing | ✅ Implemented | Projection derives elapsed focus from `startedAt`, paused duration, and current timestamp. |
-| Visible remaining time and progress | ✅ Implemented | Active session displays remaining time and percentage. |
-| Pause / resume | ✅ Implemented locally | State transitions guard active↔paused and account for pause duration. |
-| Intentional completion | 🟡 Partial | Completion works, including early completion, but early-complete confirmation/semantics should be verified against UX requirements. |
-| Cancellation | ✅ Implemented locally | End Session requires destructive confirmation and stores cancelled state. |
-| Planned / focused / paused durations | ✅ Implemented locally | Session model and projection track all three. |
-| Background / foreground focus accuracy | 🟡 Strong partial | Focus projection is timestamp-based and refreshes on foreground. Runtime/device verification still required. |
-| App-restart recovery | 🔴 Blocker | Active-session state is persisted, but normal app startup routes directly to Home and Home exposes only **paused** sessions. An interrupted **active** session can therefore become invisible after restart. |
-| Temporary offline continuity | 🟡 Partial | Local file persistence allows local use; full offline/sync contract is not implemented/verified. |
-| Persisted session history | 🟡 Strong partial | Completed/cancelled sessions append to a local history file. Cloud/user-scoped persistence is not present yet. |
-| Duplicate completion/history protection | 🟡 Partial | Engine ignores completion/cancel after terminal state; history append skips duplicate session IDs. There is no full trusted exactly-once progress/reward transaction yet. |
-| True Zen Break | 🟡 Partial / risk | Break route exists and pauses the focus session, but the break timer decrements an in-memory counter each second and is not timestamp/lifecycle based. |
-| Session Summary | 🟡 Partial | Summary shows status, focused/planned time, and task name. V1 goal/streak/XP/achievement/break data is not yet integrated. |
-| Progress update exactly once | 🔴 Not complete | Analytics reads history, which limits duplicate counting by session ID, but V1 streak/XP/goal/reward side effects are not yet an exactly-once completion pipeline. |
-| Automated focus-engine tests | 🔴 Missing / not found | Repository code search did not find tests targeting the focus-session transition functions. |
+| Configure / saved default | [Setup](../src/app/focus/setup.tsx) loads saved focus default, presets 25/45/60 and validates custom integer 5–180 | Native validation/layout and configuration-failure interactions |
+| Stable task association | [Session types](../src/features/focus/session-types.ts) has taskId plus title snapshot; [hook](../src/features/focus/use-focus-session.ts) resolves an available stored task | Hosted linking and device delete/edit/recovery acceptance |
+| Timestamp projection / completion | [Engine](../src/features/focus/session-engine.ts) validates records/times, excludes pauses, rejects early completion and freezes terminal projection | Clock uncertainty and actual background/process behavior; no local clock proves attention |
+| Pause / resume / cancel | [Hook](../src/features/focus/use-focus-session.ts), [route](../src/app/focus/session.tsx); durable pause before break navigation and guarded cancel/complete | Real interactions, ordinary-exit settings and distinct Emergency-exit contract acceptance |
+| Durable active / terminal state | [SQLite21 store](../src/features/storage/local-database.ts), [session adapter](../src/features/focus/session-storage.ts): owner-local active pointer, transactional terminal history/progression/outbox | Actual Expo binding/disk failure and migration lifecycle; full remote sync |
+| Startup / manual recovery | [Root](../src/app/_layout.tsx) waits for current auth/onboarding and routes active/paused/break state; [recovery route](../src/app/focus/recovery.tsx) exposes read error/retry | Native cold/warm links and Back-stack, actual account-switch timing |
+| True Zen Break | [Timestamp engine](../src/features/focus/break-engine.ts), [recovery hook](../src/features/focus/use-break-recovery.ts): persisted original deadline, owner/session/pause binding, retry and backward-clock state | Android/iOS force-close/reopen/accessibility; no automatic focus resume or completed-break ledger claim |
+| Summary / handoff | [Summary](../src/app/focus/summary.tsx), terminal-only load, durable handoff, local XP/level/achievement presentation/streak and explicit Mark Task Complete | Complete daily-goal/break Summary coverage and actual release interactions |
+| Duplicate-safe local progression | [Completion processing](../src/features/focus/completion-processing.ts) and SQLite terminal/progression receipts; history/progression/outbox/active cleanup share a transaction | Local exactly-once evidence is not a deployed server-authoritative reward guarantee |
+| Automated tests | [Engine](../tests/domain/session-engine.test.mjs), [session/SQLite boundaries](../tests/domain/session-boundaries.test.mjs), [ownership](../tests/domain/local-database-ownership.test.mjs), [break storage](../tests/domain/break-recovery-storage.test.mjs), [controller](../tests/domain/break-recovery-controller.test.mjs), [summary](../tests/components/focus-support-presentation.test.mjs) | Synthetic scopes remain explicit; native/hosted release scenarios are not covered by test count |
 
----
+## 3. Disposition of the original CF findings
 
-## 3. Confirmed strengths
+| Historical ID | Disposition at 7916d81 | Evidence / residual gap |
+| --- | --- | --- |
+| CF-01 active session invisible on restart | Original static diagnosis superseded in source; native acceptance OPEN | Root/current-owner recovery and Home active-or-paused detection exist; [startup tests](../tests/components/home-session-recovery.test.mjs) |
+| CF-02 silent file failure / clear-before-history | Original adapter/order superseded; native storage acceptance OPEN | SQLite transaction and explicit save/retry; [failure/rollback tests](../tests/domain/session-boundaries.test.mjs). This does not assert every unrelated read/error path is perfect |
+| CF-03 tick-only break / no restart record | Superseded by PR #14 local implementation; native lifecycle OPEN | SQLite21 deadline/pause-bound record, duplicate-safe start, cleanup rollback, clock error; [disk cases](../tests/domain/break-recovery-storage.test.mjs) |
+| CF-04 name-only task association | Original missing-ID observation superseded; hosted/device link acceptance OPEN | taskId, stored title and owner-scoped SQLite task/history semantics; [ownership tests](../tests/domain/local-database-ownership.test.mjs) |
+| CF-05 incomplete Summary | PARTIAL, not the old minimal screen | XP/level, streak, receipt-gated achievement and explicit task-completion slices exist; full goal/break coverage still unestablished |
+| CF-06 no idempotent progression | Local absence claim superseded; production trust gap remains OPEN | Local transaction/receipts and [progression tests](../tests/domain/progression-rules.test.mjs); backend modules/SQL fixtures do not alone establish end-to-end hosted grants |
+| CF-07 no automated focus-engine tests found | Missing-test observation superseded | Actual engine, boundary, recovery and progression suites exist. Exact current runs are in PR #19 evidence; prior full suite is dated, not reused as a new run |
 
-### 3.1 Timestamp-based focus engine
+No row above closes a release blocker merely because the old implementation has
+changed. Root routing, transaction behavior and server trust require evidence at
+their real boundaries. Status is not a blanket security or bug-free certificate.
 
-`session-engine.ts` computes focused time from authoritative timestamps and accumulated pause duration instead of trusting UI ticks. This is the correct architectural direction for background/foreground accuracy.
+## 4. Existing decisions versus remaining acceptance
 
-### 3.2 Guarded lifecycle transitions
+- Early exit is cancellation, not a full completed session or XP penalty. The
+  engine rejects early completion; do not reopen the old completed-vs-early question
+  as though no policy exists. Broader commitment/Emergency-exit interactions remain
+  governed by their current contract, not inferred from the ordinary Cancel button.
+- Current recovery projects stored timestamps and the hook can complete a valid
+  elapsed active session after hydration. This describes current code, not approval
+  of TimingV2/cutoff proposals, clock tolerances or native behavior.
+- Summary task completion is an explicit user action, separate from focus completion.
+- The owner explicitly requested PR #14 restart-safe break persistence. That is now
+  a local development implementation, not an unanswered requirement or device pass.
+- PR #14/#20 independent-review waivers were only for those development merges.
+  They do not grant this document or future high-risk work a blanket waiver.
+- No new user choice is needed to correct this inventory. Qualified review, native
+  verification, hosted operations and release approval remain separate gates.
 
-- Pause only changes an active session.
-- Resume only changes a paused session with `lastPausedAt`.
-- Complete/cancel do not reprocess a session already terminal.
+## 5. Next dependency-safe verification
 
-These guards reduce state corruption from repeated UI actions.
+1. Run actual supported-device start/pause/break/background/force-close/reopen/
+   resume/complete/cancel paths with disk/clock/account-switch and Back/deep links.
+2. Obtain qualified review of persisted lifecycle/ownership changes; resolve
+   reproduced defects through separately authorized small patches, not status edits.
+3. Complete trusted client/server sync/progression and Summary gap evidence where
+   required by the selected feature contracts; do not duplicate local/server credit.
+4. Keep native accessibility, privacy, minor-access, commercial/store and operational
+   release gates open until named candidate/environment evidence and approval exist.
 
-### 3.3 Active-session persistence
-
-The implementation writes active/paused session state to a dedicated local file and can deserialize only valid active/paused session records.
-
-### 3.4 Duplicate-resistant local history
-
-`appendSessionHistory()` checks the session ID and does not append a second history record with the same ID.
-
-### 3.5 Home progress derives from completed history
-
-Home computes today's focus time and completed blocks from completed persisted sessions rather than incrementing an independent UI-only counter.
-
----
-
-## 4. High-priority defects / gaps
-
-### CF-01 — Active session is not recoverable from normal app restart
-
-**Severity:** Critical / V1 release blocker
-
-Current startup behavior redirects directly to Home. Home loads the active-session file but stores a recovery card only when `session.status === 'paused'`. A persisted `active` session is ignored.
-
-**Failure example:**
-
-```text
-Start 60-minute session
-→ 20 minutes pass
-→ app/process closes unexpectedly
-→ reopen app
-→ startup goes to Home
-→ persisted session status = active
-→ Home does not surface it
-→ user has no normal-path recovery action
-```
-
-**Required fix:** startup/Home recovery logic must detect both active and paused recoverable sessions. Recovery should project the stored timestamps at current time and safely decide whether to resume, finalize an elapsed session, or show a recovery decision according to the approved UX.
-
-### CF-02 — Persistence failures can cause silent data loss
-
-**Severity:** High
-
-The storage helper catches errors and returns fallbacks without surfacing failure state. On terminal session flow, the route performs:
-
-```text
-clear active session
-→ append session history
-→ navigate to summary
-```
-
-If clearing succeeds and history append fails, the only recoverable copy may be gone while the UI still moves forward.
-
-**Required fix:** use a safer terminal-persistence transaction/order or recoverable journal pattern. Do not clear the active/recovery record until durable terminal persistence is confirmed. Surface a recoverable error when necessary.
-
-### CF-03 — True Zen Break timer is not lifecycle-safe
-
-**Severity:** High for V1 reliability
-
-The break route decrements React state using a one-second interval. Unlike the focus timer, it does not derive remaining time from a persisted timestamp. Backgrounding, suspension, process death, delayed JS execution, or navigation can make break time inaccurate or reset it.
-
-**Required fix:** model break start/end timestamps and project remaining time from the clock. Persist break state if V1 requires recovery across interruption.
-
-### CF-04 — Task association is not durable
-
-**Severity:** Medium/High
-
-Focus sessions currently store `taskName` only. V1 requires task-to-focus-session association and preservation of historical records when a task changes/deletes. A name snapshot is useful for history, but it is not enough to update/verify the associated task or goal safely.
-
-**Required fix:** persist stable `taskId` (and optional denormalized task-title snapshot). If goal contribution is part of V1 session completion, use stable goal/task relationships rather than text matching.
-
-### CF-05 — Session Summary is incomplete against V1 scope
-
-**Severity:** Medium
-
-Current Summary shows focused/planned duration, status, and task name. It does not yet show verified daily-goal progress, streak progress, eligible XP/achievements, completed-break information, or task-completion action where approved.
-
-### CF-06 — No trusted exactly-once progression pipeline yet
-
-**Severity:** Critical before rewards/progression release
-
-Local history duplicate protection is useful, but V1 requires duplicate-safe goal, streak, XP, achievement, reward, and analytics updates. Those side effects are not yet implemented as a single idempotent completion path.
-
-**Required fix:** define a completion processor keyed by immutable session ID/idempotency key, with deterministic eligibility and retry-safe writes.
-
-### CF-07 — Focus-engine automated tests not found
-
-**Severity:** Critical for release confidence
-
-Static search did not locate unit tests for create/project/pause/resume/complete/cancel behavior.
-
-Minimum tests should cover:
-
-- active projection at exact timestamps;
-- pause stops focus accumulation;
-- resume excludes paused time;
-- foreground projection after long delay;
-- auto-complete boundary;
-- early completion;
-- cancellation;
-- duplicate completion/cancellation calls;
-- corrupted active-session file;
-- duplicate history append;
-- persistence failure between terminal state and history save;
-- active and paused restart recovery;
-- device clock edge behavior policy if supported.
-
----
-
-## 5. Important product/UX decisions still needing confirmation
-
-These do not change whether Core Focus belongs in V1; they define exact behavior:
-
-1. **Early completion:** should `Complete Session` before the planned end require confirmation and be recorded as completed vs ended-early?
-2. **Restart after planned end:** if an active session's planned duration elapsed while the app was closed, should it auto-complete on recovery or ask the user to confirm the outcome?
-3. **Task completion:** completing a focus session must not silently complete the linked task. Decide whether Summary offers an explicit `Mark Task Complete` action.
-4. **Break recovery:** confirm whether a break must survive process restart or only background/foreground transitions. V1 scope strongly favors reliable timer behavior either way.
-
----
-
-## 6. Recommended implementation order
-
-1. Fix active-session startup recovery (`CF-01`).
-2. Make terminal persistence crash-safe (`CF-02`).
-3. Add focus-engine/storage unit tests before expanding behavior (`CF-07`).
-4. Make True Zen Break timestamp-based and recovery-safe (`CF-03`).
-5. Add stable task/session association and history snapshot semantics (`CF-04`).
-6. Implement one idempotent completion/progression processor for analytics, goals, streaks, XP, achievements, and rewards (`CF-06`).
-7. Complete Session Summary from verified processor results (`CF-05`).
-8. Run Android lifecycle regression: background, force-close, restart, process death, offline, rapid pause/resume, repeated completion.
-9. Run equivalent iOS lifecycle validation before release readiness can become green.
-
----
-
-## 7. Audit conclusion
-
-The focus vertical slice is **substantially real**, not a visual placeholder. The central timer engine is architecturally better than a naïve countdown because it uses timestamps, and local persistence/history provide a useful base.
-
-The remaining work is primarily **reliability and integrity hardening**, not rebuilding the feature from zero. The most urgent V1 defect is active-session restart recovery, followed by crash-safe terminal persistence and automated lifecycle tests.
+This documentation merge does not run a migration, deploy a provider or approve
+production. The next engineering slice must follow the current dependency order
+and observed evidence, not repeat already superseded October 15 fixes.
