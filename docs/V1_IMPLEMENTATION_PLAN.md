@@ -15,6 +15,15 @@ the selected feature's contract before dependent implementation.
 
 Its purpose is to define how the already approved V1 scope should be built.
 
+The [coordinated release guide](DUAL_PLATFORM_RELEASE_GUIDE.md) supplements this
+plan with shared-source/separate-build Android+iOS workflow, early iOS testing,
+store/review buffers and required Website/Portal acceptance. It preserves the
+existing phase/web-lane order, 25–35-hour capacity and approved checkpoints.
+December 1 freeze/December 8 RC dates from PR #13 remain planning proposals until
+explicitly adopted; no account, iOS identifier, paid build or publication is
+approved just by scheduling it. A successful mobile store review cannot replace
+the required web/portal release evidence.
+
 The owner has reopened enterprise and expanded-V1 documentation planning.
 The phase order below remains the implementation dependency baseline; it is not
 permission to start app changes during this documentation-only work. The

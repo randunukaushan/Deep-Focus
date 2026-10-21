@@ -5,6 +5,12 @@ and [Definition of Done](ai/DEFINITION_OF_DONE.md); use the
 [documentation map](DOCUMENTATION_MAP.md) to choose relevant sections. This guide
 retains technical/workflow context, not a second risk or completion policy.
 
+For shared Android/iOS development, Windows/EAS/macOS build boundaries,
+separate native artifacts, early iOS validation and the required Website/Portal
+lane, use [release guidance](DUAL_PLATFORM_RELEASE_GUIDE.md). Installed tool,
+credential/budget and actual platform verification gates still apply; no cloud
+build, account setup or submission is authorized merely by a workflow example.
+
 
 
 This document defines the development workflow, coding standards, project structure, and engineering best practices for the Deep Focus project.
@@ -17,8 +23,10 @@ For the documentation revision, consult the [readiness sheet](revision/18-IMPLEM
 [backend operations](revision/16-BACKEND-EXTENSIONS-AND-OPERATIONS.md) and
 [Website/Portal runbook](revision/17-WEBSITE-PORTAL-AND-RELEASE-RUNBOOK.md).
 They specify proposed migration/job/auth/release work and exact gates. The
-repository does not yet contain a configured Next.js project, and no Supabase
-deployment has been established by this work. Do not run nonexistent web build/test commands or auto-apply SQL stored
+repository now contains a Next.js web project and partial Portal source; the
+older public-only/tooling-absent checkpoint is historical. Source presence is
+not deployment or production acceptance. Inspect installed web/package scripts
+before running checks, and do not auto-apply SQL stored
 under `docs/revision/contracts`. Establish actual tooling and authorized isolated
 targets before using those examples as implementation commands.
 
@@ -95,7 +103,10 @@ The recommended development environment includes:
 - Android Studio
 - Android Emulator or a physical Android device
 
-Platform-specific development tools may be added when additional platforms are officially introduced.
+Android tools support frequent Windows validation; iOS is already a V1 target,
+not an unapproved future platform. Use authorized macOS/EAS environments and
+periodic iOS validation under the release guide, with no automatic installation,
+cloud spending or signing-account setup.
 
 Developers should avoid relying on unnecessary globally installed development tools when the project provides its own supported tooling.
 

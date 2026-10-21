@@ -1,5 +1,11 @@
 # Deep Focus Blueprint
 
+V1 release clarification (2026-10-22): Android/iOS share mobile source but ship
+separate native artifacts; Public Website and Account Portal are also required.
+The [release guide](DUAL_PLATFORM_RELEASE_GUIDE.md) distinguishes confirmed targets,
+proposed freeze/RC options and unverified release gates. It does not expand or
+cut the [canonical V1 scope](V1_FEATURE_SCOPE.md) or guarantee same-day approval.
+
 ---
 
 ## 1. Product Overview

@@ -6,6 +6,13 @@ Deep Focus is being developed as a cross-platform mobile application for people 
 
 ## Project Status
 
+V1 targets Android and iOS from shared React Native/Expo source **plus the
+required Public Website and Account Portal**. Full productivity web remains
+later. Separate `.aab`/`.ipa` builds, testing/store buffers, dated cost inputs
+and open identifier/publisher gates are in the
+[reconciled release guide](docs/DUAL_PLATFORM_RELEASE_GUIDE.md).
+January 1, 2027 is a target, not a store-approval guarantee or permission to publish.
+
 Start with the [Final Build Guide](docs/revision/49-BUILD-ENTRY-HANDOFF-SI.md):
 the first coding task, phase order, feature contracts and remaining decisions.
 Use the [documentation map](docs/DOCUMENTATION_MAP.md) for authority and

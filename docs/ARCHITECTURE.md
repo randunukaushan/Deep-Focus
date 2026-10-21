@@ -18,6 +18,13 @@ When an implementation decision meaningfully conflicts with approved project doc
 
 ## Approved platform selection - 2026-09-14
 
+Mobile V1 uses shared React Native/Expo source with separate Android and iOS
+artifacts; an Android binary is not converted to iOS. The required Next.js
+Public Website and Account Portal are separate web surfaces, not excluded from
+V1 by the later full productivity Web App direction. See
+[release/build boundary guidance](DUAL_PLATFORM_RELEASE_GUIDE.md); no framework,
+provider, dependency or trust boundary is changed by this reconciliation.
+
 The project owner approved Supabase managed PostgreSQL and Supabase Auth for backend/database/identity, and Next.js for the Public Website and Account Portal. This selection supersedes the earlier undecided Firebase/backend/auth alternatives in this document, but does not mean any service is implemented. [Decision record](revision/01-REQUIREMENTS-AND-DECISIONS.md).
 
 Keep the existing Expo/React Native mobile stack and domain/repository boundaries. Use trusted server-side application logic plus PostgreSQL constraints/RLS; never expose service-role credentials or trust client ownership/grants. Website/Portal share the same identity and domain contracts as mobile. Next.js does not replace mobile or automatically select the later full-web implementation.

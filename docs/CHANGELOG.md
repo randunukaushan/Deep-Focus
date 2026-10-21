@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-22 — PR #13 coordinated release documentation
+
+- Reconcile Android/iOS guidance with required Website/Account Portal and
+  existing V1/education/resources/locales/safety boundaries; full productivity
+  web remains later. Keep current AGENTS/AI rules without duplicated old policy.
+- Consolidate separate-artifact/Windows-EAS/macOS/TestFlight/Play/web testing,
+  official dated store/cost inputs and publication buffers in
+  [the release guide](DUAL_PLATFORM_RELEASE_GUIDE.md).
+- Preserve approved milestones/capacity; label December freeze/RC suggestions
+  as proposals and iOS identifier/publisher/native checks as open gates.
+- [Reconciliation evidence](revision/evidence/PR13-RELEASE-RECONCILIATION-2026-10-22.md).
+  Documentation only; no build, purchase, store upload or production deployment.
+
 ## 2026-10-22 — PR #19 status documentation
 
 - Refresh the V1 feature matrix and core-focus audit against main 7916d81 after

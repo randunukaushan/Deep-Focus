@@ -6,6 +6,12 @@ matrix and implemented/verified/reviewed/production-ready distinctions;
 This strategy supplies domain testing requirements, not a parallel completion
 policy. Schema fixtures and documentation checks do not verify a deployed backend.
 
+The [2026-10-22 release guide](DUAL_PLATFORM_RELEASE_GUIDE.md) adds coordinated
+Android/iOS/TestFlight/Play and Website/Portal preparation, dated official inputs
+and cost-controlled device-testing guidance. Each platform/surface needs its own
+candidate/environment evidence; shared source or an EAS upload is not a device,
+store or web-publication pass. Existing DoD/security/accessibility gates remain.
+
 `node docs/revision/check-rewards-ai-contracts.mjs` checks the six reward/AI
 wire contracts, DTO rejection cases and small graph/receipt/usage reference
 invariants under [22](revision/22-REWARD-GOAL-AND-AI-WIRE-CONTRACT.md). It does not

@@ -1,5 +1,11 @@
 # Project Vision
 
+Release-direction clarification (2026-10-22): the January target includes
+Android, iOS, Public Website and Account Portal, not mobile alone. Shared mobile
+source produces separate native builds; full productivity web remains later.
+See [V1 scope](V1_FEATURE_SCOPE.md) and [release guidance](DUAL_PLATFORM_RELEASE_GUIDE.md).
+Existing product/resource/privacy boundaries and release approvals are unchanged.
+
 This document defines the long-term vision, mission, purpose, and strategic direction of the Deep Focus platform.
 
 Rather than serving as a simple productivity application, Deep Focus is designed to become an intelligent productivity ecosystem that helps people perform meaningful work while maintaining long-term mental well-being.

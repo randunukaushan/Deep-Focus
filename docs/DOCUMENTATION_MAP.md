@@ -35,6 +35,12 @@ lists remaining boundaries; its summary cannot invent approval.
 
 ## Lookup by task
 
+For coordinated Android/iOS builds, store/testing/cost preparation and the
+required Website/Account Portal lane, use the dated
+[release guide](DUAL_PLATFORM_RELEASE_GUIDE.md). It supplements V1 scope,
+implementation order, DoD and release/web runbooks; proposals and source
+snapshots are not release approval or permanent prices.
+
 For a dated implementation/evidence inventory (not scope authority), use the
 [V1 feature matrix](V1_FEATURE_MATRIX.md) and [current core audit](V1_CORE_FOCUS_AUDIT.md).
 Both name main 7916d81 after PR #14; historical audits and local fixture passes

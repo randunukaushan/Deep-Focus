@@ -344,6 +344,13 @@ planning assumption. It is available capacity, not guaranteed coding throughput.
 
 The approved release targets are:
 
+Android and iOS are first-class mobile targets from shared source, with separate
+native production artifacts. The January target also requires Public Website
+and Account Portal under section 15. [Release guidance](DUAL_PLATFORM_RELEASE_GUIDE.md)
+details platform preparation and buffers. Its December 1 freeze/December 8 RC
+options are proposals, not additional approved rows in this milestone table;
+external review timing and release gates prevent a same-day-approval guarantee.
+
 | Checkpoint | Target |
 | --- | --- |
 | V1 scope and stability checkpoint | 2026-11-15 |
