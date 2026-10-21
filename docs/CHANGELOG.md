@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-22 — PR #15 verifier Windows checkout correction
+
+- Normalize historical snapshots before banner parsing and verify LF/CRLF
+  variants against original Git bodies. Corrects a checker-only post-merge
+  failure on Windows; archives and production source/config remain unchanged.
+- [Failure/correction evidence](revision/evidence/PR15-ASSURANCE-RECONCILIATION-2026-10-22.md).
+
 ## 2026-10-22 — PR #15 assurance evidence reconciliation
 
 - Reconcile the nine-file evidence pack with SDK56 main after PR20/14/19/13,

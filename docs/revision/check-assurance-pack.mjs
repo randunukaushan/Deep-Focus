@@ -44,8 +44,13 @@ for (const file of current) assert(read(file).includes(baseline), `named baselin
 for (const file of historical) {
   const name = file.split('/').at(-1).replace('-2026-10-06.md', '.md');
   const old = git(['show', `${original}:${pack}/${name}`]);
-  const body = read(file).split('\n---\n\n').slice(1).join('\n---\n\n');
-  assert.equal(normalize(body), normalize(old), `historical body changed: ${file}`);
+  // Git may check out CRLF on Windows. Normalize before locating the banner
+  // boundary, then compare both checkout styles with the independent Git blob.
+  const snapshot = normalize(read(file));
+  for (const variant of [snapshot, snapshot.replace(/\n/g, '\r\n')]) {
+    const body = normalize(variant).split('\n---\n\n').slice(1).join('\n---\n\n');
+    assert.equal(normalize(body), normalize(old), `historical body changed: ${file}`);
+  }
 }
 const unchanged = ['AGENTS.md', 'docs/AI_RULES.md', 'docs/ai', 'docs/V1_FEATURE_SCOPE.md', 'docs/V1_IMPLEMENTATION_PLAN.md', 'app.json', 'eas.json', 'package.json', 'package-lock.json', 'src', 'tests', 'web'];
 assert.equal(git(['diff', '--name-only', baseline, '--', ...unchanged]), '', 'non-task source/config/governance/scope delta');
