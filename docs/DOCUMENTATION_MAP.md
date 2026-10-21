@@ -35,6 +35,11 @@ lists remaining boundaries; its summary cannot invent approval.
 
 ## Lookup by task
 
+For a dated product-assurance evidence inventory and historical finding
+disposition, use the [assurance pack](assurance/README.md). It supplements
+canonical scope/security/DoD/release contracts, does not replace them or claim
+certification, and keeps product/company ownership and actual review separate.
+
 For coordinated Android/iOS builds, store/testing/cost preparation and the
 required Website/Account Portal lane, use the dated
 [release guide](DUAL_PLATFORM_RELEASE_GUIDE.md). It supplements V1 scope,

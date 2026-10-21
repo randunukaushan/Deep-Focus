@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-22 — PR #15 assurance evidence reconciliation
+
+- Reconcile the nine-file evidence pack with SDK56 main after PR20/14/19/13,
+  SQLite21 recovery, actual dated local checks and required four-surface V1.
+- Preserve October 6 baseline/audit/process bodies as historical; separate current
+  source dispositions from native/hosted/security/store acceptance still open.
+- Keep current config/dependencies/scope/governance unchanged; OH crosswalk is
+  proposed, permission-gated and does not assign product IP or certify a company.
+- [Pack](assurance/README.md) and [actual task evidence](revision/evidence/PR15-ASSURANCE-RECONCILIATION-2026-10-22.md).
+  Docs only; no build, deployment, paid action or product release approval.
+
 ## 2026-10-22 — PR #13 coordinated release documentation
 
 - Reconcile Android/iOS guidance with required Website/Account Portal and
