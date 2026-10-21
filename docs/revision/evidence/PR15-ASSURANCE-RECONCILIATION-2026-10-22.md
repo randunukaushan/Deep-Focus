@@ -87,3 +87,19 @@ Status VERIFIED_FOR_DOCUMENTATION_INTEGRATION, self-review complete. Product
 NOT_READY. No native/build/hosted/privacy/security/store acceptance, full-suite,
 typecheck/lint or Expo Doctor run claimed for this docs task. No extra agent,
 deployment, spending, live data, publisher choice or iOS identifier selection.
+
+## Post-merge Windows checkout correction — 2026-10-22
+
+PR15 merged as 73b6c6760cd98f641056969d483398fdab74ddb9. The same verifier
+passed on the editing worktree's LF archive files but failed after Git checked
+them out as CRLF in the original Windows main checkout. Cause: the historical
+banner was split using LF before newline normalization, yielding an empty body.
+No archive body or production file changed; this was a document-checker defect,
+not a product runtime/security finding. The initial self-review missed this
+checkout-style difference; the failed original-main run is not recorded as PASS.
+
+Bounded correction normalizes before splitting and compares both LF and CRLF
+variants of each archived file against its independently retrieved original Git
+blob. Existing equality assertions and all source/config/scope gates retained.
+Follow-up verifier/syntax/docs/experience/whitespace checks and main-checkout
+rerun are recorded in the workspace outcome. No new product or release claim.
