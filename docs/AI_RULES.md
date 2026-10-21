@@ -7,6 +7,11 @@ Use the [documentation map](DOCUMENTATION_MAP.md) for task-specific references.
 Read [engineering guardrails](ai/ENGINEERING_GUARDRAILS.md) completely for code,
 configuration, architecture/security design or changes to those constraints.
 
+For UI/color work, [Color System](COLOR_SYSTEM.md) owns semantic colors and
+light/dark behavior, including its dated October palette reconciliation.
+Read it before implementation; avoid feature-local replacements for semantic
+tokens and time-of-day palette changes.
+
 Root [AGENTS.md](../AGENTS.md) is the short constitution. Execution policy owns
 risk, scope, STOP and escalation; DoD owns evidence/review/completion; guardrails
 own detailed engineering constraints. Do not duplicate or weaken those rules

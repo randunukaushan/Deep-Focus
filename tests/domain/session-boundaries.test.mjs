@@ -11,6 +11,9 @@ import * as resourceTypes from '../../src/features/resources/resource-types.ts';
 import * as teacherAssignmentDraft from '../../src/features/education/teacher-assignment-draft.ts';
 import * as progressionRules from '../../src/features/progress/progression-rules.ts';
 import * as streak from '../../src/features/progress/streak.ts';
+import * as setupDefinition from '../../src/features/onboarding/setup-definition.ts';
+import * as presentationPreferences from '../../src/features/settings/presentation-preferences.ts';
+import * as taskPlanning from '../../src/features/tasks/task-planning.ts';
 
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
@@ -64,6 +67,9 @@ function sqliteFixture(initialFiles = {}, readError = false) {
     '@/features/education/teacher-assignment-draft': teacherAssignmentDraft,
     '@/features/progress/progression-rules': progressionRules,
     '@/features/progress/streak': streak,
+    '@/features/onboarding/setup-definition': setupDefinition,
+    '@/features/settings/presentation-preferences': presentationPreferences,
+    '@/features/tasks/task-planning': taskPlanning,
     './local-owner': {
       accountOwnerId: (authenticatedId) => `account:${authenticatedId}`,
       createLocalOwnerRegistry(deviceStore) {

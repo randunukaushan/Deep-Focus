@@ -8,7 +8,8 @@ test('bundled scenery matches original preview paths and resolved light/dark pal
   const assets = createPreviewSceneAssets();
   for (const [name, expected] of Object.entries(assets)) {
     const actual = readFileSync(`src/assets/branding/${name}`, 'utf8');
-    assert.equal(actual.trim(), expected.trim());
+    // Git's Windows checkout may use CRLF; compare the actual SVG content.
+    assert.equal(actual.replace(/\r\n/g, '\n').trim(), expected.replace(/\r\n/g, '\n').trim());
     assert.match(actual, /viewBox="0 0 600 340"/);
     assert.match(actual, /art-forest/);
     assert.doesNotMatch(actual, /var\(--|<script|<animate|href=|https:/);

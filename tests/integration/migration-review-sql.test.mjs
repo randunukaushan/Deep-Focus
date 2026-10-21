@@ -240,6 +240,7 @@ isolatedTest('reward progression tables preserve owner binding, terminal eligibi
   const workspaceB = '30000000-0000-4000-8000-000000000004';
   const completedA = '30000000-0000-4000-8000-000000000005';
   const cancelledB = '30000000-0000-4000-8000-000000000006';
+  const completedB = '30000000-0000-4000-8000-000000000007';
   for (const [owner, workspace] of [[ownerA, workspaceA], [ownerB, workspaceB]]) {
     await db.query('insert into auth.users(id) values($1)', [owner]);
     await db.query('insert into df_private.profiles(owner_id,display_name) values($1,$2)', [owner, 'Fixture']);
@@ -249,15 +250,21 @@ isolatedTest('reward progression tables preserve owner binding, terminal eligibi
     values($1,$2,$3,'completed',2,60000,60000,0,now()-interval '1 minute',now(),now())`, [completedA, ownerA, workspaceA]);
   await db.query(`insert into df_private.focus_sessions(id,owner_id,workspace_id,status,contract_version,planned_ms,focused_ms,paused_ms,started_at,ended_at,recorded_at)
     values($1,$2,$3,'cancelled',2,60000,0,0,now()-interval '1 minute',now(),now())`, [cancelledB, ownerB, workspaceB]);
+  await db.query(`insert into df_private.focus_sessions(id,owner_id,workspace_id,status,contract_version,planned_ms,focused_ms,paused_ms,started_at,ended_at,recorded_at)
+    values($1,$2,$3,'completed',2,60000,60000,0,now()-interval '1 minute',now(),now())`, [completedB, ownerB, workspaceB]);
   const operationKey = `terminal:${completedA}`;
   await db.query(`insert into df_private.progression_events(owner_id,consumer,source_operation_key,source_type,source_id,xp_delta,rules_version)
     values($1,'rewards:v1',$2,'focus_session',$3,1,'v1')`, [ownerA, operationKey, completedA]);
   await assert.rejects(() => db.query(`insert into df_private.progression_events(owner_id,consumer,source_operation_key,source_type,source_id,xp_delta,rules_version)
     values($1,'rewards:v1',$2,'focus_session',$3,1,'v1')`, [ownerA, operationKey, completedA]), (error) => error.code === '23505');
   await assert.rejects(() => db.query(`insert into df_private.progression_events(owner_id,consumer,source_operation_key,source_type,source_id,xp_delta,rules_version)
-    values($1,'rewards:v1',$2,'focus_session',$3,0,'v1')`, [ownerA, `terminal:${cancelledB}`, cancelledB]), (error) => error.code === '23503');
+    values($1,'rewards:v1',$2,'focus_session',$3,1,'v1')`, [ownerA, `terminal:${completedB}`, completedB]),
+  // BEFORE INSERT eligibility checks run before the composite FK. A completed
+  // foreign session must still be denied, with no ledger row left behind.
+  (error) => error.code === '23514' && error.message === 'progression event requires a completed owner-bound focus session');
   await assert.rejects(() => db.query(`insert into df_private.progression_events(owner_id,consumer,source_operation_key,source_type,source_id,xp_delta,rules_version)
     values($1,'rewards:v1',$2,'focus_session',$3,0,'v1')`, [ownerB, `terminal:${cancelledB}`, cancelledB]), (error) => error.code === '23514');
+  assert.equal((await db.query('select count(*)::integer as n from df_private.progression_events')).rows[0].n, 1);
   await db.query(`insert into df_private.user_achievements(owner_id,achievement_id,unlocked_at,source_operation_key,rules_version)
     values($1,'first_focus_session',now(),$2,'v1')`, [ownerA, operationKey]);
   await db.query(`update df_private.user_achievements set summary_presented_at = unlocked_at where owner_id=$1 and achievement_id='first_focus_session'`, [ownerA]);

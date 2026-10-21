@@ -14,8 +14,10 @@ test('native tab shell declares the approved five destinations in order', () => 
 
 test('Plan tab links only to existing task and goal routes', () => {
   const plan = source('src/app/(tabs)/plan.tsx');
-  assert.match(plan, /router\.push\('\/tasks'\)/);
-  assert.match(plan, /router\.push\('\/goals'\)/);
+  assert.match(plan, /export \{ TaskPlanScreen as default \} from '@\/features\/tasks\/task-plan-screen'/);
+  const screen = source('src/features/tasks/task-plan-screen.tsx');
+  assert.match(screen, /router\.push\('\/tasks'\)/);
+  assert.match(screen, /router\.push\('\/goals'\)/);
   assert.ok(existsSync(join(root, 'src/app/tasks/index.tsx')));
   assert.ok(existsSync(join(root, 'src/app/goals/index.tsx')));
 });

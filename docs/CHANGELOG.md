@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-21
+
+- Reconciled PR #20 with main's color-system commits. Retained the October
+  presentation palette and action contrast, restored semantic progress/info/
+  danger/focus/pressed tokens and routed color work through the canonical record.
+- Repaired stale session-boundary fixture imports and the extracted Plan-screen
+  navigation check; SVG parity now tolerates Git CRLF checkout without ignoring
+  artwork differences. Removed an unused teacher-screen import.
+- Executed the isolated PostgreSQL migration/RLS suite with PGlite 0.3.14.
+  Corrected the reward owner-denial oracle for the BEFORE INSERT trigger and
+  added a foreign completed-session fixture plus unchanged-ledger assertion.
+  Automated suite 1758/1758 and SQL suite 10/10 pass. Independent review and
+  native/hosted release verification remain pending; see the PR #20 evidence.
+
 ## 2026-10-20
 
 - Restored the owner's original arcs/coral-dot logo, wordmark and tagline in
@@ -4081,6 +4095,8 @@ Changes may be recorded under the following categories:
 - Persisted the selected default break duration locally across app restarts.
 - Added a visible Session Recovery entry point under Profile > Your Focus.
 - Fixed navigation wiring for Sign In, Create Account, Email Verification, and Forgot Password routes.
+- Added `COLOR_SYSTEM.md` as the canonical source for Light/Dark palette values, semantic color meanings, component color mapping, and theme-governance rules.
+- Replaced the implementation color foundation with the approved blue/teal productivity palette, calm light neutrals, deep navy dark surfaces, and consistent success/warning/danger/achievement roles.
 
 - Added
 - Changed
@@ -4152,6 +4168,7 @@ Only work that has actually been completed should be recorded here.
 - Added a canonical V1 screen map covering full-screen routes, primary navigation, contextual interfaces, and unresolved implementation decisions
 - Added local task and weekly-goal creation, detail, completion, and progress flows.
 - Added Home-matched Focus, Analytics, Rewards, Profile, Settings, Task, and Goal screens with accessible empty and loading states.
+- Added `COLOR_SYSTEM.md` as the canonical design-system reference for Light/Dark colors and semantic color roles.
 
 ### Changed
 
@@ -4164,6 +4181,8 @@ Only work that has actually been completed should be recorded here.
 - Replaced the temporary Home and Explore navigation with a connected five-tab V1 route skeleton and contextual workflow routes
 - Canonicalized the shared visual tokens to the Deep Focus navy and mint palette,
   including accessible dark/light theme values and a distinct AI-only lavender accent
+- Replaced the current canonical theme-token mapping with the approved focus-blue, progress-teal, achievement-purple, semantic status, and neutral Light/Dark palette defined in `COLOR_SYSTEM.md`.
+- Fixed legacy Home theme aliases to resolve to the canonical Light palette so time-of-day copy does not silently introduce separate morning/evening color systems.
 - Refined the Home dashboard into a calm, premium zero-state experience with a
   clear session entry point and working quick-action routes
 - Added the first timestamp-based Focus Session vertical slice with live timer,

@@ -26,6 +26,13 @@ no manipulative engagement, gambling, cash rewards or unnecessary pressure.
 5. Read [engineering guardrails](docs/ai/ENGINEERING_GUARDRAILS.md) for code,
    configuration, architecture/security design or changes to those rules.
 
+## Color authority
+
+For UI/color work, read [Color System](docs/COLOR_SYSTEM.md) first. It owns
+semantic color roles and the dated October preview palette reconciliation;
+use semantic tokens, preserve contrast and keep time-of-day greetings from
+changing the selected theme palette.
+
 ## Authority and safety
 
 - Canonical topic contracts and precisely recorded owner amendments govern the

@@ -1,12 +1,12 @@
 /**
  * Deep Focus design tokens.
  *
- * Values in this file come from the approved
- * UI/UX Design Specification and Component Library.
+ * Canonical roles and dated palette reconciliation: docs/COLOR_SYSTEM.md.
+ * Keep October preview values and compatibility names for existing consumers.
  */
 
 export const Palette = {
-  // Deep Focus brand palette: grounding navy surfaces with a mint action accent.
+  // October preview palette; primary blue, teal progress, navy surfaces.
   deepNavy: '#0F2537',
   navySurface: '#17354A',
   navySurfaceElevated: '#1B3B54',
@@ -15,6 +15,11 @@ export const Palette = {
   previewAction: '#2165DF',
   darkAction: '#8BB8FF',
   tealAccent: '#14B8A6',
+  focusBlue: '#3B82F6',
+  focusBlueDark: '#2982F6',
+  focusBluePressed: '#2563EB',
+  progressTeal: '#14B8A6',
+  achievementPurple: '#A78BFA',
   aiAccent: '#A78BFA',
 
   success: '#22C55E',
@@ -60,6 +65,11 @@ export const Colors = {
     textMuted: Palette.lightTextMuted,
 
     primary: Palette.previewAction,
+    primaryPressed: Palette.focusBluePressed,
+    borderFocus: Palette.previewAction,
+    progress: Palette.progressTeal,
+    info: Palette.aiAccent,
+    danger: Palette.error,
     secondary: Palette.navySurface,
     aiAccent: Palette.aiAccent,
 
@@ -80,6 +90,11 @@ export const Colors = {
     textMuted: Palette.darkTextMuted,
 
     primary: Palette.darkAction,
+    primaryPressed: Palette.focusBluePressed,
+    borderFocus: Palette.darkAction,
+    progress: Palette.progressTeal,
+    info: Palette.aiAccent,
+    danger: Palette.error,
     secondary: Palette.navySurfaceElevated,
     aiAccent: Palette.aiAccent,
 

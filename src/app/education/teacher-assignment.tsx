@@ -6,7 +6,6 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { createStableId } from '@/features/identity/stable-ids';
 import { useAppLocale } from '@/features/localization/app-locale-context';
 import { getTeacherAssignmentCopy } from '@/features/localization/teacher-assignment-copy';
