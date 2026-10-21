@@ -1,0 +1,291 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:deep-focus:backend-extensions:2026-09-16",
+  "title": "Proposed extension DTO shapes; semantic and authorization checks remain mandatory",
+  "definitions": {
+    "Id": {"$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"},
+    "Instant": {"$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Instant"},
+    "Version": {"$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Version"},
+    "Sequence": {"type": "string", "pattern": "^(0|[1-9][0-9]{0,18})$"},
+    "Cursor": {"type": "string", "minLength": 1, "maxLength": 2048},
+    "VersionOnly": {
+      "type": "object", "additionalProperties": false, "required": ["expectedVersion"],
+      "properties": {"expectedVersion": {"$ref": "#/definitions/Version"}}
+    },
+    "ListQuery": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "cursor": {"$ref": "#/definitions/Cursor"},
+        "limit": {"type": "integer", "minimum": 1, "maximum": 100, "default": 50}
+      }
+    },
+    "PageMeta": {
+      "type": "object", "additionalProperties": false, "required": ["nextCursor"],
+      "properties": {"nextCursor": {"anyOf": [{"$ref": "#/definitions/Cursor"}, {"type": "null"}]}}
+    },
+    "Tombstone": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "entity", "version", "deletedAt"],
+      "properties": {
+        "id": {"$ref": "#/definitions/Id"}, "entity": {"enum": ["task", "goal", "reminder"]},
+        "version": {"$ref": "#/definitions/Version"}, "deletedAt": {"$ref": "#/definitions/Instant"}
+      }
+    },
+    "DeletionReceipt": {
+      "description": "Domain soft-delete acknowledgement, not a credential or an account-deletion job receipt. Cross-field equality and bigint range are semantic checks.",
+      "type": "object", "additionalProperties": false,
+      "required": ["receiptId", "mutationId", "command", "targetId", "entityVersion", "committedThrough"],
+      "properties": {
+        "receiptId": {"$ref": "#/definitions/Id"}, "mutationId": {"$ref": "#/definitions/Id"},
+        "command": {"enum": ["task.delete", "goal.delete", "reminder.delete"]},
+        "targetId": {"$ref": "#/definitions/Id"}, "entityVersion": {"$ref": "#/definitions/Version"},
+        "committedThrough": {"$ref": "#/definitions/Sequence"}
+      }
+    },
+    "DeletionResponse": {
+      "type": "object", "additionalProperties": false, "required": ["data"],
+      "properties": {
+        "data": {
+          "type": "object", "additionalProperties": false, "required": ["tombstone", "receipt"],
+          "properties": {"tombstone": {"$ref": "#/definitions/Tombstone"}, "receipt": {"$ref": "#/definitions/DeletionReceipt"}},
+          "allOf": [
+            {"if": {"properties": {"tombstone": {"properties": {"entity": {"const": "task"}}}}}, "then": {"properties": {"receipt": {"properties": {"command": {"const": "task.delete"}}}}}},
+            {"if": {"properties": {"tombstone": {"properties": {"entity": {"const": "goal"}}}}}, "then": {"properties": {"receipt": {"properties": {"command": {"const": "goal.delete"}}}}}},
+            {"if": {"properties": {"tombstone": {"properties": {"entity": {"const": "reminder"}}}}}, "then": {"properties": {"receipt": {"properties": {"command": {"const": "reminder.delete"}}}}}}
+          ]
+        }
+      }
+    },
+    "TaskDeletionResponse": {
+      "allOf": [{"$ref": "#/definitions/DeletionResponse"}, {"properties": {"data": {"properties": {"tombstone": {"properties": {"entity": {"const": "task"}}}}}}}]
+    },
+    "GoalDeletionResponse": {
+      "allOf": [{"$ref": "#/definitions/DeletionResponse"}, {"properties": {"data": {"properties": {"tombstone": {"properties": {"entity": {"const": "goal"}}}}}}}]
+    },
+    "ReminderDeletionResponse": {
+      "allOf": [{"$ref": "#/definitions/DeletionResponse"}, {"properties": {"data": {"properties": {"tombstone": {"properties": {"entity": {"const": "reminder"}}}}}}}]
+    },
+    "GoalPatch": {
+      "type": "object", "additionalProperties": false, "required": ["expectedVersion"], "minProperties": 2,
+      "properties": {
+        "expectedVersion": {"$ref": "#/definitions/Version"},
+        "title": {"$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Title"},
+        "description": {"$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Description"}
+      }
+    },
+    "AccountSettingsPatch": {
+      "type": "object", "additionalProperties": false, "required": ["expectedVersion"], "minProperties": 2,
+      "properties": {
+        "expectedVersion": {"$ref": "#/definitions/Version"},
+        "theme": {"enum": ["system", "light", "dark"]},
+        "uiLocale": {"type": "string", "minLength": 2, "maxLength": 35, "pattern": "^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$"},
+        "defaultFocusDurationMinutes": {"type": "integer", "minimum": 1, "maximum": 1440},
+        "defaultBreakDurationMinutes": {"enum": [5, 10, 15]},
+        "aiFeaturesEnabled": {"type": "boolean"}
+      }
+    },
+    "AccountSettings": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "version", "theme", "uiLocale", "defaultFocusDurationMinutes", "defaultBreakDurationMinutes", "aiFeaturesEnabled", "updatedAt"],
+      "properties": {
+        "id": {"$ref": "#/definitions/Id"}, "version": {"$ref": "#/definitions/Version"},
+        "theme": {"$ref": "#/definitions/AccountSettingsPatch/properties/theme"},
+        "uiLocale": {"$ref": "#/definitions/AccountSettingsPatch/properties/uiLocale"},
+        "defaultFocusDurationMinutes": {"$ref": "#/definitions/AccountSettingsPatch/properties/defaultFocusDurationMinutes"},
+        "defaultBreakDurationMinutes": {"$ref": "#/definitions/AccountSettingsPatch/properties/defaultBreakDurationMinutes"},
+        "aiFeaturesEnabled": {"type": "boolean"}, "updatedAt": {"$ref": "#/definitions/Instant"}
+      }
+    },
+    "AccountSettingsResponse": {
+      "type": "object", "additionalProperties": false, "required": ["data"],
+      "properties": {"data": {"$ref": "#/definitions/AccountSettings"}}
+    },
+    "AnalyticsQuery": {
+      "description": "Shape only: chronological order, supported IANA zone, owner and maximum range require service validation.",
+      "type": "object", "additionalProperties": false, "required": ["start", "end", "timeZone"],
+      "properties": {
+        "start": {"$ref": "#/definitions/Instant"}, "end": {"$ref": "#/definitions/Instant"},
+        "timeZone": {"type": "string", "minLength": 1, "maxLength": 100}
+      }
+    },
+    "ProjectionMeta": {
+      "type": "object", "additionalProperties": false,
+      "required": ["status", "asOf", "sourceSequence", "ruleVersion"],
+      "properties": {
+        "status": {"enum": ["current", "pending", "stale", "unavailable"]},
+        "asOf": {"anyOf": [{"$ref": "#/definitions/Instant"}, {"type": "null"}]},
+        "sourceSequence": {"anyOf": [{"$ref": "#/definitions/Sequence"}, {"type": "null"}]},
+        "ruleVersion": {"type": ["string", "null"], "minLength": 1, "maxLength": 100, "pattern": "\\S"}
+      },
+      "allOf": [{
+        "if": {"properties": {"status": {"const": "unavailable"}}},
+        "then": {"properties": {"asOf": {"type": "null"}, "sourceSequence": {"type": "null"}, "ruleVersion": {"type": "null"}}},
+        "else": {"properties": {"asOf": {"$ref": "#/definitions/Instant"}, "sourceSequence": {"$ref": "#/definitions/Sequence"}, "ruleVersion": {"type": "string"}}}
+      }]
+    },
+    "AnalyticsSummary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["verifiedFocusMs", "completedSessionCount", "completedTaskCount"],
+      "properties": {
+        "verifiedFocusMs": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+        "completedSessionCount": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+        "completedTaskCount": {"type": "integer", "minimum": 0, "maximum": 9007199254740991}
+      }
+    },
+    "AnalyticsSummaryResponse": {
+      "type": "object", "additionalProperties": false, "required": ["data"],
+      "properties": {
+        "data": {
+          "type": "object", "additionalProperties": false, "required": ["period", "meta", "summary"],
+          "properties": {
+            "period": {"$ref": "#/definitions/AnalyticsQuery"}, "meta": {"$ref": "#/definitions/ProjectionMeta"},
+            "summary": {"anyOf": [{"$ref": "#/definitions/AnalyticsSummary"}, {"type": "null"}]}
+          },
+          "allOf": [{
+            "if": {"properties": {"meta": {"properties": {"status": {"const": "unavailable"}}}}},
+            "then": {"properties": {"summary": {"type": "null"}}},
+            "else": {"properties": {"summary": {"$ref": "#/definitions/AnalyticsSummary"}}}
+          }]
+        }
+      }
+    },
+    "ReminderCreate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "taskId", "scheduledFor", "timeZone", "delivery"],
+      "properties": {
+        "id": {"$ref": "#/definitions/Id"}, "taskId": {"$ref": "#/definitions/Id"},
+        "scheduledFor": {"$ref": "#/definitions/Instant"},
+        "timeZone": {"type": "string", "minLength": 1, "maxLength": 100},
+        "delivery": {"const": "local_device"}
+      }
+    },
+    "ReminderPatch": {
+      "type": "object", "additionalProperties": false, "required": ["expectedVersion"], "minProperties": 2,
+      "properties": {
+        "expectedVersion": {"$ref": "#/definitions/Version"},
+        "scheduledFor": {"$ref": "#/definitions/Instant"},
+        "timeZone": {"type": "string", "minLength": 1, "maxLength": 100},
+        "enabled": {"type": "boolean"}
+      }
+    },
+    "BreakRecord": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "focusSessionId", "startedAt", "endedAt", "plannedMs", "outcome"],
+      "properties": {
+        "id": {"$ref": "#/definitions/Id"}, "focusSessionId": {"$ref": "#/definitions/Id"},
+        "startedAt": {"$ref": "#/definitions/Instant"}, "endedAt": {"$ref": "#/definitions/Instant"},
+        "plannedMs": {"type": "integer", "minimum": 1, "maximum": 86400000},
+        "outcome": {"enum": ["completed", "ended_early"]}
+      }
+    },
+    "Break": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "focusSessionId", "startedAt", "endedAt", "plannedMs", "actualMs", "outcome", "version", "verificationState"],
+      "properties": {
+        "id": {"$ref": "#/definitions/Id"}, "focusSessionId": {"$ref": "#/definitions/Id"},
+        "startedAt": {"$ref": "#/definitions/Instant"}, "endedAt": {"$ref": "#/definitions/Instant"},
+        "plannedMs": {"$ref": "#/definitions/BreakRecord/properties/plannedMs"},
+        "actualMs": {"type": "integer", "minimum": 0, "maximum": 86400000},
+        "outcome": {"$ref": "#/definitions/BreakRecord/properties/outcome"},
+        "version": {"$ref": "#/definitions/Version"},
+        "verificationState": {"$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Session/properties/verificationState"}
+      }
+    },
+    "BreakResponse": {
+      "type": "object", "additionalProperties": false, "required": ["data"],
+      "properties": {"data": {"$ref": "#/definitions/Break"}}
+    },
+    "BreakListResponse": {
+      "type": "object", "additionalProperties": false, "required": ["data", "meta"],
+      "properties": {
+        "data": {"type": "array", "maxItems": 100, "items": {"$ref": "#/definitions/Break"}},
+        "meta": {"$ref": "#/definitions/PageMeta"}
+      }
+    },
+    "Reminder": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "taskId", "scheduledFor", "timeZone", "enabled", "delivery", "version", "updatedAt", "deletedAt"],
+      "properties": {
+        "id": {"$ref": "#/definitions/Id"}, "taskId": {"$ref": "#/definitions/Id"},
+        "scheduledFor": {"$ref": "#/definitions/Instant"},
+        "timeZone": {"$ref": "#/definitions/ReminderCreate/properties/timeZone"},
+        "enabled": {"type": "boolean"}, "delivery": {"const": "local_device"},
+        "version": {"$ref": "#/definitions/Version"}, "updatedAt": {"$ref": "#/definitions/Instant"},
+        "deletedAt": {"anyOf": [{"$ref": "#/definitions/Instant"}, {"type": "null"}]}
+      }
+    },
+    "ReminderResponse": {
+      "type": "object", "additionalProperties": false, "required": ["data"],
+      "properties": {"data": {"$ref": "#/definitions/Reminder"}}
+    },
+    "ReminderListResponse": {
+      "type": "object", "additionalProperties": false, "required": ["data", "meta"],
+      "properties": {
+        "data": {"type": "array", "maxItems": 100, "items": {"$ref": "#/definitions/Reminder"}},
+        "meta": {"$ref": "#/definitions/PageMeta"}
+      }
+    },
+    "SyncMutation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["mutationId", "command", "targetId", "body"],
+      "properties": {
+        "mutationId": {"$ref": "#/definitions/Id"},
+        "command": {"enum": ["task.create", "task.patch", "task.action", "task.delete", "goal.create", "goal.patch", "goal.delete", "session.start", "session.event", "break.record", "settings.patch", "reminder.create", "reminder.patch", "reminder.delete"]},
+        "targetId": {"$ref": "#/definitions/Id"}, "body": {"type": "object"}
+      },
+      "allOf": [
+        {"if": {"properties": {"command": {"const": "task.create"}}}, "then": {"properties": {"body": {"$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/TaskCreate"}}}},
+        {"if": {"properties": {"command": {"const": "task.patch"}}}, "then": {"properties": {"body": {"$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/TaskPatch"}}}},
+        {"if": {"properties": {"command": {"const": "task.action"}}}, "then": {"properties": {"body": {"$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/TaskAction"}}}},
+        {"if": {"properties": {"command": {"enum": ["task.delete", "goal.delete", "reminder.delete"]}}}, "then": {"properties": {"body": {"$ref": "#/definitions/VersionOnly"}}}},
+        {"if": {"properties": {"command": {"const": "goal.create"}}}, "then": {"properties": {"body": {"$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/GoalCreate"}}}},
+        {"if": {"properties": {"command": {"const": "goal.patch"}}}, "then": {"properties": {"body": {"$ref": "#/definitions/GoalPatch"}}}},
+        {"if": {"properties": {"command": {"const": "session.start"}}}, "then": {"properties": {"body": {"$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/SessionStart"}}}},
+        {"if": {"properties": {"command": {"const": "session.event"}}}, "then": {"properties": {"body": {"$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/SessionEvent"}}}},
+        {"if": {"properties": {"command": {"const": "break.record"}}}, "then": {"properties": {"body": {"$ref": "#/definitions/BreakRecord"}}}},
+        {"if": {"properties": {"command": {"const": "settings.patch"}}}, "then": {"properties": {"body": {"$ref": "#/definitions/AccountSettingsPatch"}}}},
+        {"if": {"properties": {"command": {"const": "reminder.create"}}}, "then": {"properties": {"body": {"$ref": "#/definitions/ReminderCreate"}}}},
+        {"if": {"properties": {"command": {"const": "reminder.patch"}}}, "then": {"properties": {"body": {"$ref": "#/definitions/ReminderPatch"}}}}
+      ]
+    },
+    "SyncPush": {
+      "type": "object", "additionalProperties": false, "required": ["contractVersion", "items"],
+      "properties": {"contractVersion": {"const": 1}, "items": {"type": "array", "minItems": 1, "maxItems": 25, "items": {"$ref": "#/definitions/SyncMutation"}}}
+    },
+    "SyncPull": {
+      "type": "object", "additionalProperties": false, "required": ["cursor"],
+      "properties": {"cursor": {"$ref": "#/definitions/Cursor"}, "limit": {"type": "integer", "minimum": 1, "maximum": 100, "default": 50}}
+    },
+    "ExportRequest": {
+      "type": "object", "additionalProperties": false, "required": ["format", "scope"],
+      "properties": {"format": {"const": "json"}, "scope": {"const": "own_account_data"}}
+    },
+    "DeletionRequest": {
+      "type": "object", "additionalProperties": false,
+      "required": ["challengeId", "acknowledgedConsequencesVersion"],
+      "properties": {
+        "challengeId": {"$ref": "#/definitions/Id"},
+        "acknowledgedConsequencesVersion": {"type": "string", "minLength": 1, "maxLength": 64}
+      }
+    },
+    "ProposalConfirmation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["expectedProposalVersion", "reviewDigest", "selectedOperationIds"],
+      "properties": {
+        "expectedProposalVersion": {"$ref": "#/definitions/Version"},
+        "reviewDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "selectedOperationIds": {"type": "array", "minItems": 1, "maxItems": 25, "uniqueItems": true, "items": {"$ref": "#/definitions/Id"}}
+      }
+    },
+    "Job": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "kind", "state", "updatedAt"],
+      "properties": {
+        "id": {"$ref": "#/definitions/Id"}, "kind": {"enum": ["export", "deletion", "sync_snapshot"]},
+        "state": {"enum": ["queued", "running", "succeeded", "failed", "expired"]},
+        "updatedAt": {"$ref": "#/definitions/Instant"},
+        "safeErrorCode": {"type": ["string", "null"], "maxLength": 80}
+      }
+    }
+  }
+}

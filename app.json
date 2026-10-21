@@ -4,18 +4,18 @@
     "slug": "deep-focus",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/deep-focus-icon.png",
     "scheme": "deepfocus",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/deep-focus-icon.png",
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/deep-focus-splash.png",
+        "monochromeImage": "./assets/images/deep-focus-splash.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.randunukaushan9.DeepFocus"
@@ -29,17 +29,16 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#031226",
           "android": {
-            "image": "./assets/images/splash-icon.png",
-            "imageWidth": 76
+            "image": "./assets/images/deep-focus-brand-reference.png",
+            "imageWidth": 240
           }
         }
       ],
-      "expo-font",
-      "expo-image",
-      "expo-status-bar",
-      "expo-web-browser"
+      "expo-sqlite",
+      "expo-secure-store",
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true,

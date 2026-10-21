@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+supabase/functions/.env
+supabase/functions/**/.env
+node_modules
+.git
+android/app/build
+android/.gradle
+android/build
+android/.cxx
+ios/build
+artifacts
+.expo
+docs/revision/evidence

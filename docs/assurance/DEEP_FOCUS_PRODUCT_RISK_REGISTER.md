@@ -1,52 +1,32 @@
-# Deep Focus Product Risk Register
+# Deep Focus product risk inventory
 
-## 1. Document Control
+Reconciled 2026-10-22 against main `ecd6d348093292c27b06751815eb09694a41665a`.
+Owner: Deep Focus product owner. Qualitative triage only; no measured probability,
+new security design, risk acceptance or changed release rule. [Pack authority](README.md).
+Original IDs retained; historical branch observations are not current defects.
 
-| Field | Value |
-|---|---|
-| Owner | Deep Focus product owner / maintainer |
-| Review date | 2026-10-06 |
-| Scope | Product, engineering, privacy, security, platform, accessibility, and release risks |
-| Status | Initial qualitative assessment; ratings require owner review |
-| Classification | Internal |
+| ID | Risk / current evidence | Qualitative concern | Residual status / next evidence |
+| --- | --- | --- | --- |
+| DF-R-001 | Wrong baseline/project: SDK56 main retained; stored EAS ID matches historical SDK57 text, private account not inspected | High configuration/release impact | OPEN: owner/account/signing/build provenance; no upgrade or project reassignment here |
+| DF-R-002 | False completion/credit: current engine rejects early completion; local progression receipts/tests exist | High integrity concern; old source defect superseded | OPEN native/trusted-server acceptance, not a current confirmed early-completion bug |
+| DF-R-003 | Data exposure: owner-scoped SQLite21, retained legacy JSON and secure credential adapter are distinct stores | High privacy concern | OPEN actual backup, platform protection, logs, export/delete and threat review; SQLite is not an encryption proof |
+| DF-R-004 | Loss/duplication across interruption: transaction and disk rollback/restart fixtures exist | High reliability concern | OPEN Android/iOS disk/process/upgrade/account-switch evidence; local tests do not close lifecycle risk |
+| DF-R-005 | Claims exceed shipped behavior: matrix shows partial auth/web/resources/AI/cloud/classroom | High trust/release concern | OPEN truthful claims and complete required-surface acceptance; no scope cut inferred |
+| DF-R-006 | SDK/AI/provider data handling unknown: manifest/source is not live traffic/retention evidence | High privacy concern | OPEN actual minimized data inventory, provider/SDK review and disclosures under existing contracts |
+| DF-R-007 | Account/data lifecycle incomplete: account/Portal/privacy modules exist, not accepted end-to-end | High release concern, applicable now to required account scope | OPEN actual in-app/external deletion, export, revocation, retention and propagation evidence; not deferred as optional |
+| DF-R-008 | Inaccessible controls/locales: semantics/static checks do not prove real assistive technology | High exclusion/recovery concern | OPEN TalkBack/VoiceOver/keyboard/large-text/motion/si-ta-en native and browser evidence |
+| DF-R-009 | Native/dependency/config regressions despite preserved SDK56 | High compatibility concern | OPEN supported-platform builds/manifests/permissions; no new SDK acceptance |
+| DF-R-010 | Dependency/supply-chain weakness: manifests/lockfile exist | High security concern | OPEN candidate advisory/SBOM/licence review and triage; no current vulnerability-free claim |
+| DF-R-011 | Secret/signing exposure: no secret audit conducted in this task | Potential critical impact; exposure not asserted | OPEN authorized secret/history/build-access review; no rotation or privileged-data access authorized by register |
+| DF-R-012 | Clock/period anomalies: timestamp validation/clock-error handling exists | High trust/reliability concern | OPEN actual device clock/timezone tests; elapsed wall time does not prove attention |
+| DF-R-013 | Harmful pressure: existing no-penalty, Emergency-exit and focus-safe-ad rules remain | Meaningful safety concern | OPEN copy/interaction/AI/notification and user-feedback acceptance under existing policy |
+| DF-R-014 | Store/website disclosure mismatch with actual SDK/data/commercial behavior | High release/privacy concern | OPEN named-build accurate notices/forms/claims and review; no submission performed |
+| DF-R-015 | Regression escapes without CI: local suites/results exist, no listed Actions/workflow evidence | High verification concern | OPEN repeatable candidate records/CI evidence where admitted; no-suite claim superseded |
+| DF-R-016 | Required web/Portal falsely substituted by landing page or mobile success | High scope/access/privacy concern | OPEN real supported account/settings/subscription/privacy/browser/operational evidence |
+| DF-R-017 | Classroom/resource/minor/commercial scope treated as automatically enabled | High privacy/eligibility concern | OPEN trusted sharing, import/viewer, cloud/entitlement and qualified legal gates; real-minor access remains disabled |
 
-## 2. Rating Method
-
-Likelihood and impact are qualitative initial judgements, not measured probabilities. Priority reflects plausible user/product harm and release impact. Reassess after mitigation and whenever scope, data flows, architecture, dependency set, or platform policies change. Do not close a risk merely because a document exists.
-
-## 3. Initial Risk Register
-
-| Risk ID | Risk and cause | Likelihood | Impact | Initial priority | Existing evidence / control | Treatment and owner action | Residual status |
-|---|---|---|---|---|---|---|---|
-| DF-R-001 | Release work may target the wrong branch or Expo project because main is SDK56, upgrade/sdk-57 is SDK57, and their EAS project IDs differ. | Possible | Major build/release confusion, wrong project configuration, lost or misattributed build evidence. | High | Branch manifests and app configs inspected; no project was changed. | Product owner confirms release branch and EAS project in Expo account; document intended project; reconcile PRs; capture build metadata. | Open; Needs Review before release builds. |
-| DF-R-002 | Focus sessions may be marked complete early or progress/rewards may be credited incorrectly if state transitions are not constrained and verified. | Possible | Misleading history/progress and loss of user trust. | High | Confirmed in SDK57 commit 77682543: session UI exposes early completion while active/paused, the engine allows it, and completed records feed goal progress. PR #14 targets main/SDK56 and is not the assessed fix. | Fix on approved release baseline; enforce state invariants; add transition/progress tests; retain lint/type-check and Android/iOS retest records. | Open; high-priority release-blocking behavior until fixed and verified. |
-| DF-R-003 | Active session/history JSON may be exposed through backup, device access, diagnostics, or file handling because app-level encryption/backup behavior is not evidenced. | Possible | Exposure of behavioral/productivity data or session labels. | High | Local document-directory JSON implementation observed on main; effective OS sandbox/backup configuration not verified. | Inventory exact data and backup behavior per platform; minimize stored fields; decide encryption/exclusion based on threat model; inspect artifacts and test backup/restore. | Open. |
-| DF-R-004 | State can be lost, duplicated, corrupted, or become inconsistent across app kill, OS suspension, disk errors, or repeated transitions. | Possible | Lost sessions or inaccurate history/progress. | High | SDK57 timestamp model and JSON history are present; I/O failures are caught without a durability result reaching the UI; no automated or device recovery results located. | Define observable save failure, atomic-write/corruption recovery, and idempotency behavior; execute fault/interruption matrix on Android and iOS. | Open. |
-| DF-R-005 | Advertised V1 capabilities may exceed implemented or operational functionality, especially account, cloud, AI, and deletion flows. | Possible | Users may rely on features that do not work or submit inaccurate store statements. | Major | Source audit found account UI screens explicitly waiting for an authentication provider; sign-in/sign-up/recovery are not demonstrated as integrated. Scope-to-code reconciliation remains incomplete for other declared features. | Complete feature-by-feature audit; confirm approved scope; label planned vs functional; make store declarations from shipped behavior only. | Open. |
-| DF-R-006 | Third-party SDKs or future AI services may collect, share, or retain data not reflected in privacy notices and store declarations. | Possible | Privacy breach, inaccurate declarations, user harm, store rejection. | Possible-to-major | Direct dependency list and privacy documents are available; runtime SDK/data-flow inventory not complete. | Review lockfile, SDK telemetry and AI payloads; document processors/retention; minimize data; obtain required consent; update notices and store labels. | Open. |
-| DF-R-007 | Account creation without working in-app and external deletion could violate platform rules and undermine user control. | Possible if account creation is shipped | Account/data cannot be removed as promised; store rejection. | Major | Account flows are in V1 scope, but implementation/backend/deletion evidence has not been verified. | Before enabling account creation, implement and test in-app deletion and external request path; cascade data deletion and document legitimate retention. | Pending Future until account creation is shipped; then release blocker. |
-| DF-R-008 | Accessibility defects may prevent users relying on screen readers, larger text, reduced motion, or platform accessibility services from using core focus controls. | Possible | Exclusion, errors, inability to start/pause/end sessions. | Major | Project instructions require accessibility; no device accessibility test evidence found. | Run TalkBack and VoiceOver tests; audit labels, roles, focus order, contrast, scaling, targets and motion; log and retest defects. | Open. |
-| DF-R-009 | SDK upgrades or platform defaults may introduce compatibility/performance regressions and unreviewed native permissions. | Possible | Crashes, broken navigation/timer, extra permissions, store issues. | Major | Expo 57 branch exists, but default main remains SDK56; no CI or cross-platform acceptance evidence. | Reconcile baseline; inspect generated Android/iOS projects and manifests; run supported-device matrix and release build checks. | Open. |
-| DF-R-010 | Dependency vulnerabilities, compromised packages, or stale transitive dependencies may enter release builds. | Possible | App compromise, data exposure, service outage. | Major | package-lock.json and package manifests exist; no automated audit/SBOM evidence observed. | Add repeatable dependency review, vulnerability scan and lockfile change review; record exceptions and remediation deadlines. | Open. |
-| DF-R-011 | Secrets, signing material, EAS credentials, or AI API keys could be committed or exposed through client config/logs. | Unassessed | Critical if a privileged credential is exposed. | Critical | No secret scan or release credential evidence located in this assessment. | Inspect repo history/config/CI and build credentials using approved secret tools; never put secrets in the app bundle; rotate exposed credentials; restrict access. | Open; inspect before external release. |
-| DF-R-012 | Timer display can drift or recovery can misinterpret wall-clock changes, time zones, or malformed timestamps. | Possible | Incorrect duration/history and user mistrust. | Major | Timestamp-based projection observed; edge behavior is untested. | Define monotonic/UTC policy; test clock changes, invalid timestamps, timezone changes, background/foreground and boundary conditions. | Open. |
-| DF-R-013 | Productivity insights, goals, streaks, or notifications may create unhealthy pressure contrary to the product philosophy. | Possible | User distress, reduced trust, harmful engagement design. | Moderate | Mission and AI rules prioritize sustainable habits/user control. | Review scoring, copy, notification frequency, break behavior and feedback; avoid coercive metrics; retain user control and opt-outs. | Open; review each relevant feature. |
-| DF-R-014 | Store disclosure mismatch can occur if Data Safety/App Privacy answers, policy, app behavior, and SDK behavior diverge. | Possible | Rejection, forced correction, privacy harm. | Major | No store declarations or completed data inventory observed. | Generate disclosures only from verified shipped behavior and SDK inventory; independently cross-check before each submission. | Pending Future until store submission; preparation remains open. |
-| DF-R-015 | No repeatable CI/test history increases chance a regression reaches testers or production undetected. | Likely based on inspected repository state | Major | High | Zero GitHub Actions runs returned; package manifest has no test/typecheck/security script; no workflow files observed. | Establish minimum repeatable local and CI gates; save results per commit; block release on agreed critical failures. | Open. |
-
-## 4. Risk Review and Acceptance
-
-### 4.1 Required review triggers
-
-Review this register after a material feature/data-flow change, SDK or backend change, security/privacy defect, store-policy update, beta feedback trend, or before release approval.
-
-### 4.2 Risk acceptance
-
-Only the designated product owner may accept residual product risk. Security/privacy risks involving personal data or privileged credentials require documented rationale, mitigation, expiry/review date, and any necessary expert/legal review. Acceptance is not a substitute for mandatory platform or legal requirements.
-
-## 5. Linked Records
-
-- DEEP_FOCUS_EVIDENCE_REGISTER.md
-- DEEP_FOCUS_PRIVACY_DATA_INVENTORY.md
-- DEEP_FOCUS_MOBILE_SECURITY_AND_ACCESSIBILITY_ASSESSMENT.md
-- DEEP_FOCUS_TEST_DEFECT_AND_RELEASE_ASSURANCE.md
+Review with [evidence register](DEEP_FOCUS_EVIDENCE_REGISTER.md), current canonical
+security/safety/data contracts and qualified reviewers where required. Existing
+owner risk/release authority and legal/platform obligations are unchanged.
+A document or local pass cannot accept residual risks, waive independent review
+or invent an approval/expiry. No risk is closed by merging this inventory.

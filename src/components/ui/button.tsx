@@ -10,9 +10,10 @@ import {
 } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
+import { accentTextColor } from '@/theme/action-colors';
+import { Fonts } from '@/constants/theme';
 import {
     LetterSpacingEm,
-    LineHeightRatio,
     Palette,
     Radius,
     Spacing,
@@ -36,6 +37,7 @@ export type ButtonProps = Omit<
   fullWidth?: boolean;
   icon?: ReactNode;
   accentColor?: string;
+  loadingAccessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -47,6 +49,7 @@ export function Button({
   fullWidth = false,
   icon,
   accentColor,
+  loadingAccessibilityLabel,
   style,
   accessibilityLabel,
   accessibilityState,
@@ -56,20 +59,22 @@ export function Button({
   const theme = useTheme();
   const isDisabled = disabled || loading;
 
-  const containerStyle = getContainerStyle(variant, accentColor);
-  const labelColor = getLabelColor(variant, theme.text, accentColor);
+  const actionColor = accentColor ?? theme.primary ?? Palette.mintPrimary;
+  const containerStyle = getContainerStyle(variant, actionColor);
+  const labelColor = getLabelColor(variant, theme.text, actionColor);
   const disabledBackground = theme.backgroundElement;
   const disabledText = theme.textSecondary;
+  const accessibleName = accessibilityLabel ?? label;
 
   return (
     <Pressable
       {...pressableProps}
-      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityLabel={loading ? loadingAccessibilityLabel ?? accessibleName : accessibleName}
       accessibilityRole="button"
       accessibilityState={{
         ...accessibilityState,
-        busy: loading || accessibilityState?.busy,
-        disabled: isDisabled || accessibilityState?.disabled,
+        busy: loading || accessibilityState?.busy === true,
+        disabled: isDisabled || accessibilityState?.disabled === true,
       }}
       disabled={isDisabled}
       onPress={onPress}
@@ -128,8 +133,8 @@ function getContainerStyle(variant: ButtonVariant, accentColor: string = Palette
     case 'primary':
     default:
       return {
-        backgroundColor: Palette.mintPrimary,
-        borderColor: Palette.mintPrimary,
+        backgroundColor: accentColor,
+        borderColor: accentColor,
       };
   }
 }
@@ -143,7 +148,7 @@ function getLabelColor(variant: ButtonVariant, themeText: string, accentColor: s
       return themeText;
 
     case 'primary':
-      return Palette.deepNavy;
+      return accentTextColor(accentColor);
 
     case 'destructive':
     default:
@@ -171,11 +176,13 @@ const styles = StyleSheet.create({
     opacity: 0.82,
   },
   label: {
+    fontFamily: Fonts.sans,
     flexShrink: 1,
+    minWidth: 0,
     textAlign: 'center',
     fontSize: Typography.button.fontSize,
     fontWeight: Typography.button.fontWeight,
-    lineHeight: Typography.button.fontSize * LineHeightRatio.body,
+    lineHeight: 24,
     letterSpacing:
       Typography.button.fontSize * LetterSpacingEm.button,
   },

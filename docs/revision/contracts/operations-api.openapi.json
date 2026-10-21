@@ -1,0 +1,674 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Deep Focus sync, privacy and billing visibility slice",
+    "version": "0.1.0-draft",
+    "description": "Fifteen undeployed operations supplement two personal slices (41 unique total). Draft-07 external schemas; not complete V1, full OpenAPI certification, SQL migrations or provider setup. All private responses are private,no-store. Production TTLs, recent-auth, pricing, merchant and retention remain unapproved. No checkout, webhook, upload or account deletion is executed by this file."
+  },
+  "servers": [
+    {
+      "url": "/v1",
+      "description": "Logical path, not a selected production domain."
+    }
+  ],
+  "security": [
+    {
+      "UserBearer": []
+    }
+  ],
+  "paths": {
+    "/sync/push": {
+      "post": {
+        "operationId": "pushSync",
+        "x-registry-id": "EX-12",
+        "description": "Ordered per-item domain results; HTTP 200 does not mean every command committed. Stable item IDs must survive retry; never cache a partly processed batch as a complete receipt.",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/SyncPushResponse"
+          },
+          "default": {
+            "$ref": "personal-api.openapi.json#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "$ref": "#/components/requestBodies/pushSync"
+        },
+        "parameters": [
+          {
+            "$ref": "personal-api.openapi.json#/components/parameters/IdempotencyKey"
+          }
+        ]
+      }
+    },
+    "/sync/pull": {
+      "get": {
+        "operationId": "pullSync",
+        "x-registry-id": "EX-13",
+        "description": "Opaque owner-bound continuation, fixed batch high-water. At caughtUp, nextCursor remains a usable string for the next poll, not null.",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/SyncPullResponse"
+          },
+          "default": {
+            "$ref": "personal-api.openapi.json#/components/responses/Error"
+          }
+        },
+        "x-query-schema": "backend-extensions.schema.json#/definitions/SyncPull",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequiredCursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ]
+      }
+    },
+    "/sync/snapshots": {
+      "post": {
+        "operationId": "createSyncSnapshot",
+        "x-registry-id": "EX-14",
+        "description": "Durable snapshot job. No upload or local outbox replacement. Accepted is not ready.",
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/SnapshotJobResponse"
+          },
+          "default": {
+            "$ref": "personal-api.openapi.json#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "$ref": "#/components/requestBodies/createSyncSnapshot"
+        },
+        "parameters": [
+          {
+            "$ref": "personal-api.openapi.json#/components/parameters/IdempotencyKey"
+          }
+        ]
+      }
+    },
+    "/sync/snapshots/{id}": {
+      "parameters": [
+        {
+          "$ref": "personal-api.openapi.json#/components/parameters/Id"
+        }
+      ],
+      "get": {
+        "operationId": "getSyncSnapshot",
+        "x-registry-id": "EX-15",
+        "description": "Owned snapshot job; metadata exists only when succeeded. High-water, first-page cursor and sync resume cursor are different capabilities.",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/SnapshotStatusResponse"
+          },
+          "default": {
+            "$ref": "personal-api.openapi.json#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/sync/snapshots/{id}/pages": {
+      "parameters": [
+        {
+          "$ref": "personal-api.openapi.json#/components/parameters/Id"
+        }
+      ],
+      "get": {
+        "operationId": "getSyncSnapshotPage",
+        "x-registry-id": "EX-16",
+        "description": "Immutable owned snapshot page. Cursor binds snapshot, owner and index; no arbitrary offset. Expired is an error, not an empty page.",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/SnapshotPageResponse"
+          },
+          "default": {
+            "$ref": "personal-api.openapi.json#/components/responses/Error"
+          }
+        },
+        "x-query-schema": "operations-api.schema.json#/definitions/SnapshotPageQuery",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequiredCursor"
+          }
+        ]
+      }
+    },
+    "/privacy/exports": {
+      "post": {
+        "operationId": "createPrivacyExport",
+        "x-registry-id": "EX-21",
+        "description": "Recent authentication required. Consistent allowlisted own-account export job; excludes local-only resource bytes/metadata. No download credential returned here.",
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/ExportJobResponse"
+          },
+          "default": {
+            "$ref": "personal-api.openapi.json#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "$ref": "#/components/requestBodies/createPrivacyExport"
+        },
+        "parameters": [
+          {
+            "$ref": "personal-api.openapi.json#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "x-recent-auth-required": true
+      }
+    },
+    "/privacy/jobs/{id}": {
+      "parameters": [
+        {
+          "$ref": "personal-api.openapi.json#/components/parameters/Id"
+        }
+      ],
+      "get": {
+        "operationId": "getPrivacyJob",
+        "x-registry-id": "EX-22",
+        "description": "User bearer reads an owned export/deletion job. The separate pre-issued receipt credential reads ONLY its accepted deletion job's coarse status, never exports, content or cancellation.",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/PrivacyJobResponse"
+          },
+          "default": {
+            "$ref": "personal-api.openapi.json#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "DeletionStatusReceipt": []
+          }
+        ],
+        "x-receipt-response-schema": "operations-api.schema.json#/definitions/DeletionJobResponse"
+      }
+    },
+    "/privacy/exports/{id}/download-token": {
+      "parameters": [
+        {
+          "$ref": "personal-api.openapi.json#/components/parameters/Id"
+        }
+      ],
+      "post": {
+        "operationId": "createExportDownloadGrant",
+        "x-registry-id": "EX-23",
+        "description": "Recent authentication, ready unexpired owned export and approved artifact host required. Expiring URL is a credential: no logs, shared cache, referrers or generic plaintext receipt. No refresh of expiry on replay.",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ExportDownloadResponse"
+          },
+          "default": {
+            "$ref": "personal-api.openapi.json#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "$ref": "#/components/requestBodies/createExportDownloadGrant"
+        },
+        "parameters": [
+          {
+            "$ref": "personal-api.openapi.json#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "x-recent-auth-required": true,
+        "x-sensitive-response": true
+      }
+    },
+    "/privacy/deletion-challenge": {
+      "post": {
+        "operationId": "createDeletionChallenge",
+        "x-registry-id": "EX-24",
+        "description": "Recent authentication required. Reserve job ID and pre-issue a scoped status credential, securely stored by client before confirmation. Creating this challenge does NOT freeze/delete the account or activate job-status access.",
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/DeletionChallengeResponse"
+          },
+          "default": {
+            "$ref": "personal-api.openapi.json#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "$ref": "#/components/requestBodies/createDeletionChallenge"
+        },
+        "parameters": [
+          {
+            "$ref": "personal-api.openapi.json#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "x-recent-auth-required": true,
+        "x-sensitive-response": true
+      }
+    },
+    "/privacy/deletions": {
+      "post": {
+        "operationId": "confirmAccountDeletion",
+        "x-registry-id": "EX-25",
+        "description": "Recent authentication plus exact unexpired account-bound challenge/consequences version. Freeze and create reserved job atomically; client already holds status credential to recover a lost HTTP response. No implicit subscription cancellation.",
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/DeletionJobResponse"
+          },
+          "default": {
+            "$ref": "personal-api.openapi.json#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "$ref": "#/components/requestBodies/confirmAccountDeletion"
+        },
+        "parameters": [
+          {
+            "$ref": "personal-api.openapi.json#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "x-recent-auth-required": true
+      }
+    },
+    "/account/sessions": {
+      "get": {
+        "operationId": "listAccountSessions",
+        "x-registry-id": "EX-26",
+        "description": "Owned app-session registry only, not a fabricated complete device inventory. Opaque live keyset pagination; no raw JWTs, IPs or fingerprints.",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/AccountSessionsResponse"
+          },
+          "default": {
+            "$ref": "personal-api.openapi.json#/components/responses/Error"
+          }
+        },
+        "x-query-schema": "backend-extensions.schema.json#/definitions/ListQuery",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ]
+      }
+    },
+    "/account/sessions/revoke": {
+      "post": {
+        "operationId": "revokeAccountSessions",
+        "x-registry-id": "EX-27",
+        "description": "Recent authentication required. Atomically revoke selected owned registry entries and enqueue provider revocation. Distinguish immediate app/API denial from provider token expiry; no ordinary receipt replay after caller itself is revoked.",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/RevokeSessionsResponse"
+          },
+          "default": {
+            "$ref": "personal-api.openapi.json#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "$ref": "#/components/requestBodies/revokeAccountSessions"
+        },
+        "parameters": [
+          {
+            "$ref": "personal-api.openapi.json#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "x-recent-auth-required": true
+      }
+    },
+    "/billing/entitlements": {
+      "get": {
+        "operationId": "listBillingEntitlements",
+        "x-registry-id": "EX-28",
+        "description": "Current verified rights or explicit unavailable/null. No client grants and no stale snapshot treated as current. Paginated view is NOT authority for privileged execution.",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/EntitlementsResponse"
+          },
+          "default": {
+            "$ref": "personal-api.openapi.json#/components/responses/Error"
+          }
+        },
+        "x-query-schema": "backend-extensions.schema.json#/definitions/ListQuery",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ]
+      }
+    },
+    "/billing/catalog": {
+      "get": {
+        "operationId": "getBillingCatalog",
+        "x-registry-id": "EX-29",
+        "description": "Authenticated eligible published offers only. Surface is a display hint, never identity/region/payment authority. Unconfigured/unavailable has null offers, never fake zero prices or checkout success.",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/CatalogResponse"
+          },
+          "default": {
+            "$ref": "personal-api.openapi.json#/components/responses/Error"
+          }
+        },
+        "x-query-schema": "operations-api.schema.json#/definitions/CatalogQuery",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Surface"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ]
+      }
+    },
+    "/billing/management-link": {
+      "post": {
+        "operationId": "createBillingManagementLink",
+        "x-registry-id": "EX-30",
+        "description": "Own verified license only; server resolves approved purchase origin and exact official HTTPS host. No user-supplied destination. Returning from provider never proves cancellation.",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ManagementLinkResponse"
+          },
+          "default": {
+            "$ref": "personal-api.openapi.json#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "$ref": "#/components/requestBodies/createBillingManagementLink"
+        },
+        "parameters": [
+          {
+            "$ref": "personal-api.openapi.json#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "x-sensitive-response": true
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "UserBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Supabase user access JWT"
+      },
+      "DeletionStatusReceipt": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Opaque deletion-job status capability; NOT a user JWT; accepted only at EX-22"
+      }
+    },
+    "parameters": {
+      "Cursor": {
+        "name": "cursor",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "$ref": "backend-extensions.schema.json#/definitions/Cursor"
+        }
+      },
+      "RequiredCursor": {
+        "name": "cursor",
+        "in": "query",
+        "required": true,
+        "schema": {
+          "$ref": "backend-extensions.schema.json#/definitions/Cursor"
+        }
+      },
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "$ref": "backend-extensions.schema.json#/definitions/ListQuery/properties/limit"
+        }
+      },
+      "Surface": {
+        "name": "surface",
+        "in": "query",
+        "required": true,
+        "schema": {
+          "$ref": "operations-api.schema.json#/definitions/Surface"
+        }
+      }
+    },
+    "requestBodies": {
+      "pushSync": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "backend-extensions.schema.json#/definitions/SyncPush"
+            }
+          }
+        }
+      },
+      "createSyncSnapshot": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "operations-api.schema.json#/definitions/Empty"
+            }
+          }
+        }
+      },
+      "createPrivacyExport": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "backend-extensions.schema.json#/definitions/ExportRequest"
+            }
+          }
+        }
+      },
+      "createExportDownloadGrant": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "operations-api.schema.json#/definitions/Empty"
+            }
+          }
+        }
+      },
+      "createDeletionChallenge": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "operations-api.schema.json#/definitions/Empty"
+            }
+          }
+        }
+      },
+      "confirmAccountDeletion": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "backend-extensions.schema.json#/definitions/DeletionRequest"
+            }
+          }
+        }
+      },
+      "revokeAccountSessions": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "operations-api.schema.json#/definitions/RevokeSessionsRequest"
+            }
+          }
+        }
+      },
+      "createBillingManagementLink": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "operations-api.schema.json#/definitions/ManagementLinkRequest"
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "SyncPushResponse": {
+        "description": "Draft strict response; authorization, temporal/cross-field validation and production policy gates remain mandatory.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "operations-api.schema.json#/definitions/SyncPushResponse"
+            }
+          }
+        }
+      },
+      "SyncPullResponse": {
+        "description": "Draft strict response; authorization, temporal/cross-field validation and production policy gates remain mandatory.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "operations-api.schema.json#/definitions/SyncPullResponse"
+            }
+          }
+        }
+      },
+      "SnapshotJobResponse": {
+        "description": "Draft strict response; authorization, temporal/cross-field validation and production policy gates remain mandatory.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "operations-api.schema.json#/definitions/SnapshotJobResponse"
+            }
+          }
+        }
+      },
+      "SnapshotStatusResponse": {
+        "description": "Draft strict response; authorization, temporal/cross-field validation and production policy gates remain mandatory.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "operations-api.schema.json#/definitions/SnapshotStatusResponse"
+            }
+          }
+        }
+      },
+      "SnapshotPageResponse": {
+        "description": "Draft strict response; authorization, temporal/cross-field validation and production policy gates remain mandatory.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "operations-api.schema.json#/definitions/SnapshotPageResponse"
+            }
+          }
+        }
+      },
+      "ExportJobResponse": {
+        "description": "Draft strict response; authorization, temporal/cross-field validation and production policy gates remain mandatory.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "operations-api.schema.json#/definitions/ExportJobResponse"
+            }
+          }
+        }
+      },
+      "PrivacyJobResponse": {
+        "description": "Draft strict response; authorization, temporal/cross-field validation and production policy gates remain mandatory.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "operations-api.schema.json#/definitions/PrivacyJobResponse"
+            }
+          }
+        }
+      },
+      "ExportDownloadResponse": {
+        "description": "Draft strict response; authorization, temporal/cross-field validation and production policy gates remain mandatory.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "operations-api.schema.json#/definitions/ExportDownloadResponse"
+            }
+          }
+        }
+      },
+      "DeletionChallengeResponse": {
+        "description": "Draft strict response; authorization, temporal/cross-field validation and production policy gates remain mandatory.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "operations-api.schema.json#/definitions/DeletionChallengeResponse"
+            }
+          }
+        }
+      },
+      "DeletionJobResponse": {
+        "description": "Draft strict response; authorization, temporal/cross-field validation and production policy gates remain mandatory.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "operations-api.schema.json#/definitions/DeletionJobResponse"
+            }
+          }
+        }
+      },
+      "AccountSessionsResponse": {
+        "description": "Draft strict response; authorization, temporal/cross-field validation and production policy gates remain mandatory.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "operations-api.schema.json#/definitions/AccountSessionsResponse"
+            }
+          }
+        }
+      },
+      "RevokeSessionsResponse": {
+        "description": "Draft strict response; authorization, temporal/cross-field validation and production policy gates remain mandatory.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "operations-api.schema.json#/definitions/RevokeSessionsResponse"
+            }
+          }
+        }
+      },
+      "EntitlementsResponse": {
+        "description": "Draft strict response; authorization, temporal/cross-field validation and production policy gates remain mandatory.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "operations-api.schema.json#/definitions/EntitlementsResponse"
+            }
+          }
+        }
+      },
+      "CatalogResponse": {
+        "description": "Draft strict response; authorization, temporal/cross-field validation and production policy gates remain mandatory.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "operations-api.schema.json#/definitions/CatalogResponse"
+            }
+          }
+        }
+      },
+      "ManagementLinkResponse": {
+        "description": "Draft strict response; authorization, temporal/cross-field validation and production policy gates remain mandatory.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "operations-api.schema.json#/definitions/ManagementLinkResponse"
+            }
+          }
+        }
+      }
+    }
+  }
+}

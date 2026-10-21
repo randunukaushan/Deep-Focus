@@ -1,0 +1,83 @@
+{
+  "openapi": "3.1.1",
+  "info": { "title": "Deep Focus personal-core contract slice", "version": "0.1.0-draft", "description": "Not deployed. Covers the first backend vertical slice only; not full V1, AI, billing, settings, deletion or enterprise API. External request/response schemas explicitly use JSON Schema draft-07; consumer tools must support that dialect." },
+  "servers": [{ "url": "/v1", "description": "Logical base path. Map to the approved Edge Function gateway after environment configuration; no production domain is selected." }],
+  "security": [{ "UserBearer": [] }],
+  "paths": {
+    "/me": {
+      "get": { "operationId": "getMe", "responses": { "200": { "$ref": "#/components/responses/Profile" }, "default": { "$ref": "#/components/responses/Error" } } },
+      "patch": { "operationId": "patchMe", "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "requestBody": { "$ref": "#/components/requestBodies/ProfilePatch" }, "responses": { "200": { "$ref": "#/components/responses/Profile" }, "default": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/tasks": {
+      "get": { "operationId": "listTasks", "parameters": [{ "$ref": "#/components/parameters/Cursor" }, { "$ref": "#/components/parameters/Limit" }], "responses": { "200": { "$ref": "#/components/responses/TaskList" }, "default": { "$ref": "#/components/responses/Error" } } },
+      "post": { "operationId": "createTask", "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "requestBody": { "$ref": "#/components/requestBodies/TaskCreate" }, "responses": { "201": { "$ref": "#/components/responses/Task" }, "default": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/tasks/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": { "operationId": "getTask", "responses": { "200": { "$ref": "#/components/responses/Task" }, "default": { "$ref": "#/components/responses/Error" } } },
+      "patch": { "operationId": "patchTask", "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "requestBody": { "$ref": "#/components/requestBodies/TaskPatch" }, "responses": { "200": { "$ref": "#/components/responses/Task" }, "default": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/tasks/{id}/actions": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "post": { "operationId": "applyTaskAction", "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "requestBody": { "$ref": "#/components/requestBodies/TaskAction" }, "responses": { "200": { "$ref": "#/components/responses/Task" }, "default": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/goals": {
+      "get": { "operationId": "listGoals", "parameters": [{ "$ref": "#/components/parameters/Cursor" }, { "$ref": "#/components/parameters/Limit" }], "responses": { "200": { "$ref": "#/components/responses/GoalList" }, "default": { "$ref": "#/components/responses/Error" } } },
+      "post": { "operationId": "createGoal", "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "requestBody": { "$ref": "#/components/requestBodies/GoalCreate" }, "responses": { "201": { "$ref": "#/components/responses/Goal" }, "default": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/goals/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": { "operationId": "getGoal", "responses": { "200": { "$ref": "#/components/responses/Goal" }, "default": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/focus-sessions": {
+      "get": { "operationId": "listSessions", "parameters": [{ "$ref": "#/components/parameters/Cursor" }, { "$ref": "#/components/parameters/Limit" }], "responses": { "200": { "$ref": "#/components/responses/SessionList" }, "default": { "$ref": "#/components/responses/Error" } } },
+      "post": { "operationId": "startSession", "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "requestBody": { "$ref": "#/components/requestBodies/SessionStart" }, "responses": { "201": { "$ref": "#/components/responses/Session" }, "default": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/focus-sessions/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "get": { "operationId": "getSession", "responses": { "200": { "$ref": "#/components/responses/Session" }, "default": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/focus-sessions/{id}/events": {
+      "parameters": [{ "$ref": "#/components/parameters/Id" }],
+      "post": { "operationId": "applySessionEvent", "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }], "requestBody": { "$ref": "#/components/requestBodies/SessionEvent" }, "responses": { "200": { "$ref": "#/components/responses/Session" }, "default": { "$ref": "#/components/responses/Error" } } }
+    }
+  },
+  "components": {
+    "securitySchemes": { "UserBearer": { "type": "http", "scheme": "bearer", "bearerFormat": "Supabase user access JWT" } },
+    "parameters": {
+      "Id": { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+      "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "format": "uuid" } },
+      "Cursor": { "name": "cursor", "in": "query", "required": false, "schema": { "type": "string", "minLength": 1, "maxLength": 2048 }, "description": "Omit for the first page. A supplied empty value is invalid. Opaque signed owner/query-bound keyset cursor, not an offset or a user-supplied timestamp." },
+      "Limit": { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 50 } }
+    },
+    "requestBodies": {
+      "ProfilePatch": { "required": true, "content": { "application/json": { "schema": { "$ref": "personal-api.schema.json#/definitions/ProfilePatch" } } } },
+      "TaskCreate": { "required": true, "content": { "application/json": { "schema": { "$ref": "personal-api.schema.json#/definitions/TaskCreate" } } } },
+      "TaskPatch": { "required": true, "content": { "application/json": { "schema": { "$ref": "personal-api.schema.json#/definitions/TaskPatch" } } } },
+      "TaskAction": { "required": true, "content": { "application/json": { "schema": { "$ref": "personal-api.schema.json#/definitions/TaskAction" } } } },
+      "GoalCreate": { "required": true, "content": { "application/json": { "schema": { "$ref": "personal-api.schema.json#/definitions/GoalCreate" } } } },
+      "SessionStart": { "required": true, "content": { "application/json": { "schema": { "$ref": "personal-api.schema.json#/definitions/SessionStart" } } } },
+      "SessionEvent": { "required": true, "content": { "application/json": { "schema": { "$ref": "personal-api.schema.json#/definitions/SessionEvent" } } } }
+    },
+    "responses": {
+      "Error": { "description": "Non-success; stable code mapping defined in backend contract. Never raw provider errors.", "content": { "application/json": { "schema": { "$ref": "personal-api.schema.json#/definitions/Error" } } } },
+      "Profile": { "description": "Owned profile", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProfileEnvelope" } } } },
+      "Task": { "description": "Owned task", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TaskEnvelope" } } } },
+      "Goal": { "description": "Owned goal", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GoalEnvelope" } } } },
+      "Session": { "description": "Owned session, verification state distinct from local completion", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SessionEnvelope" } } } },
+      "TaskList": { "description": "Owned task page", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TaskList" } } } },
+      "GoalList": { "description": "Owned goal page", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GoalList" } } } },
+      "SessionList": { "description": "Owned session page", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SessionList" } } } }
+    },
+    "schemas": {
+      "Meta": { "type": "object", "additionalProperties": false, "required": ["nextCursor"], "properties": { "nextCursor": { "type": ["string", "null"] } } },
+      "ProfileEnvelope": { "type": "object", "additionalProperties": false, "required": ["data"], "properties": { "data": { "$ref": "personal-api.schema.json#/definitions/Profile" } } },
+      "TaskEnvelope": { "type": "object", "additionalProperties": false, "required": ["data"], "properties": { "data": { "$ref": "personal-api.schema.json#/definitions/Task" } } },
+      "GoalEnvelope": { "type": "object", "additionalProperties": false, "required": ["data"], "properties": { "data": { "$ref": "personal-api.schema.json#/definitions/Goal" } } },
+      "SessionEnvelope": { "type": "object", "additionalProperties": false, "required": ["data"], "properties": { "data": { "$ref": "personal-api.schema.json#/definitions/Session" } } },
+      "TaskList": { "type": "object", "additionalProperties": false, "required": ["data", "meta"], "properties": { "data": { "type": "array", "maxItems": 100, "items": { "$ref": "personal-api.schema.json#/definitions/Task" } }, "meta": { "$ref": "#/components/schemas/Meta" } } },
+      "GoalList": { "type": "object", "additionalProperties": false, "required": ["data", "meta"], "properties": { "data": { "type": "array", "maxItems": 100, "items": { "$ref": "personal-api.schema.json#/definitions/Goal" } }, "meta": { "$ref": "#/components/schemas/Meta" } } },
+      "SessionList": { "type": "object", "additionalProperties": false, "required": ["data", "meta"], "properties": { "data": { "type": "array", "maxItems": 100, "items": { "$ref": "personal-api.schema.json#/definitions/Session" } }, "meta": { "$ref": "#/components/schemas/Meta" } } }
+    }
+  }
+}

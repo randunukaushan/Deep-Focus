@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <title>චිකේ TV podcast intro</title>
+  <desc>Eight-second animated title card for the Sinhala podcast චිකේ TV.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0E0E11"/>
+      <stop offset="0.52" stop-color="#24171C"/>
+      <stop offset="1" stop-color="#501D2A"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#D8435A" stop-opacity=".72"/>
+      <stop offset="1" stop-color="#D8435A" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#0A0318" flood-opacity=".45"/>
+    </filter>
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <linearGradient id="titleFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFF7EA"/>
+      <stop offset=".45" stop-color="#F3C969"/>
+      <stop offset=".7" stop-color="#FFF7EA"/>
+      <stop offset="1" stop-color="#D8435A"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFF" stop-opacity="0"/>
+      <stop offset=".48" stop-color="#FFF" stop-opacity="0"/>
+      <stop offset=".52" stop-color="#FFF" stop-opacity=".95"/>
+      <stop offset=".58" stop-color="#FFF" stop-opacity="0"/>
+      <stop offset="1" stop-color="#FFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="round"><rect width="1920" height="1080" rx="36"/></clipPath>
+  </defs>
+  <style>
+    .bg { animation: hue 8s ease-in-out infinite alternate; transform-origin: center; }
+    .orb { animation: float 6s ease-in-out infinite alternate; }
+    .orb.two { animation-delay: -2s; animation-duration: 7s; }
+    .orb.three { animation-delay: -4s; animation-duration: 5s; }
+    .line { stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: draw 1.4s ease-out .3s forwards; }
+    .title { opacity: 0; transform-box: fill-box; transform-origin: center; animation: titleIn 1s cubic-bezier(.2,.8,.2,1) 1.5s forwards; }
+    .title-main { fill: url(#titleFill); stroke: #FFF7EA; stroke-width: 2; paint-order: stroke; }
+    .title-word { transform-box: fill-box; transform-origin: center; }
+    .title-word.one { animation: wordOne .85s cubic-bezier(.2,.9,.25,1.2) 1.55s both; }
+    .title-word.two { animation: wordTwo .9s cubic-bezier(.2,.9,.25,1.2) 1.82s both; }
+    .title-shadow { opacity: 0; animation: shadowIn 1s ease-out 1.5s forwards, shadowPulse 2.2s ease-in-out 2.7s infinite; }
+    .shine { opacity: 0; animation: shine 1.8s ease-in-out 2.8s forwards; }
+    .spark { opacity: 0; transform-box: fill-box; transform-origin: center; animation: sparkIn .6s ease-out forwards; }
+    .spark.s1 { animation-delay: 2.35s; }
+    .spark.s2 { animation-delay: 2.55s; }
+    .spark.s3 { animation-delay: 2.75s; }
+    .sub { opacity: 0; animation: fadeIn .8s ease-out 2.35s forwards; }
+    .tag { opacity: 0; animation: fadeIn .8s ease-out 2.8s forwards; }
+    .mic { transform-box: fill-box; transform-origin: center; animation: pop 1s cubic-bezier(.2,.8,.2,1) 1s both; }
+    @keyframes hue { from { transform: scale(1); } to { transform: scale(1.04); } }
+    @keyframes float { from { transform: translate(0,0) scale(1); } to { transform: translate(55px,-34px) scale(1.08); } }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+    @keyframes titleIn { from { opacity: 0; transform: translateY(40px) scale(.88); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes wordOne { from { opacity: 0; transform: translateX(-110px) rotate(-8deg) scale(.7); } to { opacity: 1; transform: translateX(0) rotate(0) scale(1); } }
+    @keyframes wordTwo { from { opacity: 0; transform: translateX(110px) rotate(8deg) scale(.7); } to { opacity: 1; transform: translateX(0) rotate(0) scale(1); } }
+    @keyframes shadowIn { from { opacity: 0; transform: translateY(30px) scale(.7); } to { opacity: .55; transform: translateY(0) scale(1); } }
+    @keyframes shadowPulse { 50% { opacity: .8; filter: url(#softGlow); } }
+    @keyframes shine { 0% { opacity: 0; transform: translateX(-900px); } 20% { opacity: .9; } 65% { opacity: .9; } 100% { opacity: 0; transform: translateX(900px); } }
+    @keyframes sparkIn { from { opacity: 0; transform: scale(0) rotate(-45deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
+    @keyframes fadeIn { to { opacity: 1; } }
+    @keyframes pop { from { transform: scale(0) rotate(-18deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
+  </style>
+  <g clip-path="url(#round)">
+    <rect class="bg" width="1920" height="1080" fill="url(#bg)"/>
+    <circle class="orb" cx="260" cy="170" r="210" fill="url(#glow)" opacity=".65"/>
+    <circle class="orb two" cx="1690" cy="820" r="260" fill="url(#glow)" opacity=".52"/>
+    <circle class="orb three" cx="1560" cy="170" r="90" fill="#F3C969" opacity=".2"/>
+    <path class="line" d="M260 770 C530 620 670 900 930 720 S1370 500 1660 690" fill="none" stroke="#D8435A" stroke-width="8" stroke-linecap="round" opacity=".78"/>
+    <g class="mic" transform="translate(960 278)">
+      <circle r="84" fill="#D8435A" opacity=".18"/>
+      <rect x="-27" y="-55" width="54" height="96" rx="27" fill="#FFF7EA"/>
+      <path d="M-58 2a58 58 0 0 0 116 0M0 60v35M-38 95h76" fill="none" stroke="#FFF7EA" stroke-width="14" stroke-linecap="round"/>
+    </g>
+    <g class="spark s1" transform="translate(590 470)" fill="#F3C969"><path d="M0-34L9-9 34 0 9 9 0 34-9 9-34 0-9-9z"/></g>
+    <g class="spark s2" transform="translate(1370 455)" fill="#FFF7EA"><path d="M0-23L6-6 23 0 6 6 0 23-6 6-23 0-6-6z"/></g>
+    <g class="spark s3" transform="translate(1480 620)" fill="#F3C969"><path d="M0-17L5-5 17 0 5 5 0 17-5 5-17 0-5-5z"/></g>
+    <g text-anchor="middle" filter="url(#shadow)">
+      <text class="title-shadow" x="960" y="575" fill="#09090B" stroke="#09090B" stroke-width="18" opacity=".5" font-family="Noto Sans Sinhala, Nirmala UI, sans-serif" font-size="150" font-weight="800">චිකේ TV</text>
+      <text class="title title-main" x="960" y="570" font-family="Noto Sans Sinhala, Nirmala UI, sans-serif" font-size="150" font-weight="800"><tspan class="title-word one">චිකේ</tspan><tspan class="title-word two" dx="28">TV</tspan></text>
+      <text class="shine" x="960" y="570" fill="url(#shine)" font-family="Noto Sans Sinhala, Nirmala UI, sans-serif" font-size="150" font-weight="800">චිකේ TV</text>
+      <text class="sub" x="960" y="682" fill="#FFF1D6" font-family="Noto Sans Sinhala, Nirmala UI, sans-serif" font-size="42" font-weight="600">කතාවට අලුත් පැත්තක්!</text>
+      <text class="tag" x="960" y="770" fill="#F3C969" font-family="Noto Sans Sinhala, Nirmala UI, sans-serif" font-size="28" letter-spacing="5">PODCAST • TALK • IDEAS</text>
+    </g>
+  </g>
+</svg>

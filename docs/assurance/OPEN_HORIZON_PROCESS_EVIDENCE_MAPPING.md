@@ -1,75 +1,63 @@
-# Open Horizon Process Evidence Mapping from Deep Focus
+# Proposed Open Horizon process crosswalk from Deep Focus evidence
 
-## 1. Document Control
+Reconciled 2026-10-22 against Deep Focus main
+`ecd6d348093292c27b06751815eb09694a41665a`.
+Status: **PROPOSED crosswalk; no company adoption, ownership/licence transfer,
+QMS/ISMS operation, certification or access grant.**
+Owner: separate Deep Focus evidence owner and future OH management-system owner;
+no new accountable person or entity assignment is made by this file.
 
-| Field | Value |
-|---|---|
-| Owner | Open Horizon founder / future management-system owner |
-| Baseline date | 2026-10-06 |
-| Scope | Use of genuine Deep Focus product records as supporting evidence of company processes |
-| Status | Mapping proposal; no company certification or management-system audit claimed |
-| Classification | Internal |
+## 1. Entity and evidence boundary
 
-## 2. Purpose and Boundary
+Deep Focus remains separately owned during pre-launch. Any future OH licence/
+use requires an exact separately approved arrangement; possible later licensing
+does not transfer product IP or permit copying private user/security records.
+Shared founder involvement does not make all product artifacts company-owned.
+Keep personal, product, company and third-party rights/data distinct.
 
-This document explains how Deep Focus records may support evidence that Open Horizon processes operate in practice. It does not assert that Open Horizon currently conforms to, or is certified against, ISO 9001, ISO/IEC 27001, or any other standard.
+A product record may illustrate a process only if it genuinely happened,
+its provenance is retained and the evidence owner authorizes the exact reuse.
+Link minimum necessary redacted evidence; a crosswalk itself does not prove
+company-wide operation, management review, internal audit or effectiveness.
+No automatic Drive/Notion/Asana copying, account access or workspace migration.
 
-Product-level conformance and company-level certification readiness are separate:
+## 2. Reference context
 
-- Deep Focus product assurance asks whether this app meets defined quality, security, privacy, accessibility, and release criteria.
-- Open Horizon QMS/ISMS assurance asks whether the organization has established and consistently operates its defined management processes across the applicable scope.
+Official sources checked 2026-10-22: [ISO9001 edition 6 / 2026](https://www.iso.org/standard/9001),
+[ISO/IEC27001:2022](https://www.iso.org/standard/27001) and
+[Amd1:2024](https://www.iso.org/standard/88435.html),
+[NIST SSDF v1.1](https://csrc.nist.gov/pubs/sp/800/218/final).
+These support a process-level research crosswalk only. Licensed official text,
+exact company scope, qualified assessment and separate decisions are required
+before clause-level conformity/certification claims. No certificate, assessor,
+logo, cost or transition deadline is selected by this mapping.
 
-A single app project cannot alone demonstrate organization-wide processes, management review, competence, resources, internal audit, risk treatment, or control across all products and operations.
+## 3. Illustrative crosswalk — not an implemented company control
 
-## 3. Applicable References Checked
+| Company capability | Genuine product evidence that could illustrate it | Separate company evidence still needed |
+| --- | --- | --- |
+| Requirements/change control | Dated owner decisions, approved scope and bounded PR | Company scope/roles, actual client/product requirements and operated approvals |
+| Design/development | Canonical contracts and reviewed implementation evidence | Adopted lifecycle, competence, trusted reviews and sampling beyond one app |
+| Configuration/release | Named commit, lockfile, actual build and release decision | Access/config/environment/backup/release authority across company systems |
+| Verification/quality | Contextual actual tests, failures, defects and retests | Defined objectives, operated quality controls and effectiveness measurements |
+| Information security risk | Real data/asset/threat/risk assessment and remediation | ISMS scope, methodology/treatment/SoA, owners and actual internal review/audit |
+| Secure SDLC | Actual dependency/secrets review, qualified code review and artifacts | Adopted process, supplier/build/access controls, training and exceptions |
+| Privacy | Actual minimized data flows, disclosures and export/delete tests | Entity roles, processor agreements, retention, requests and qualified legal review |
+| Supplier/dependency | Contextual lockfile/advisory/licence/provider decision evidence | Approved supplier process/contracts, review and incident handling |
+| Competence | Authorized training/review participation records | Role competence plan and actual effectiveness review, not model confidence |
+| Monitoring/improvement | Actual support/incident/defect/retro outcomes | Operated monitoring, management review, corrective-action effectiveness |
+| Incident/recovery | Exact affected-build containment/fix/retest and restore records | Company response/notification responsibilities, drills and continuity evidence |
 
-| Reference | Current version checked 2026-10-06 | Mapping use |
-|---|---|---|
-| ISO 9001 | ISO 9001:2026, published 2026-09-16, current edition on ISO site. | QMS process evidence at principle/process level. Use a licensed official copy before clause-level conformity assessment. |
-| ISO/IEC 27001 | ISO/IEC 27001:2022 plus Amendment 1:2024 as listed by ISO. | ISMS risk, information protection, secure development, incident, monitoring and improvement evidence. |
-| NIST SSDF | SP 800-218 v1.1. | Practical secure development lifecycle crosswalk; not a certification. |
+Use [evidence register](DEEP_FOCUS_EVIDENCE_REGISTER.md) to distinguish current
+source, dated local runs and still-unperformed native/hosted/operational checks.
+Do not reuse PR14/20 review exceptions as company assurance evidence of
+independent review. A documentation pass is not a product control pass.
 
-Official sources:
-- https://www.iso.org/standard/88464.html
-- https://www.iso.org/standard/27001.html
-- https://csrc.nist.gov/pubs/sp/800/218/final
+## 4. Future reuse record
 
-## 4. Product Evidence to Company Process Crosswalk
-
-| Company process capability | Genuine Deep Focus records that may support it | What the product record alone does not prove | Company-level evidence still needed |
-|---|---|---|---|
-| Customer/user requirements and product planning | Approved product vision, versioned requirements, feature-scope changes, user feedback, acceptance tests. | That the company consistently captures requirements for all clients/products or meets every ISO 9001 requirement. | Organization-wide process, responsibility, review records, contractual requirements, and sampling across projects. |
-| Design and development control | Architecture decisions, threat/risk assessments, design reviews, change proposals and traceability. | That development controls operate consistently or that design validation is adequate across the company. | Controlled lifecycle procedure, role assignments, gates, competence, review/verification/validation records for multiple work items. |
-| Change and configuration control | Git branches/PRs, commit references, dependency changes, approved release branch and build configuration. | That code changes are authorized, reviewed, tested, or protected unless actual records show this. | Organization policy, access reviews, backup/recovery, release authority, records across systems and products. |
-| Quality verification and release | Test plans/results, release readiness decisions, defect/fix/retest records, store submissions. | That quality objectives and acceptance criteria are consistently met. | Defined metrics, quality objectives, release authority and management monitoring. |
-| Information security risk management | Product asset/data inventory, threat model, risk register, security tests, vulnerability/incident records. | Organization-wide ISMS scope, risk assessment methodology, Statement of Applicability, or Annex A treatment. | Current ISO/IEC 27001 process, ISMS scope, risk criteria, treatment plan, SoA, owners, review and internal audit records. |
-| Secure SDLC | Dependency/secret scanning, protected builds, least-privilege access, code review, security test and release artifact. | That all repositories and supplier pipelines are controlled or all security requirements are met. | Company Secure SDLC standard, tooling/configuration controls, training, exceptions and evidence across product lifecycle. |
-| Privacy and data handling | Data inventory, minimization, privacy notices, consent, deletion testing, store declarations. | Legal compliance for all jurisdictions or all company activities. | Company privacy roles/process, processor contracts, retention schedule, request handling, incident handling and legal review. |
-| Supplier/dependency control | Dependency inventory, SDK behavior review, license/security triage, vendor decisions. | Organization-wide supplier control. | Approved supplier assessment, contractual/security requirements, periodic review and issue escalation. |
-| Competence and awareness | Developer training/skills records and review participation for Deep Focus. | Company competence planning or awareness for every relevant role. | Competency matrix, onboarding, training, role-specific awareness and effectiveness review. |
-| Monitoring, feedback and improvement | User feedback, crash/defect trends, corrective actions, release retrospectives and changed acceptance tests. | Management review or continuous improvement across the organization. | Defined objectives, performance review, internal audits, leadership review, corrective action and effectiveness checks. |
-| Incident and vulnerability response | Product incident record, affected-build analysis, containment, patch, disclosure decision, retest and lessons learned. | Company-wide incident readiness or customer/regulator notification capability. | Company incident process, communication/escalation tree, exercises, legal obligations and cross-product lessons learned. |
-| Business continuity and recovery | Build reproducibility, repository backup, release rollback, data export/deletion and app recovery evidence. | Organization continuity, disaster recovery, service resilience or backup restoration for all company systems. | Business impact/risk analysis, recovery objectives, tested backups, continuity plans and supplier dependencies. |
-
-## 5. Records That Must Be Created at Company Level
-
-As Open Horizon becomes operational, establish and operate its own controlled records:
-
-- QMS/ISMS scope, context, interested parties, policy, objectives, roles and responsibilities;
-- company risk methodology and current risk registers;
-- Secure SDLC and software release procedures;
-- asset, information, supplier, access, incident, vulnerability and continuity processes;
-- competence, onboarding and awareness records;
-- internal audit plans/results and corrective-action effectiveness;
-- management review inputs/decisions and continual improvement;
-- certification-body scope, readiness review, audit findings, and transition plan for current standard versions.
-
-Deep Focus can provide a practical case study and sample operating records. Do not mark company controls implemented merely because a Deep Focus document contains a mapping.
-
-## 6. Use and Retention Rules
-
-Retain source links to the exact repository commit, PR, build, test record, issue, or store submission. Identify the organization/product scope, evidence date, record owner, reviewer, classification, and retention rule. Redact secrets and user data. Preserve failed tests and corrective actions; do not retain only successful outcomes.
-
-## 7. Review
-
-Review this mapping when Open Horizon defines its formal QMS/ISMS scope, selects certification targets, adopts a Secure SDLC, adds products or client services, or when ISO publishes a new edition or transition requirements. Clause-level mapping must use the current official standard text and qualified review.
+If later separately authorized, record product/entity and company scope, exact
+artifact/commit/build/date, evidence owner/access classification, permitted use,
+redaction, reviewer, limitations and refresh/retention authority. Do not invent
+missing retrospective evidence. Preserve failure/corrective-action records.
+Technical readiness does not approve public certification/quality marketing.
+No company evidence operation is performed by this PR.

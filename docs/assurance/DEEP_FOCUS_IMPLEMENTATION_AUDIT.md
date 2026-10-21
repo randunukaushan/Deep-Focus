@@ -1,65 +1,58 @@
-# Deep Focus Implementation and Evidence Audit
+# Deep Focus implementation and evidence audit
 
-## 1. Document Control
+Reconciled **2026-10-22**, main `ecd6d348093292c27b06751815eb09694a41665a`.
+Method: bounded source/config/test inventory and linked dated evidence, not a
+penetration test or device run. Original [October 6 audit](historical/DEEP_FOCUS_IMPLEMENTATION_AUDIT-2026-10-06.md)
+at SDK57 `77682543addf1e5bab2d110ad4d979d8e887229a` is preserved unchanged.
+Original finding IDs remain stable; dispositions apply to this named main only.
 
-| Field | Value |
-|---|---|
-| Owner | Deep Focus product owner / maintainer |
-| Audit date | 2026-10-06 |
-| Repository | https://github.com/randunukaushan/Deep-Focus |
-| Assessed branch | upgrade/sdk-57 |
-| Assessed commit | 77682543addf1e5bab2d110ad4d979d8e887229a |
-| Method | Read-only review of repository tree, selected application/configuration files, package scripts, and related pull requests |
-| Classification | Internal working evidence |
+## 1. Finding disposition
 
-## 2. Purpose and Limits
+| ID | Historical finding / area | Current main observation and evidence | Residual gate |
+| --- | --- | --- | --- |
+| DF-IMPL-01 | Focus setup | [Setup](../../src/app/focus/setup.tsx) has presets/custom 5–180 and stored task linking; settings/onboarding supply supported defaults | Full Focus Cycles/long-break configuration and native interactions not established |
+| DF-IMPL-02 | Timer/state | [Engine](../../src/features/focus/session-engine.ts) validates/project timestamps; [tests](../../tests/domain/session-engine.test.mjs) exist | Actual background/clock/device behavior |
+| DF-IMPL-03 | Early completion allowed | Superseded in current source: completeFocusSession returns unchanged while remainingSeconds > 0; [engine tests](../../tests/domain/session-engine.test.mjs) cover transition rules | No retrospective SDK57 fix claim; actual release interaction acceptance open |
+| DF-IMPL-04 | JSON recovery adapter | Superseded: [session adapter](../../src/features/focus/session-storage.ts) delegates to [SQLite21](../../src/features/storage/local-database.ts); active/terminal and break state are owner-scoped | Native Expo binding/process/storage protection and upgrade evidence |
+| DF-IMPL-05 | Swallowed writes | Old file-helper finding superseded by current throwing/awaited adapter and transactional terminal writes; [boundaries](../../tests/domain/session-boundaries.test.mjs) | Do not infer every app read/error path is perfect; actual disk/UX failures open |
+| DF-IMPL-06 | Goal progress untested/completed-only | [Goal rules](../../src/features/goals/goal-progress.ts), [tests](../../tests/domain/goal-progress.test.mjs) exist. Cancelled actual focus contributes only to time metrics under October 6 decision | Device timezone/period and hosted contribution/reconciliation |
+| DF-IMPL-07 | Provider-placeholder auth UI only | Manifest/adapters/current [feature matrix](../V1_FEATURE_MATRIX.md) show auth/owner activation and partial Portal source; selected provider is already recorded | Not complete live callbacks/authorization, sync, revocation/export/deletion acceptance |
+| DF-IMPL-08 | Release identity | Main retains SDK56, current EAS ID and Android package; iOS icon exists, bundleIdentifier absent | Exact iOS identifier, account/project access, signing and named build |
+| DF-IMPL-09 | No automated suite | Superseded for main: domain/component/navigation/web suites exist; root lacks test/typecheck script but direct installed commands are used in dated evidence | No listed Actions runs/workflows; local runs are not CI or security acceptance |
+| DF-IMPL-10 | Accessibility source hints only | More semantic/localized/reduced-motion source and static experience checks exist | TalkBack/VoiceOver, si/ta/en script/layout, keyboard/browser and installed-build acceptance remain open |
 
-This audit compares selected V1/product assurance expectations with the source present on the stated SDK 57 branch. It updates implementation status and identifies evidence gaps for follow-up.
+## 2. Original baseline finding IDs
 
-This is a desk review of source and repository metadata. No application was built or executed for this audit. No lint, type check, automated test, Expo Doctor, emulator, simulator, physical-device, accessibility-assistive-technology, security test, or store submission was performed as part of this record. Source inspection does not prove runtime behavior or conformance to a standard.
+These resolve old DF-AUD references without erasing their original observations.
 
-The repository’s default branch is `main`; this review uses `upgrade/sdk-57` as the working technical baseline. PR #14 is a draft targeting `main`, and its code is not present in the assessed SDK 57 snapshot. PR #15 remains a draft evidence-documentation pull request.
+| ID | Current disposition |
+| --- | --- |
+| DF-AUD-01 | SDK57 historical branch differs; this documentation integration explicitly keeps main SDK56 without dependency change |
+| DF-AUD-02 | Historical EAS text mismatch no longer present in main vs old SDK57 ID; private account/signing ownership still NOT_RUN |
+| DF-AUD-03 | PR #14 merged as 7916d81; no longer a draft proposal |
+| DF-AUD-04 | PR14 current-architecture port is on SDK56 main; no SDK57 release selection inferred |
+| DF-AUD-05 | CLI lists no Actions runs and baseline has no workflow files; external CI unknown |
+| DF-AUD-06 | CLI lists no GitHub releases; store/EAS private history not checked |
+| DF-AUD-07 | Root script absence persists; missing-suite inference superseded by actual files and dated runs |
+| DF-AUD-08 | Timestamp model retained, persistence now SQLite21; native reliability still open |
+| DF-AUD-09 | JSON active adapter superseded; retained legacy JSON, SQLite data, logs/backups need actual protection review |
+| DF-AUD-10 | Early completion rejected in current source and local tests; original SDK57 observation not rewritten |
+| DF-AUD-11 | Required V1 envelope is already recorded; feature matrix maps partial implementation, not automatic readiness |
+| DF-AUD-12 | Historical Expo Doctor 21/21 remains Pending Indexing; not rerun or reported as current pass |
 
-## 3. Scope-to-Implementation Findings
+## 3. Change and evidence context
 
-| Finding | Area | Observed implementation | Assessment and evidence status |
-|---|---|---|---|
-| DF-IMPL-01 | Focus setup | `src/app/focus/setup.tsx` provides a task name and 5–180 minute focus duration with preset/custom input. | Captured in source; setup behavior has not been executed. The inspected route does not configure short breaks, cycle count, or long breaks. Reconcile this route with the approved V1 scope/product direction before calling the full Focus Cycles setup implemented. |
-| DF-IMPL-02 | Timer/state model | `src/features/focus/session-engine.ts` calculates elapsed time from timestamps and models active, paused, completed, and cancelled states. The hook refreshes displayed time and responds to app foregrounding. | Captured in source; timer accuracy, wall-clock changes, background/foreground behavior, and transition tests remain Pending. |
-| DF-IMPL-03 | Early completion | `src/app/focus/session.tsx` exposes “Complete Session” while active or paused. `completeFocusSession` permits any non-terminal session to become completed, regardless of remaining time. | Confirmed high-priority defect candidate against the intended rule recorded in V1 scope and PR #14. Early completion can create a completed history item; goal progress counts completed session records. No fix or retest is present on the assessed SDK 57 branch. |
-| DF-IMPL-04 | Persistence and recovery | `src/features/focus/session-storage.ts` saves active session/history as JSON in the app document directory, validates a subset of fields, and deduplicates history by session ID. Root/recovery routes attempt to restore active sessions. | Captured in source only. No restart/process-death, corrupt-file, duplicate-write, or device evidence exists in this audit. Validation does not establish valid duration bounds or parseable timestamp semantics. |
-| DF-IMPL-05 | Persistence failure behavior | Storage helpers catch I/O/parse failures and return fallbacks; write failures do not reach the session UI. | Reliability limitation requiring a design decision and tests: the UI cannot distinguish a durable save from a swallowed write failure. This audit does not establish that data loss has occurred. |
-| DF-IMPL-06 | Progress calculation | `src/features/goals/goal-progress.ts` derives goal totals from completed sessions and their recorded focused duration. | Captured in source. Correctness depends on valid terminal session transitions and persisted history; no automated or manual result is available. |
-| DF-IMPL-07 | Authentication/account | Sign-in, sign-up, password-reset, and verification screens exist. The screens state that these actions await an approved authentication provider; the sign-up and sign-in buttons only set local submitted state in the inspected files. | UI prototype captured; authentication, account creation, recovery, verification, authorization, sync, and account deletion are not demonstrated as working capabilities. Keep these release-scope items Pending until integrated and tested, or formally revise V1 scope. |
-| DF-IMPL-08 | Platform release identity | SDK 57 `app.json` contains Android package identity and an EAS project ID; the iOS configuration shown contains an icon but no explicit `ios.bundleIdentifier`. `eas.json` defines development, preview, and production profiles. | Configuration captured; intended EAS project ownership, iOS identifier, actual builds, signing, and store readiness remain unverified. Resolve the identifier and project baseline before release builds. |
-| DF-IMPL-09 | Automated verification | The package manifest exposes an Expo lint script; no test/type-check/security-scan scripts were present in the inspected manifest. The recursive SDK 57 tree had no `.github/workflows` or source test/spec files. | Absence verified in this snapshot. No CI run, automated suite, or security scan evidence was found here. Local or external checks may exist, but no artifacts were supplied. |
-| DF-IMPL-10 | Mobile platform/accessibility | Some source components provide accessibility labels/roles and the app targets Android/iOS. | Source hints only. There is no TalkBack, VoiceOver, large-text, reduced-motion, device compatibility, or iOS runtime test record in this audit. |
+PR20 merged implementation; PR14 merged owner/session/pause-bound break recovery;
+PR19 matrix and PR13 four-surface release guidance are documentation milestones.
+[PR14 evidence](../revision/evidence/PR14-BREAK-RECOVERY-2026-10-21.md) records
+1776 automated tests/nine disk cases and type/lint results on that dated source.
+[PR19 evidence](../revision/evidence/PR19-STATUS-RECONCILIATION-2026-10-22.md)
+records 132 focused cases. [PR13 evidence](../revision/evidence/PR13-RELEASE-RECONCILIATION-2026-10-22.md)
+records 21 content cases. These are not fresh full-suite runs for this task.
+Actual PR15 checks are [separate](../revision/evidence/PR15-ASSURANCE-RECONCILIATION-2026-10-22.md).
 
-## 4. Pull Request and Change-Control Assessment
-
-### 4.1 Reliability hardening draft
-
-PR #14, “Harden focus session and break recovery,” is an open draft based on `main` and its head is on the SDK 56 dependency line. Its description lists lint, TypeScript, and Android device checks as still required. The assessed SDK 57 source still has the early-completion action and transition described in DF-IMPL-03.
-
-Therefore PR #14 is evidence of a proposed change only. It does not close DF-IMPL-03, prove SDK 57 contains the proposed fix, or establish that any check passed. Port or rework the fix against the selected release baseline, then retain check and device retest artifacts before closing the defect.
-
-### 4.2 Assurance-documentation draft
-
-PR #15 adds the initial product assurance documents against the SDK 57 baseline. It remains a draft and does not itself demonstrate that application controls operate or that product tests passed. This audit is added to that draft evidence pack for review.
-
-## 5. Priority Actions
-
-| Priority | Action | Completion evidence |
-|---|---|---|
-| High | Fix early completion on the selected SDK 57 baseline so a session cannot be recorded completed before its approved completion condition; confirm desired behavior for manual completion. | Reviewed code change, focused automated tests for active/paused/elapsed sessions, lint/type-check output, and Android retest record. |
-| High | Reconcile V1 scope with implemented routes, especially Focus Cycles setup and account/authentication capabilities. | Owner-approved scope-to-feature matrix that marks implemented, planned, deferred, or removed items, with change history. |
-| High | Add repeatable tests for timer transitions, progress integrity, storage/recovery, and history idempotency. | Test source, command, commit, execution output, and failure/fix/retest links. |
-| Medium | Make persistence failure/recovery behavior observable and safe; test malformed and stale persisted values. | Design decision, tests, and user-visible recovery behavior evidence. |
-| Medium | Confirm the EAS project identity and set the intended iOS bundle identifier before building release candidates. | Owner-confirmed configuration, successful platform build records, and release artifact identifiers. |
-| Before beta | Complete Android and iOS device/accessibility checks and capture privacy/store declarations based on actual data flows and SDK behavior. | Dated device/build records, accessibility results, SDK/data inventory, and reviewed Play/App Store disclosures. |
-
-## 6. Evidence Handling and Review
-
-Use this report as a captured code-review artifact, not as a test result. Keep repository commit/branch context with every future update. When an action is completed, link the reviewed change and actual check/device artifacts; update the evidence register and defect log only after verification.
-
-Review this audit when the release branch changes materially, a listed defect is fixed, product scope changes, or release-readiness review begins.
+PR14/20 owner exceptions applied only to those development merges. High-risk
+independent review/native release gates remain open; no blanket waiver is reused.
+A local fix disposition is not a closed release defect or company certification.
+Use [matrix](../V1_FEATURE_MATRIX.md), [core audit](../V1_CORE_FOCUS_AUDIT.md)
+and [pack scope](README.md) for non-core required V1 lanes and next dependencies.
