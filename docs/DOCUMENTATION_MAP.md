@@ -35,6 +35,11 @@ lists remaining boundaries; its summary cannot invent approval.
 
 ## Lookup by task
 
+For a dated implementation/evidence inventory (not scope authority), use the
+[V1 feature matrix](V1_FEATURE_MATRIX.md) and [current core audit](V1_CORE_FOCUS_AUDIT.md).
+Both name main 7916d81 after PR #14; historical audits and local fixture passes
+are not current native/hosted/release acceptance. Refresh against a named commit.
+
 | Task | Canonical topic references / necessary supplements |
 | --- | --- |
 | Every edit | [AI rules](AI_RULES.md), [execution](ai/AI_EXECUTION_POLICY.md), [done/evidence](ai/DEFINITION_OF_DONE.md); relevant instructions in the working path |

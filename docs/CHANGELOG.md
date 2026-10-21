@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-22 — PR #19 status documentation
+
+- Refresh the V1 feature matrix and core-focus audit against main 7916d81 after
+  PR #14/#20; distinguish local source/tests from native/hosted/release readiness.
+- Correct stale no-tests, JSON-only, tick-break, name-only task and missing-local-
+  progression observations; include required Website/Portal, education/resources,
+  locales, commercial and safety gates without changing approved scope.
+- Preserve the original October 15 audit body as labelled historical evidence;
+  its original code SHA was not recorded and is not retroactively invented.
+- [Task checks/review](revision/evidence/PR19-STATUS-RECONCILIATION-2026-10-22.md).
+  Documentation only; no app, SQL, dependency, configuration or deployment change.
+
 ## 2026-10-21 — PR #14 owner-scoped break recovery
 
 - Reconcile old PR conflicts against main's existing session engine, SQLite,
