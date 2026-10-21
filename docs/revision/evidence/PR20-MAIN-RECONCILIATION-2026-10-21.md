@@ -1,14 +1,15 @@
 # PR #20 main reconciliation — 2026-10-21
 
 TASK: Reconcile main into the V1 checkpoint and verify the resulting candidate.
-STATE: REVIEW_PENDING — conflicts resolved and local checks pass.
+STATE: VERIFIED locally — owner-authorized development merge; release NOT_READY.
 DELIVERABLE: conflict resolution, verification and self-review; merge only after
 applicable review gates are met.
 APPROVALS: owner request in this chat to resolve PR #20 conflicts, test, review
 and merge correct changes. Owner separately declined a review sub-agent.
 RISK: HIGH for the overall auth/ownership/sync/persistence implementation;
 MEDIUM for the token compatibility reconciliation itself.
-REVIEW GATE: self-review here; independent HIGH-risk review remains separate.
+REVIEW GATE: self-review completed; owner explicitly waived independent review
+for this development merge on 2026-10-21. No independent review is claimed.
 
 BASELINE: PR head 23934f130b0ab0eef7cdaed311ab4dfcb57bbbaf;
 remote main c5f2d238b882b51a009c1a24d1014bcb9a77722a. Head is five
@@ -90,10 +91,11 @@ server-side owner checks, RLS plus grants, no privileged client keys, and
 cross-owner negative execution. It did not change the database or activate sync.
 
 GitHub reports no reviews/comments or CI checks on PR #20 as inspected here.
-Independent HIGH-risk review remains **PENDING**. Owner declined an extra agent;
+Independent HIGH-risk review was not performed. Owner declined an extra agent;
 no agent was spawned and self-review is not recorded as independent review.
-The recorded October 19 waiver is specific to development backend activation;
-it is not silently expanded to this consolidated merge.
+After receiving the concrete verification evidence, the owner explicitly waived
+that prerequisite for this development merge on October 21. This is recorded in
+revision/01; it does not rely on expanding October 19's backend-only waiver.
 
 Native Android/iOS lifecycle/accessibility and hosted-provider verification were
 not rerun. The October 19 hosted development smoke is dated historical evidence,
@@ -101,6 +103,6 @@ not a passing result for this merge candidate. No production deployment or
 remote migration was performed. Full cloud sync is still incomplete as described
 in APP-BACKEND-CONNECTION-2026-10-19.md; this candidate does not activate it.
 
-Merge into main remains gated by independent review, or an explicit owner
-disposition changing that development-merge requirement. Production readiness
-remains NOT_READY regardless of a development baseline merge.
+Owner disposition: “ඔව්, development merge එකට independent-review gate waive කරන්න”.
+Merge into main is authorized for this tested development baseline. Production
+readiness remains NOT_READY regardless of that merge.

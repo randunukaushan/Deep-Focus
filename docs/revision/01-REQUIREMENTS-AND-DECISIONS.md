@@ -203,6 +203,21 @@ accounts/data and existing credentials. Self-review and actual test evidence are
 still required. This does not mark an independent review completed, authorize
 production release, introduce paid services or change the real-minor boundary.
 
+### PR #20 development baseline merge — 2026-10-21
+
+The owner requested resolving PR #20 conflicts, testing, reviewing and merging
+correct changes into main. After the 1758-test suite, 10 isolated SQL cases,
+typecheck/lint and self-review evidence were presented, the owner declined a
+separate review agent and explicitly replied:
+“ඔව්, development merge එකට independent-review gate waive කරන්න”.
+
+For PR #20's development baseline merge only, the independent-review prerequisite
+is waived by the owner. This is an owner disposition, not completed independent
+review. It does not authorize production release, hosted migrations, secret or
+provider changes, paid services or full cloud-sync activation. Native/hosted
+release verification remains pending. See
+[merge evidence](evidence/PR20-MAIN-RECONCILIATION-2026-10-21.md).
+
 ## Approval record
 
 On 2026-09-14 the owner replied “ඔව් දිගටම කරගෙන යන්න” to the explicit question asking approval of “Supabase backend/database/auth + Next.js website/portal”, and requested deeper Sri Lanka student/teacher research. ADR-001's provider selection and ADR-002's framework selection are therefore approved. A later “හරි කරගෙන යන්න” continues that same documentation/research work; it is not blanket approval of unrelated ADRs.
