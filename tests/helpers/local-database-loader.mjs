@@ -6,6 +6,12 @@ const modules = {
 };
 
 export async function resolve(specifier, context, nextResolve) {
+  if (specifier === '@/features/focus/break-recovery') {
+    return nextResolve(new URL('../../src/features/focus/break-recovery.ts', import.meta.url).href, context);
+  }
+  if (specifier === './break-engine' && context.parentURL?.endsWith('/src/features/focus/break-recovery.ts')) {
+    return nextResolve(new URL('../../src/features/focus/break-engine.ts', import.meta.url).href, context);
+  }
   if (specifier === '@/features/onboarding/setup-definition') {
     return nextResolve(new URL('../../src/features/onboarding/setup-definition.ts', import.meta.url).href, context);
   }

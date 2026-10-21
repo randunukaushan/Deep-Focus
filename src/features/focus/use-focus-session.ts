@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
 import { cancelFocusSession, completeFocusSession, createFocusSession, pauseFocusSession, projectFocusSession, resumeFocusSession } from './session-engine';
-import { loadActiveSession, loadFocusableTask, saveActiveSession } from './session-storage';
+import { loadFocusableTask } from './session-storage';
 import type { FocusSession } from './session-types';
+import { captureFocusRecoveryStore } from '@/features/storage/local-database';
 
 export type FocusSessionRuntimeMessages = {
   recoveryError: string;
@@ -12,6 +13,7 @@ export type FocusSessionRuntimeMessages = {
 };
 
 export function useFocusSession(durationMinutes: number, taskName: string | undefined, taskId: string | undefined, messages: FocusSessionRuntimeMessages) {
+  const [ownerStore] = useState(captureFocusRecoveryStore);
   const initialRequest = useRef({ durationMinutes, taskName, taskId });
   const currentSession = useRef<FocusSession | null>(null);
   const [session, setSession] = useState<FocusSession | null>(null);
@@ -22,6 +24,7 @@ export function useFocusSession(durationMinutes: number, taskName: string | unde
   const saveRevision = useRef(0);
   const saveFault = useRef(false);
   const messagesRef = useRef(messages);
+  const breakTransitionLock = useRef(false);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -31,12 +34,13 @@ export function useFocusSession(durationMinutes: number, taskName: string | unde
     let mounted = true;
     void (async () => {
       try {
-        const stored = await loadActiveSession(true);
-        if (!mounted) return;
+        const stored = await ownerStore.loadActiveSession(true);
+        if (!mounted || !ownerStore.isCurrent()) return;
         const timestamp = Date.now();
         let next = stored;
         if (!next) {
           const task = initialRequest.current.taskId ? await loadFocusableTask(initialRequest.current.taskId) : null;
+          if (!mounted || !ownerStore.isCurrent()) return;
           if (initialRequest.current.taskId && !task) throw new Error('TASK_NOT_AVAILABLE');
           const created = createFocusSession(initialRequest.current.durationMinutes, task?.title ?? initialRequest.current.taskName, timestamp);
           next = task ? { ...created, taskId: task.id } : created;
@@ -52,7 +56,7 @@ export function useFocusSession(durationMinutes: number, taskName: string | unde
       }
     })();
     return () => { mounted = false; };
-  }, []);
+  }, [ownerStore]);
 
   const projection = useMemo(() => {
     if (!session || error || saveFailed) return null;
@@ -61,10 +65,10 @@ export function useFocusSession(durationMinutes: number, taskName: string | unde
   const timerError = error ?? (saveFailed ? messages.saveFailure : null) ?? (hydrated && session && !projection ? messages.recoveryError : null);
 
   useEffect(() => {
-    if (!hydrated || error || saveFault.current || !session || (session.status !== 'active' && session.status !== 'paused')) return;
+    if (!hydrated || error || saveFault.current || breakTransitionLock.current || !session || (session.status !== 'active' && session.status !== 'paused')) return;
     let currentEffect = true;
     const revision = ++saveRevision.current;
-    void saveActiveSession(session).then(() => {
+    void ownerStore.saveActiveSession(session).then(() => {
       if (currentEffect && revision === saveRevision.current) setSaveFailed(false);
     }).catch(() => {
       if (currentEffect && revision === saveRevision.current) {
@@ -86,7 +90,7 @@ export function useFocusSession(durationMinutes: number, taskName: string | unde
       }
     });
     return () => { currentEffect = false; };
-  }, [hydrated, session, error]);
+  }, [hydrated, session, error, ownerStore]);
 
   useEffect(() => {
     if (!hydrated || timerError || (session?.status !== 'active' && session?.status !== 'paused')) return;
@@ -99,7 +103,7 @@ export function useFocusSession(durationMinutes: number, taskName: string | unde
 
   const update = useCallback((transition: (current: FocusSession, timestamp: number) => FocusSession) => {
     const current = currentSession.current;
-    if (!hydrated || timerError || saveFault.current || !current) return false;
+    if (!hydrated || timerError || saveFault.current || breakTransitionLock.current || !ownerStore.isCurrent() || !current) return false;
     try {
       const timestamp = Date.now();
       const next = transition(current, timestamp);
@@ -111,8 +115,28 @@ export function useFocusSession(durationMinutes: number, taskName: string | unde
       setError(messagesRef.current.recoveryError);
       return false;
     }
-  }, [hydrated, timerError]);
+  }, [hydrated, timerError, ownerStore]);
   const pause = useCallback(() => update(pauseFocusSession), [update]);
+  const pauseForBreak = useCallback(async () => {
+    const current = currentSession.current;
+    if (!hydrated || timerError || saveFault.current || breakTransitionLock.current || !ownerStore.isCurrent() || current?.status !== 'active') return false;
+    breakTransitionLock.current = true;
+    const store = ownerStore;
+    try {
+      const timestamp = Date.now();
+      const paused = pauseFocusSession(current, timestamp);
+      currentSession.current = paused;
+      setSession(paused);
+      setNow(timestamp);
+      // Commit before navigation; a mounted route effect may be cancelled on exit.
+      await store.saveActiveSession(paused);
+      if (!store.isCurrent()) return false;
+      return true;
+    } catch {
+      if (store.isCurrent()) { saveFault.current = true; setSaveFailed(true); }
+      return false;
+    } finally { breakTransitionLock.current = false; }
+  }, [hydrated, timerError, ownerStore]);
   const resume = useCallback(() => update(resumeFocusSession), [update]);
   const complete = useCallback(() => update(completeFocusSession), [update]);
   const cancel = useCallback(() => update(cancelFocusSession), [update]);
@@ -121,7 +145,7 @@ export function useFocusSession(durationMinutes: number, taskName: string | unde
     if (!hydrated || !saveFailed || !current || (current.status !== 'active' && current.status !== 'paused')) return false;
     const revision = ++saveRevision.current;
     try {
-      await saveActiveSession(current);
+      await ownerStore.saveActiveSession(current);
       if (revision === saveRevision.current) {
         saveFault.current = false;
         setSaveFailed(false);
@@ -132,7 +156,7 @@ export function useFocusSession(durationMinutes: number, taskName: string | unde
       if (revision === saveRevision.current) setSaveFailed(true);
       return false;
     }
-  }, [hydrated, saveFailed]);
+  }, [hydrated, saveFailed, ownerStore]);
 
   useEffect(() => {
     if (!hydrated || timerError || session?.status !== 'active' || projection?.remainingSeconds !== 0) return;
@@ -141,7 +165,7 @@ export function useFocusSession(durationMinutes: number, taskName: string | unde
   }, [complete, hydrated, timerError, projection?.remainingSeconds, session?.status]);
 
   return {
-    session, projection, pause, resume, complete, cancel, hydrated,
+    session, projection, pause, pauseForBreak, resume, complete, cancel, hydrated,
     error: timerError,
     canRetrySave: saveFailed && (session?.status === 'active' || session?.status === 'paused'),
     retrySave,

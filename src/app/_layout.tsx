@@ -11,7 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/features/auth/auth-context';
-import { loadActiveSession, loadPendingSummaryHandoff } from '@/features/focus/session-storage';
+import { captureFocusRecoveryStore } from '@/features/storage/local-database';
 import { authRouteDecision, type RecoveryState } from '@/features/auth/auth-routing';
 import { AppLocaleProvider, useAppLocale } from '@/features/localization/app-locale-context';
 import { getAppLocaleCopy } from '@/features/localization/app-locale';
@@ -40,23 +40,39 @@ function RootNavigator() {
   useEffect(() => {
     if (snapshot.status !== 'signed_in' || !snapshot.userId) {
       recoveredForUser.current = null;
-      return;
+      const handle = setTimeout(() => setRecovery('none'), 0);
+      return () => clearTimeout(handle);
     }
+    if (onboardingLoading || !onboarding || !['completed', 'skipped'].includes(onboarding.status)) return;
     if (recoveredForUser.current === snapshot.userId) return;
+    let cancelled = false;
+    const store = captureFocusRecoveryStore();
+    const current = () => !cancelled && store.isCurrent();
     recoveredForUser.current = snapshot.userId;
     setRecovery('pending');
-    loadActiveSession(true).then((session) => {
+    store.loadFocusRecovery().then(async ({ session, activeBreak }) => {
+      if (!current()) return;
       if (!session) {
-        return loadPendingSummaryHandoff().then((summarySessionId) => {
-          if (!summarySessionId) { setRecovery('none'); return; }
-          setRecovery('found');
-          router.replace({ pathname: '/focus/summary', params: { sessionId: summarySessionId } });
-        });
+        const summarySessionId = await store.loadPendingSummaryHandoff();
+        if (!current()) return;
+        if (!summarySessionId) { setRecovery('none'); return; }
+        setRecovery('found');
+        router.replace({ pathname: '/focus/summary', params: { sessionId: summarySessionId } });
+        return;
       }
       setRecovery('found');
-      router.replace({ pathname: '/focus/session', params: { durationMinutes: String(session.plannedDurationSeconds / 60), taskName: session.taskName ?? '' } });
-    }).catch(() => { setRecovery('error'); router.replace('/focus/recovery'); });
-  }, [router, snapshot.status, snapshot.userId]);
+      if (activeBreak) router.replace('/focus/break');
+      else router.replace({ pathname: '/focus/session', params: { durationMinutes: String(session.plannedDurationSeconds / 60), taskName: session.taskName ?? '' } });
+    }).catch(() => { if (current()) { setRecovery('error'); router.replace('/focus/recovery'); } });
+    return () => { cancelled = true; recoveredForUser.current = null; };
+  }, [onboarding, onboardingLoading, router, snapshot.status, snapshot.userId]);
+
+  useEffect(() => {
+    if (recovery === 'found' && segments[0] === 'focus') {
+      const handle = setTimeout(() => setRecovery('none'), 0);
+      return () => clearTimeout(handle);
+    }
+  }, [recovery, segments]);
 
   const blocked = authRouteDecision(snapshot.status, segments, onboardingLoading ? null : onboarding, recovery).blocked;
   const statusBar = <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />;
@@ -85,7 +101,7 @@ function RootNavigator() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       {statusBar}
       <AnimatedSplashOverlay />
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack key={snapshot.userId ?? snapshot.status} screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
       </Stack>
     </ThemeProvider>

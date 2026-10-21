@@ -37,7 +37,7 @@ test('device presentation preferences migrate, stay private per owner, and prese
   await db.execAsync('DROP TABLE device_presentation_preferences; PRAGMA user_version = 19;');
   const upgraded = createAccountLocalDatabaseStore(USER_A, deps);
   assert.deepEqual(await upgraded.loadPresentationPreferences(), defaults);
-  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 20);
+  assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 21);
   const personal = { ...defaults, personalPhrase: '🌱'.repeat(240), motivation: 'personal', appearance: 'dark' };
   await upgraded.savePresentationPreferences(personal);
   assert.deepEqual(await createAccountLocalDatabaseStore(USER_A, deps).loadPresentationPreferences(), personal);
@@ -81,7 +81,7 @@ test('SQLite planning metadata survives v18 upgrade, reload and completion witho
   database.exec('ALTER TABLE tasks DROP COLUMN estimated_minutes; ALTER TABLE tasks DROP COLUMN planned_date; PRAGMA user_version = 18;');
   const migrated = createAccountLocalDatabaseStore(USER_A, deps);
   assert.deepEqual(await migrated.loadTasks(), [original]);
-assert.equal(database.prepare('PRAGMA user_version').get().user_version, 20);
+assert.equal(database.prepare('PRAGMA user_version').get().user_version, 21);
   const planned = { ...original, estimatedMinutes: 45, plannedDate: '2026-10-20', dueAt: '2026-11-01T00:00:00.000Z' };
   await migrated.saveTasks([planned]);
   const reopened = createAccountLocalDatabaseStore(USER_A, deps);
@@ -556,7 +556,7 @@ test('real SQLite assessment drafts migrate atomically, survive reopen, and stay
   const dependencies = { platform: 'android', openDatabase: async () => adapter, readLegacyFiles: async () => ({}), now: () => '2026-10-07T02:00:00.000Z' };
   const initial = createAccountLocalDatabaseStore(USER_A, dependencies);
   await initial.saveTasks([task('kept-task', 'Keep existing data')]);
-  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 20);
+  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 21);
   assert.ok(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'reward_progress'").get());
   assert.ok(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'progression_events'").get());
   assert.ok(database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'user_achievements'").get());
@@ -593,7 +593,7 @@ test('real SQLite assessment drafts migrate atomically, survive reopen, and stay
 
   const reopened = createAccountLocalDatabaseStore(USER_A, dependencies);
   assert.deepEqual((await reopened.loadAssessment(draft.id)).answers, draft.answers);
-  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 20);
+  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 21);
   assert.ok(database.prepare('PRAGMA table_info(user_settings)').all().some(({ name }) => name === 'ui_locale'));
 });
 

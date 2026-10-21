@@ -75,6 +75,7 @@ test('root status bar follows app appearance in normal, blocked and preference-e
       '@/constants/theme': constants,
       '@/features/auth/auth-context': { AuthProvider: 'AuthProvider', useAuth: () => ({ snapshot: { status: 'signed_in', userId: 'synthetic' } }) },
       '@/features/focus/session-storage': {},
+      '@/features/storage/local-database': {},
       '@/features/auth/auth-routing': { authRouteDecision: () => ({ blocked: state === 'blocked' }) },
       '@/features/localization/app-locale-context': { AppLocaleProvider: 'LocaleProvider', useAppLocale: () => ({ copy: { settingsPage: {}, signIn: {} } }) },
       '@/features/localization/app-locale': {},

@@ -39,7 +39,7 @@ test('one commit applies selected settings and completion; preserves language, p
   assert.deepEqual(await local.loadSetupPreferences(), await b.loadSetupPreferences());
   assert.deepEqual(await reopened.loadPendingOutbox(), []);
   assert.deepEqual(await reopened.loadSessionHistory(), []);
-  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 20, 'no schema migration');
+  assert.equal(sqlite.prepare('PRAGMA user_version').get().user_version, 21, 'setup does not add its own schema migration');
 });
 
 test('language-first write changes only locale and preserves explicit preferences and drafts', async t => {

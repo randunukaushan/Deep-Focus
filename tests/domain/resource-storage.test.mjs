@@ -42,7 +42,7 @@ test('SQLite v8 creates resource, saved-plan and teacher-draft tables and persis
   const db = makeDatabaseAdapter(); t.after(() => db.close());
   const first = createAccountLocalDatabaseStore(USER_A, dependencies(db));
   await first.saveResource(resource('study-book'));
-assert.equal(db.database.prepare('PRAGMA user_version').get().user_version, 20);
+assert.equal(db.database.prepare('PRAGMA user_version').get().user_version, 21);
   assert.ok(db.database.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='local_resources'").get());
   assert.deepEqual((await createAccountLocalDatabaseStore(USER_A, dependencies(db)).loadResources()).map(({ id, reference }) => ({ id, reference })), [{ id: 'study-book', reference: 'Book:study-book' }]);
 });

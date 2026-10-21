@@ -41,7 +41,7 @@ export default function ActiveSessionRoute() {
   const requestedDuration = durationMinutes === undefined ? 25 : Number(durationMinutes);
   const duration = Number.isInteger(requestedDuration) && requestedDuration >= 5 && requestedDuration <= 180 ? requestedDuration : NaN;
   const task = typeof taskName === 'string' ? taskName : '';
-  const { session, projection, pause, resume: resumeSession, complete, cancel, hydrated, error, canRetrySave, retrySave } = useFocusSession(duration, task, typeof taskId === 'string' ? taskId : undefined, { recoveryError: text.recoveryError, taskUnavailable: text.taskUnavailable, saveFailure: text.saveFailure });
+  const { session, projection, pause, pauseForBreak, resume: resumeSession, complete, cancel, hydrated, error, canRetrySave, retrySave } = useFocusSession(duration, task, typeof taskId === 'string' ? taskId : undefined, { recoveryError: text.recoveryError, taskUnavailable: text.taskUnavailable, saveFailure: text.saveFailure });
   const resumedFromBreak = useRef(false);
   const terminalSaveLock = useRef(false);
   const routeMounted = useRef(false);
@@ -139,7 +139,7 @@ export default function ActiveSessionRoute() {
         </> : null}
         <View style={styles.actions}>
           {session.status === 'paused' ? <Button accentColor={homeAction} fullWidth label={text.resume} onPress={resumeSession} style={{ backgroundColor: homeAction, borderColor: homeAction }} /> : session.status === 'active' ? <Button accentColor={homeAction} fullWidth label={text.pause} onPress={pause} style={{ backgroundColor: homeAction, borderColor: homeAction }} /> : null}
-          {session.status === 'active' ? <Button accentColor={homeAction} fullWidth label={text.break} onPress={() => { if (pause()) router.push('/focus/break'); }} variant="secondary" /> : null}
+          {session.status === 'active' ? <Button accentColor={homeAction} fullWidth label={text.break} onPress={async () => { if (await pauseForBreak() && routeMounted.current) router.push('/focus/break'); }} variant="secondary" /> : null}
           {session.status === 'active' || session.status === 'paused' ? <>
             <Button accentColor={homeAction} fullWidth label={text.completeSession} onPress={() => finish('completed')} variant="secondary" />
             <Button fullWidth label={text.endSession} onPress={() => Alert.alert(text.endTitle, text.endDetail, [{ text: text.continue, style: 'cancel' }, { text: text.endSession, style: 'destructive', onPress: () => finish('cancelled') }])} variant="destructive" />

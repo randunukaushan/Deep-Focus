@@ -32,6 +32,7 @@ function fixture(route, { session = terminal, readFailures = 0, taskFailures = 0
         return [slots[slot].value, next => { slots[slot].value = typeof next === 'function' ? next(slots[slot].value) : next; }];
       },
       useCallback: fn => fn,
+      useRef(initial) { return slots[cursor++] ??= { current: initial }; },
       useEffect(fn, dependencies) {
         const slot = cursor++, previous = slots[slot];
         if (!previous || dependencies.some((value, index) => !Object.is(previous.dependencies[index], value))) {
@@ -61,6 +62,10 @@ function fixture(route, { session = terminal, readFailures = 0, taskFailures = 0
     '@/features/localization/rewards-copy': { getAchievementCopy: () => ({ title: 'Synthetic milestone' }) },
     '@/features/focus/session-summary-data': { loadPersistedFinalizedSession },
     '@/features/focus/session-recovery-state': { checkSessionRecovery },
+    '@/features/focus/break-storage': { createBreakRecoveryStorage: () => ({
+      isCurrent: () => true,
+      async load() { counts.reads++; if (readFailures-- > 0) throw Error('PRIVATE_READ_FAILURE'); return { session: active, activeBreak: null }; },
+    }) },
     '@/features/focus/session-storage': {
       async loadFinalizedSession(id) { counts.reads++; assert.equal(id, sessionId); if (readFailures-- > 0) throw Error('PRIVATE_READ_FAILURE'); return session; },
       async loadActiveSession(includePaused) { counts.reads++; assert.equal(includePaused, true); if (readFailures-- > 0) throw Error('PRIVATE_READ_FAILURE'); return active; },

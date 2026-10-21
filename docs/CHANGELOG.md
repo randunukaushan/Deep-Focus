@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-21 — PR #14 owner-scoped break recovery
+
+- Reconcile old PR conflicts against main's existing session engine, SQLite,
+  auth/onboarding and localized accessible UI rather than restoring old JSON.
+- Add SQLite21 active-break recovery bound to owner/session/pause, idempotent
+  starts, durable pause before navigation, visible retry/clock errors, atomic
+  resume/terminal cleanup and stale-owner async guards.
+- Native Android/iOS lifecycle/accessibility remains NOT_RUN; development-only
+  owner exceptions and actual automated results are recorded in
+  [the evidence packet](revision/evidence/PR14-BREAK-RECOVERY-2026-10-21.md).
+
 ## 2026-10-21
 
 - Reconciled PR #20 with main's color-system commits. Retained the October

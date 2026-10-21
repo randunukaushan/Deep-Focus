@@ -31,6 +31,17 @@ function fixture({ failure = false, duration = 10, retryFailure = false } = {}) 
     '@/theme/action-colors': { accentTextColor: () => '#FFFFFF' },
     '@/features/settings/settings-storage': { async loadSettings() { reads++; if (failure || (retryFailure && reads > 1)) throw Error('private settings details'); return { defaultFocusDurationMinutes: 25, defaultBreakDurationMinutes: duration }; } },
     '@/features/focus/break-engine': breakEngine,
+    '@/features/focus/use-break-recovery': {
+      useBreakRecovery() {
+        const [activeBreak, setBreak] = dependencies.react.useState(null);
+        return {
+          record: { session: { status: 'paused' }, activeBreak }, loading: false, saving: false,
+          failed: false, clockError: false, ready: true,
+          projection: activeBreak ? breakEngine.projectBreakTimer(activeBreak, Date.parse(activeBreak.startedAt)) : null,
+          start: value => setBreak(breakEngine.createBreakTimer(value)), retry() {},
+        };
+      },
+    },
     '@/features/localization/break-copy': { getBreakCopy },
     '@/features/localization/app-locale-context': { useAppLocale: () => ({ locale: 'en' }) },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },

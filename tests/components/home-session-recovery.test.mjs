@@ -10,6 +10,9 @@ test('startup and Home recovery load active and paused sessions fail-closed', ()
   assert.match(homeSource, /loadActiveSession\(true\)/);
   assert.match(homeSource, /session\?\.status === 'active' \|\| session\?\.status === 'paused'/);
   assert.match(homeSource, /\.\.\.\(recoverableSession\.status === 'paused' \? \{ resume: '1' \} : \{\}\)/);
-  assert.match(layoutSource, /loadActiveSession\(true\)/);
-  assert.match(recoverySource, /checkSessionRecovery\(\(\) => loadActiveSession\(true\)\)/);
+  assert.match(layoutSource, /store.loadFocusRecovery\(\)/);
+  assert.match(recoverySource, /storage.load\(\)/);
+  assert.match(layoutSource, /captureFocusRecoveryStore\(\)/);
+  assert.match(layoutSource, /activeBreak\) router.replace\('\/focus\/break'\)/);
+  assert.match(recoverySource, /result.activeBreak\) router.replace\('\/focus\/break'\)/);
 });

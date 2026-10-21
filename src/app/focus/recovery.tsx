@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,8 +10,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { SectionHeading } from '@/components/ui/section-heading';
 import { Palette, Radius, Spacing } from '@/constants/theme';
-import { loadActiveSession } from '@/features/focus/session-storage';
-import { checkSessionRecovery } from '@/features/focus/session-recovery-state';
+import { createBreakRecoveryStorage } from '@/features/focus/break-storage';
 import { getSessionRecoveryCopy } from '@/features/localization/session-recovery-copy';
 import { useAppLocale } from '@/features/localization/app-locale-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -24,22 +23,26 @@ export default function SessionRecoveryRoute() {
   const { locale } = useAppLocale();
   const text = getSessionRecoveryCopy(locale);
   const [recoveryState, setRecoveryState] = useState<'checking' | 'empty' | 'error'>('checking');
+  const [storage] = useState(createBreakRecoveryStorage);
+  const mounted = useRef(false);
   const check = useCallback(async () => {
     setRecoveryState('checking');
-    const result = await checkSessionRecovery(() => loadActiveSession(true));
-    if (result.state === 'error') {
+    try {
+      const result = await storage.load();
+      if (!mounted.current || !storage.isCurrent()) return;
+      if (result.activeBreak) router.replace('/focus/break');
+      else if (result.session) {
+        router.replace({ pathname: '/focus/session', params: { durationMinutes: String(result.session.plannedDurationSeconds / 60), taskName: result.session.taskName ?? '' } });
+      } else setRecoveryState('empty');
+    } catch {
+      if (!mounted.current || !storage.isCurrent()) return;
       setRecoveryState('error');
-      return;
     }
-    if (result.session) {
-      router.replace({ pathname: '/focus/session', params: { durationMinutes: String(result.session.plannedDurationSeconds / 60), taskName: result.session.taskName ?? '' } });
-    } else {
-      setRecoveryState('empty');
-    }
-  }, [router]);
+  }, [router, storage]);
   useEffect(() => {
+    mounted.current = true;
     const handle = setTimeout(() => { void check(); }, 0);
-    return () => clearTimeout(handle);
+    return () => { mounted.current = false; clearTimeout(handle); };
   }, [check]);
   const background = isDark ? theme.background : Palette.homeLightBackground;
   const surface = isDark ? theme.surface : Palette.homeLightSurface;

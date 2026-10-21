@@ -44,6 +44,7 @@ function fixture(route, { scheme = 'light', locale = 'en', platform = 'android',
     '@/features/focus/use-focus-session': { useFocusSession: () => ({
       session, projection: { remainingSeconds: 1200, progress: 0.2 }, hydrated, error, canRetrySave: Boolean(error), retrySave: async () => {},
       pause() { counts.pause++; return true; }, resume() { counts.resume++; }, complete() { counts.complete++; }, cancel() { counts.cancel++; },
+      async pauseForBreak() { counts.pause++; return true; },
     }) },
   };
   const exports = {};
@@ -91,7 +92,7 @@ test('Focus setup keeps custom-duration validation and authoritative linked-task
   assert.equal(missing.find(text.startSession).props.disabled, true);
 });
 
-test('active Focus preserves countdown, explicit break/pause and guarded completion/exit handlers', () => {
+test('active Focus preserves countdown, explicit break/pause and guarded completion/exit handlers', async () => {
   const text = getSessionCopy('en');
   for (const scheme of ['light', 'dark']) {
     const app = fixture('session', { scheme }); app.render();
@@ -103,7 +104,7 @@ test('active Focus preserves countdown, explicit break/pause and guarded complet
     assert.equal(app.counts.resume, 0);
     app.find(text.completeSession).props.onPress(); assert.equal(app.counts.complete, 0);
     assert.ok(app.alerts.length);
-    app.find(text.break).props.onPress(); assert.equal(app.counts.pause, 1); assert.equal(app.pushes[0], '/focus/break');
+    await app.find(text.break).props.onPress(); assert.equal(app.counts.pause, 1); assert.equal(app.pushes[0], '/focus/break');
     app.find(text.endSession).props.onPress();
     assert.equal(app.counts.cancel, 0); app.alerts.at(-1)[2][1].onPress(); assert.equal(app.counts.cancel, 1);
     assert.equal(app.counts.terminalWrites, 0);

@@ -1,5 +1,18 @@
 # Deep Focus Database Schema
 
+Local break-recovery amendment (2026-10-21, PR #14): SQLite21 adds
+`active_breaks(owner_id TEXT PRIMARY KEY REFERENCES local_owners(id),
+session_id TEXT NOT NULL, timer_json TEXT NOT NULL CHECK(json_valid(timer_json)),
+FOREIGN KEY(owner_id,session_id) REFERENCES focus_sessions(owner_id,id))`.
+The timer contains sessionId, pauseStartedAt, startedAt, deadlineAt and integer
+plannedDurationSeconds (300/600/900). Reads validate the full timer and matching
+paused session/pause anchor in one transaction. Valid stale records are removed;
+malformed records are preserved with an error. Resume and terminal transitions
+clear the matching break in the same transaction; failures roll back both.
+Both fresh import and upgrade are transactional. No legacy ownerless break JSON
+is imported, no hosted schema changes, no outbox/reward grant for active timers.
+See [scoped evidence and remaining native gates](revision/evidence/PR14-BREAK-RECOVERY-2026-10-21.md).
+
 Device-local UI amendment (2026-10-19): SQLite20 adds
 `device_presentation_preferences(owner_id TEXT PRIMARY KEY REFERENCES local_owners(id),
 preferences_json TEXT NOT NULL CHECK(json_valid(preferences_json)))`.

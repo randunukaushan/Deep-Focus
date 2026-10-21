@@ -1,5 +1,14 @@
 # Deep Focus Data Model
 
+Local recovery implementation note — 2026-10-21, PR #14: an active break is a
+device-local, owner-scoped recovery record, not trusted focus history. It binds
+the paused FocusSession ID and lastPausedAt anchor to the original break start,
+deadline and 5/10/15-minute choice. Restart restores that deadline, including an
+elapsed break, without automatically resuming focus or granting completion.
+Clock rollback is an explicit recoverable error, never successful zero time.
+See [SQLite21 structure](DATABASE_SCHEMA.md) and
+[task evidence](revision/evidence/PR14-BREAK-RECOVERY-2026-10-21.md).
+
 Device-local presentation preferences (owner-delegated 2026-10-19): per owner,
 `appearance: system|light|dark` (default system), `reduceMotion: boolean` (default
 false, cannot override system reduced motion), `motivation: default|personal|off`

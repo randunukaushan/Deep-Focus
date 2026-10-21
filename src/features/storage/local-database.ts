@@ -13,6 +13,7 @@ import { validTaskPlanning } from '@/features/tasks/task-planning';
 import { validateFocusSession } from '@/features/focus/session-engine';
 import { createFinalizedSessionProcessing } from '@/features/focus/completion-processing';
 import type { FocusSession } from '@/features/focus/session-types';
+import { breakBelongsToSession, validateActiveBreak, type ActiveBreak, type FocusRecovery } from '@/features/focus/break-recovery';
 import { calculateLevelProgress, calculateSessionXp, deriveProgressionFacts, qualifyingAchievementIds, type AchievementId } from '@/features/progress/progression-rules';
 import { calculateStreak } from '@/features/progress/streak';
 import type { SavedPlan } from '@/features/planning/plan-types';
@@ -32,7 +33,13 @@ import { createTeacherAssignmentDraft, type TeacherAssignmentDraft } from '@/fea
 const DATABASE_NAME = 'deep-focus-local.db';
 const LOCAL_OWNER_ID = 'local:device';
 const ACCOUNT_OWNER_ID = /^account:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const SCHEMA_VERSION = 20;
+const SCHEMA_VERSION = 21;
+const ACTIVE_BREAK_SCHEMA_SQL = `CREATE TABLE IF NOT EXISTS active_breaks (
+  owner_id TEXT PRIMARY KEY NOT NULL REFERENCES local_owners(id),
+  session_id TEXT NOT NULL,
+  timer_json TEXT NOT NULL CHECK (json_valid(timer_json)),
+  FOREIGN KEY (owner_id, session_id) REFERENCES focus_sessions(owner_id, id)
+);`;
 const PRESENTATION_SCHEMA_SQL = `CREATE TABLE IF NOT EXISTS device_presentation_preferences (
   owner_id TEXT PRIMARY KEY NOT NULL REFERENCES local_owners(id),
   preferences_json TEXT NOT NULL CHECK (json_valid(preferences_json))
@@ -1505,6 +1512,10 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
           await transaction.execAsync(PRESENTATION_SCHEMA_SQL);
           await transaction.execAsync('PRAGMA user_version = 20;');
         }
+        if ((latest?.user_version ?? 0) < 21) {
+          await transaction.execAsync(ACTIVE_BREAK_SCHEMA_SQL);
+          await transaction.execAsync('PRAGMA user_version = 21;');
+        }
       });
     }
     if (!marker) {
@@ -1516,6 +1527,7 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
         if ((current?.user_version ?? 0) > SCHEMA_VERSION) throw new Error('DATABASE_VERSION_UNSUPPORTED: newer local database');
         await transaction.execAsync(ASSESSMENT_SCHEMA_SQL);
         await transaction.execAsync(PRESENTATION_SCHEMA_SQL);
+        await transaction.execAsync(ACTIVE_BREAK_SCHEMA_SQL);
         if ((current?.user_version ?? 0) < 19) await migrateTaskPlanningColumns(transaction);
         if ((current?.user_version ?? 0) < 3) {
           const columns = await transaction.getAllAsync<{ name: string }>('PRAGMA table_info(user_settings)');
@@ -2052,6 +2064,46 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
       });
     },
 
+    async loadFocusRecovery(): Promise<FocusRecovery> {
+      return transaction(async (db) => {
+        const row = await db.getFirstAsync<SessionRow & { task_id: string | null }>(
+          'SELECT s.* FROM active_focus_sessions a JOIN focus_sessions s ON s.owner_id=a.owner_id AND s.id=a.session_id WHERE a.owner_id = ?', ownerId,
+        );
+        const session = row ? sessionFromRow(row, row.task_id) : null;
+        const saved = await db.getFirstAsync<{ session_id: string; timer_json: string }>(
+          'SELECT session_id,timer_json FROM active_breaks WHERE owner_id = ?', ownerId,
+        );
+        if (!saved) return { session, activeBreak: null };
+        const activeBreak: unknown = JSON.parse(saved.timer_json);
+        validateActiveBreak(activeBreak);
+        if (saved.session_id !== activeBreak.sessionId) throw new RangeError('INVALID_RECORD: break session mismatch');
+        if (!breakBelongsToSession(activeBreak, session)) {
+          await db.runAsync('DELETE FROM active_breaks WHERE owner_id = ? AND session_id = ?', ownerId, saved.session_id);
+          return { session, activeBreak: null };
+        }
+        return { session, activeBreak };
+      });
+    },
+
+    async saveActiveBreak(record: ActiveBreak): Promise<ActiveBreak> {
+      validateActiveBreak(record);
+      return transaction(async (db) => {
+        const row = await db.getFirstAsync<SessionRow & { task_id: string | null }>(
+          'SELECT s.* FROM active_focus_sessions a JOIN focus_sessions s ON s.owner_id=a.owner_id AND s.id=a.session_id WHERE a.owner_id = ?', ownerId,
+        );
+        const session = row ? sessionFromRow(row, row.task_id) : null;
+        if (!breakBelongsToSession(record, session)) throw new Error('BREAK_SESSION_CONFLICT');
+        const saved = await db.getFirstAsync<{ timer_json: string }>('SELECT timer_json FROM active_breaks WHERE owner_id = ?', ownerId);
+        if (saved) {
+          const existing: unknown = JSON.parse(saved.timer_json);
+          validateActiveBreak(existing);
+          if (breakBelongsToSession(existing, session)) return existing;
+        }
+        await db.runAsync('INSERT INTO active_breaks (owner_id,session_id,timer_json) VALUES (?,?,?) ON CONFLICT(owner_id) DO UPDATE SET session_id=excluded.session_id,timer_json=excluded.timer_json', ownerId, record.sessionId, JSON.stringify(record));
+        return record;
+      });
+    },
+
     async loadActiveSession(strict = false): Promise<FocusSession | null> {
       try {
         return await serialize(async () => {
@@ -2078,11 +2130,17 @@ export function createLocalDatabaseStore(dependencies: LocalDatabaseDependencies
           await db.runAsync(`UPDATE focus_sessions SET task_id=?,task_name=?,status=?,planned_duration_seconds=?,focused_duration_seconds=?,paused_duration_seconds=?,started_at=?,completed_at=?,cancelled_at=?,last_paused_at=?,last_resumed_at=?,updated_at=?,legacy_extra_json=? WHERE owner_id=? AND id=?`, ...sessionUpdateValues(session, now(), ownerId, taskColumnId), ownerId, session.id);
         } else await insertSession(db, session, now(), ownerId);
         await db.runAsync('INSERT INTO active_focus_sessions (owner_id,session_id) VALUES (?,?) ON CONFLICT(owner_id) DO UPDATE SET session_id=excluded.session_id', ownerId, session.id);
+        if (session.status === 'active') {
+          await db.runAsync('DELETE FROM active_breaks WHERE owner_id = ? AND session_id = ?', ownerId, session.id);
+        }
       });
     },
 
     async clearActiveSession() {
-      await transaction(async (db) => { await db.runAsync('DELETE FROM active_focus_sessions WHERE owner_id = ?', ownerId); });
+      await transaction(async (db) => {
+        await db.runAsync('DELETE FROM active_breaks WHERE owner_id = ?', ownerId);
+        await db.runAsync('DELETE FROM active_focus_sessions WHERE owner_id = ?', ownerId);
+      });
     },
 
     async appendSessionHistory(session: FocusSession) {
@@ -2995,6 +3053,7 @@ async function persistTerminalInTransaction(db: SQLite.SQLiteDatabase, session: 
   const progression = session.status === 'completed'
     ? await applyTerminalProgressionInTransaction(db, session, now, ownerId)
     : null;
+  await db.runAsync('DELETE FROM active_breaks WHERE owner_id = ? AND session_id = ?', ownerId, session.id);
   if (clearPointer) await db.runAsync('DELETE FROM active_focus_sessions WHERE owner_id = ? AND session_id = ?', ownerId, session.id);
   return progression;
 }
@@ -3081,6 +3140,24 @@ export function activateAccountLocalStore(authenticatedUserId: string): void {
 export function activateDeviceLocalStore(): void {
   owners.useDeviceLocal();
 }
+
+export function captureFocusRecoveryStore() {
+  const store = owners.current();
+  const current = () => {
+    if (owners.current() !== store) throw new Error('OWNER_CHANGED');
+    return store;
+  };
+  return {
+    isCurrent: () => owners.current() === store,
+    loadFocusRecovery: () => current().loadFocusRecovery(),
+    loadPendingSummaryHandoff: () => current().loadPendingSummaryHandoff(),
+    saveActiveBreak: (record: ActiveBreak) => current().saveActiveBreak(record),
+    loadActiveSession: (strict = false) => current().loadActiveSession(strict),
+    saveActiveSession: (session: FocusSession) => current().saveActiveSession(session),
+  };
+}
+
+export const loadFocusRecovery = () => owners.current().loadFocusRecovery();
 
 export const loadTasks = (...args: Parameters<typeof deviceLocalStore.loadTasks>) => owners.current().loadTasks(...args);
 export const loadResources = (...args: Parameters<typeof deviceLocalStore.loadResources>) => owners.current().loadResources(...args);

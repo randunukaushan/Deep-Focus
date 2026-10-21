@@ -14,6 +14,7 @@ import * as streak from '../../src/features/progress/streak.ts';
 import * as setupDefinition from '../../src/features/onboarding/setup-definition.ts';
 import * as presentationPreferences from '../../src/features/settings/presentation-preferences.ts';
 import * as taskPlanning from '../../src/features/tasks/task-planning.ts';
+import * as breakEngine from '../../src/features/focus/break-engine.ts';
 
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
@@ -70,6 +71,7 @@ function sqliteFixture(initialFiles = {}, readError = false) {
     '@/features/onboarding/setup-definition': setupDefinition,
     '@/features/settings/presentation-preferences': presentationPreferences,
     '@/features/tasks/task-planning': taskPlanning,
+    '@/features/focus/break-recovery': sourceModule('break-recovery', { './break-engine': breakEngine }),
     './local-owner': {
       accountOwnerId: (authenticatedId) => `account:${authenticatedId}`,
       createLocalOwnerRegistry(deviceStore) {
@@ -274,6 +276,16 @@ function hookFixture(load, duration = 25, saveFailures = 0) {
   };
   const { useFocusSession } = sourceModule('use-focus-session', {
     react, 'react-native': { AppState: { addEventListener: () => ({ remove() {} }) } },
+    '@/features/storage/local-database': {
+      captureFocusRecoveryStore: () => ({
+        isCurrent: () => true,
+        loadActiveSession(strict) { strictLoad = strict; return load(); },
+        async saveActiveSession() {
+          writes++;
+          if (saveFailures > 0) { saveFailures--; throw new Error('disk full'); }
+        },
+      }),
+    },
     './session-engine': engine,
     './session-storage': {
       loadActiveSession(strict) { strictLoad = strict; return load(); },
@@ -305,9 +317,26 @@ function hookFixture(load, duration = 25, saveFailures = 0) {
     async settle() { await new Promise(setImmediate); return this.render(); },
     tick(timestamp) { clock = timestamp; [...timers.values()].forEach(fn => fn()); },
     writes: () => writes, strict: () => strictLoad, timers: () => timers.size,
+    failNextSave() { saveFailures++; },
     unmount() { slots.forEach(slot => slot?.cleanup?.()); },
   };
 }
+
+test('break navigation waits for durable pause and failed pause stays retryable', async () => {
+  const fixture = hookFixture(async () => null);
+  fixture.render(); await fixture.settle(); let state = await fixture.settle();
+  fixture.failNextSave();
+  assert.equal(await state.pauseForBreak(), false);
+  state = fixture.render();
+  assert.equal(state.session.status, 'paused');
+  assert.equal(state.canRetrySave, true);
+  assert.equal(state.resume(), false);
+  assert.equal(await state.retrySave(), true);
+  state = fixture.render(); assert.equal(state.resume(), true);
+  state = fixture.render(); assert.equal(await state.pauseForBreak(), true);
+  state = fixture.render(); assert.equal(state.session.status, 'paused');
+  fixture.unmount();
+});
 
 test('pending hydration blocks controls, writes and timers; creation waits for load', async () => {
   let resolve;

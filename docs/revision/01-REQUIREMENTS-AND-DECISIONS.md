@@ -471,3 +471,15 @@ account mutation or deployment is authorized. The five-step definition is versio
 The implementation and evidence sequence is tracked in
 [the task packet](evidence/ONBOARDING-AND-AUTH-POLISH-2026-10-20.md).
 Independent review, device/accessibility/translation and release gates remain.
+
+## 2026-10-21–22 — PR #14 development-only recovery integration authority
+
+USER-CONFIRMED TASK AUTHORITY (this chat): adapt PR #14 break recovery to
+current SQLite/auth, resolve conflicts, run tests and review, then merge main.
+The owner explicitly waived independent review only for this development merge
+and retained the instruction not to use another agent. After `adb devices -l`
+showed no attached device, the owner separately approved a development merge
+with native Android/iOS lifecycle/accessibility acceptance still NOT_RUN.
+Neither response proves an independent review or native success, changes the
+general HIGH-risk policy, or authorizes production release/hosted migration.
+See [bounded implementation and actual evidence](evidence/PR14-BREAK-RECOVERY-2026-10-21.md).
