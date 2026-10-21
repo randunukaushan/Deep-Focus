@@ -1,5 +1,16 @@
 # Deep Focus Development Guide
 
+For current task execution use [AI execution policy](ai/AI_EXECUTION_POLICY.md)
+and [Definition of Done](ai/DEFINITION_OF_DONE.md); use the
+[documentation map](DOCUMENTATION_MAP.md) to choose relevant sections. This guide
+retains technical/workflow context, not a second risk or completion policy.
+
+For shared Android/iOS development, Windows/EAS/macOS build boundaries,
+separate native artifacts, early iOS validation and the required Website/Portal
+lane, use [release guidance](DUAL_PLATFORM_RELEASE_GUIDE.md). Installed tool,
+credential/budget and actual platform verification gates still apply; no cloud
+build, account setup or submission is authorized merely by a workflow example.
+
 
 
 This document defines the development workflow, coding standards, project structure, and engineering best practices for the Deep Focus project.
@@ -7,6 +18,17 @@ This document defines the development workflow, coding standards, project struct
 It serves as the primary development reference for developers, AI coding assistants, and future contributors, helping ensure that implementation remains consistent, maintainable, secure, accessible, and aligned with the overall Deep Focus architecture.
 
 Every meaningful change to the project should follow the principles and standards defined in this guide.
+
+For the documentation revision, consult the [readiness sheet](revision/18-IMPLEMENTATION-READINESS-AND-OWNER-DECISIONS.md),
+[backend operations](revision/16-BACKEND-EXTENSIONS-AND-OPERATIONS.md) and
+[Website/Portal runbook](revision/17-WEBSITE-PORTAL-AND-RELEASE-RUNBOOK.md).
+They specify proposed migration/job/auth/release work and exact gates. The
+repository now contains a Next.js web project and partial Portal source; the
+older public-only/tooling-absent checkpoint is historical. Source presence is
+not deployment or production acceptance. Inspect installed web/package scripts
+before running checks, and do not auto-apply SQL stored
+under `docs/revision/contracts`. Establish actual tooling and authorized isolated
+targets before using those examples as implementation commands.
 
 ---
 
@@ -81,11 +103,10 @@ The recommended development environment includes:
 - Android Studio
 - Android Emulator or a physical Android device
 
-The normal Windows workflow uses Android Studio, an Android emulator, and
-physical Android devices for frequent local validation. iOS is also a V1 target,
-but an iOS native production build requires Apple build tooling on macOS. A Mac
-does not have to be owned by the developer when Expo EAS Build is used to run
-the iOS build on a cloud macOS worker.
+Android tools support frequent Windows validation; iOS is already a V1 target,
+not an unapproved future platform. Use authorized macOS/EAS environments and
+periodic iOS validation under the release guide, with no automatic installation,
+cloud spending or signing-account setup.
 
 Developers should avoid relying on unnecessary globally installed development tools when the project provides its own supported tooling.
 
@@ -115,34 +136,6 @@ npx expo start
 Additional commands should be defined through project scripts when they become part of the standard development workflow.
 
 Every contributor should begin work from the latest appropriate version of the project and verify that the existing application works before introducing changes.
-
-### 2.1 Cross-Platform Development Workflow
-
-Use the following workflow for V1 features:
-
-1. Implement the feature in the shared Expo and React Native codebase.
-2. Run type checking, linting, and available automated tests.
-3. Validate frequently with Android local builds, an emulator, and physical
-   Android devices where practical.
-4. Consider iOS permissions, safe areas, keyboard behavior, background
-   behavior, notifications, storage, authentication, and native dependencies
-   while the feature is being designed.
-5. Run periodic EAS iOS builds and TestFlight checks; do not wait until Android
-   development is complete.
-6. Fix portable defects in shared code and isolate genuine platform-specific
-   fixes.
-7. Produce separate signed Android `.aab` and iOS `.ipa` release artifacts from
-   the shared source code.
-
-An Android APK or AAB is never converted into an iOS IPA. Expo documents that
-EAS Build creates iOS builds on fresh macOS virtual machines and that EAS Submit
-works from Windows, Linux, and macOS.
-
-Official references, last verified 2026-09-01:
-
-- <https://docs.expo.dev/build-reference/ios-builds/>
-- <https://docs.expo.dev/deploy/submit-to-app-stores/>
-- <https://docs.expo.dev/submit/ios/>
 
 ---
 
@@ -705,7 +698,9 @@ Clean, consistent, and well-structured code supports a reliable and scalable Dee
 
 Git should be used consistently throughout the Deep Focus project to maintain a clean development history, protect project stability, and support effective collaboration.
 
-Every meaningful change should be committed with a clear and descriptive message.
+When committing is authorized, use focused commits with clear messages. A
+documentation/development request alone does not authorize commit, push, pull,
+merge, publication or deployment.
 
 ---
 
@@ -717,11 +712,12 @@ The GitHub repository serves as the primary source of truth for the project.
 
 Developers should:
 
-- Pull the latest changes before starting work
+- Inspect current branch/dirty state first; integrate incoming changes only when
+  authorized and safe for existing work
 - Keep the local repository synchronized
 - Review incoming changes before integrating them
 - Resolve merge conflicts carefully
-- Push completed work regularly
+- Push completed work only within explicit task authority
 - Avoid committing generated, temporary, or sensitive files
 
 The `main` branch should represent the latest stable and reviewed state of the project.
@@ -849,14 +845,15 @@ The resulting `main` branch should remain functional after every accepted merge.
 
 ---
 
-After a successful commit:
+After a successful authorized commit, and only if push is also authorized:
 
 - Push changes to the appropriate remote branch
 - Verify that the push completed successfully
 - Confirm that the remote repository reflects the intended changes
 - Review automated checks when available
 
-Completed work should be pushed regularly to reduce the risk of lost work and keep collaboration synchronized.
+Regular pushes may support collaboration when authorized; this recommendation
+does not authorize a remote write, branch change or overwrite of another person's work.
 
 ---
 
@@ -1067,16 +1064,12 @@ Documentation should be updated when the change affects architecture, user behav
 
 ---
 
-A feature or change should be considered complete only when:
-
-- Required functionality has been implemented
-- Relevant testing has passed
-- Critical known issues have been resolved
-- Code has been reviewed
-- Accessibility requirements have been considered
-- Documentation has been updated where necessary
-- No sensitive information has been introduced
-- The change is ready to be committed and pushed
+Apply [Definition of Done](ai/DEFINITION_OF_DONE.md), including actual acceptance,
+accessibility/security evidence, required independent review and explicit
+unverified limitations. Implementation alone is not verification or release
+readiness. Commit/push are separate authorized actions, not completion criteria
+for every local task. Do not maintain another checklist here that could drift
+from the evidence policy.
 
 Incomplete work should not be presented as completed functionality.
 

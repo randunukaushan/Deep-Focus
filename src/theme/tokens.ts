@@ -1,33 +1,56 @@
 /**
  * Deep Focus design tokens.
  *
- * Values in this file come from the approved
- * UI/UX Design Specification and Component Library.
+ * Canonical roles and dated palette reconciliation: docs/COLOR_SYSTEM.md.
+ * Keep October preview values and compatibility names for existing consumers.
  */
 
 export const Palette = {
-  deepIndigo: '#4F46E5',
-  calmTeal: '#14B8A6',
-  softPurple: '#8B5CF6',
+  // October preview palette; primary blue, teal progress, navy surfaces.
+  deepNavy: '#0F2537',
+  navySurface: '#17354A',
+  navySurfaceElevated: '#1B3B54',
+  // Compatibility accent for screens not yet converted to semantic primary.
+  mintPrimary: '#3B82F6',
+  previewAction: '#2165DF',
+  darkAction: '#8BB8FF',
+  tealAccent: '#14B8A6',
+  focusBlue: '#3B82F6',
+  focusBlueDark: '#2982F6',
+  focusBluePressed: '#2563EB',
+  progressTeal: '#14B8A6',
+  achievementPurple: '#A78BFA',
+  aiAccent: '#A78BFA',
 
   success: '#22C55E',
   warning: '#F59E0B',
+  warningText: '#B45309',
   error: '#EF4444',
   achievement: '#FBBF24',
 
-  lightBackground: '#F8FAFC',
+  lightBackground: '#F6F9FD',
   lightSurface: '#FFFFFF',
-  lightBorder: '#E2E8F0',
-  lightTextPrimary: '#0F172A',
-  lightTextSecondary: '#475569',
-  lightTextMuted: '#64748B',
+  lightBorder: '#DBE5F0',
+  lightTextPrimary: '#142E48',
+  lightTextSecondary: '#526981',
+  lightTextMuted: '#526981',
 
-  darkBackground: '#0F172A',
-  darkSurface: '#1E293B',
-  darkSurfaceElevated: '#334155',
-  darkTextPrimary: '#F8FAFC',
-  darkTextSecondary: '#CBD5E1',
-  darkTextMuted: '#94A3B8',
+  // Home light-mode atmosphere: soft sky canvas with a calm blue-teal action tone.
+  homeLightBackground: '#F6F9FD',
+  homeMorningBackground: '#F8FAFC',
+  homeMorningAccent: '#E4773C',
+  homeEveningBackground: '#F5D8D1',
+  homeLightSurface: '#FFFFFF',
+  homeLightBorder: '#DBE5F0',
+  homeLightAction: '#3B82F6',
+  homeLightActionSoft: '#EAF2FF',
+
+  darkBackground: '#07182B',
+  darkSurface: '#10253D',
+  darkSurfaceElevated: '#162F4C',
+  darkTextPrimary: '#ECF4FF',
+  darkTextSecondary: '#A6BBD4',
+  darkTextMuted: '#A6BBD4',
 } as const;
 
 export const Colors = {
@@ -41,9 +64,14 @@ export const Colors = {
     textSecondary: Palette.lightTextSecondary,
     textMuted: Palette.lightTextMuted,
 
-    primary: Palette.deepIndigo,
-    secondary: Palette.calmTeal,
-    aiAccent: Palette.softPurple,
+    primary: Palette.previewAction,
+    primaryPressed: Palette.focusBluePressed,
+    borderFocus: Palette.previewAction,
+    progress: Palette.progressTeal,
+    info: Palette.aiAccent,
+    danger: Palette.error,
+    secondary: Palette.navySurface,
+    aiAccent: Palette.aiAccent,
 
     success: Palette.success,
     warning: Palette.warning,
@@ -61,9 +89,14 @@ export const Colors = {
     textSecondary: Palette.darkTextSecondary,
     textMuted: Palette.darkTextMuted,
 
-    primary: Palette.deepIndigo,
-    secondary: Palette.calmTeal,
-    aiAccent: Palette.softPurple,
+    primary: Palette.darkAction,
+    primaryPressed: Palette.focusBluePressed,
+    borderFocus: Palette.darkAction,
+    progress: Palette.progressTeal,
+    info: Palette.aiAccent,
+    danger: Palette.error,
+    secondary: Palette.navySurfaceElevated,
+    aiAccent: Palette.aiAccent,
 
     success: Palette.success,
     warning: Palette.warning,

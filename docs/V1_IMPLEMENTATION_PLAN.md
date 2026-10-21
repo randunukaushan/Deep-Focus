@@ -6,9 +6,61 @@ It converts the approved project vision, architecture, data model, API specifica
 
 The purpose of this document is not to introduce new product scope.
 
+The [Final Build Guide](revision/49-BUILD-ENTRY-HANDOFF-SI.md) is the consolidated
+working entry point. Its phase table maps to this plan; its first L-02A harness
+is readiness work, not a reversal of the foundation/auth/focus sequence. Use it
+to select the next bounded task and feature-specific prerequisites. The broad
+documentation consolidation is closed; unresolved details are completed with
+the selected feature's contract before dependent implementation.
+
 Its purpose is to define how the already approved V1 scope should be built.
 
-Once this implementation plan is complete, V1 development should move from documentation planning into active implementation.
+The [coordinated release guide](DUAL_PLATFORM_RELEASE_GUIDE.md) supplements this
+plan with shared-source/separate-build Android+iOS workflow, early iOS testing,
+store/review buffers and required Website/Portal acceptance. It preserves the
+existing phase/web-lane order, 25–35-hour capacity and approved checkpoints.
+December 1 freeze/December 8 RC dates from PR #13 remain planning proposals until
+explicitly adopted; no account, iOS identifier, paid build or publication is
+approved just by scheduling it. A successful mobile store review cannot replace
+the required web/portal release evidence.
+
+The owner has reopened enterprise and expanded-V1 documentation planning.
+The phase order below remains the implementation dependency baseline; it is not
+permission to start app changes during this documentation-only work. The
+[revision register](revision/01-REQUIREMENTS-AND-DECISIONS.md) owns the new
+decisions and the [playbook](revision/07-LUNA-IMPLEMENTATION-PLAYBOOK.md) owns
+bounded task preparation. Production implementation resumes only for reconciled,
+approved tasks, not for the entire future inventory at once.
+
+The current [readiness sheet](revision/18-IMPLEMENTATION-READINESS-AND-OWNER-DECISIONS.md)
+maps completed document artifacts and unresolved implementation gates. Backend
+BE/BX and experience UX cards, plus the January Website/Portal WP subcards, refine
+the phases below; they do not imply those phases are implemented. Consult the
+[portal publication runbook](revision/17-WEBSITE-PORTAL-AND-RELEASE-RUNBOOK.md)
+for the separate mandatory web surface and explicit deploy/rollback authority.
+
+The saved-plan chain now has PL-01–05 draft packets, ending with
+[activation/recovery gates](revision/31-PLAN-ACTIVATION-AND-RECOVERY-GATES.md).
+They refine dependency preparation, not this phase order or feature admission.
+Actual server/mobile evidence, independent review and exact production authority
+are required; five written packets do not make plan capability release-ready.
+
+September 25's [release map](revision/32-JANUARY-RELEASE-SCOPE-AND-DECISIONS.md)
+records Android+iOS, required Website/Portal, O/L/A/L/higher-stage audience,
+independent personal-teacher launch, si/ta/en and paid cloud placement. It does
+not reorder foundations. [Cloud cards](revision/33-PAID-CLOUD-ADMISSION-AND-RECOVERY.md)
+depend on local-resource/identity and verified billing/quota/privacy foundations;
+no provider setup or payment is authorized just because the date is required.
+
+The classroom amendment recorded September 29 adds bounded private invitations,
+assignments, learner-selected completion/progress and feedback to the V1 target;
+it does not move classroom work ahead of core, auth, ownership and recovery.
+Use education 11's admitted subset and release map 32 for dependent task
+preparation; no full LMS, general chat or classroom file service is admitted.
+January 1 takes priority over retaining every feature: if measured work indicates
+date risk, document candidate deferrals and the revised launch set, retaining
+safety/quality gates. No feature is already cut and full productivity web remains
+later; Website/Portal remain required. Scope approval is not implementation readiness.
 
 ---
 
@@ -149,7 +201,21 @@ Complex infrastructure should not be introduced solely for hypothetical future s
 
 After this implementation plan is completed, additional documentation should only be created when it solves a concrete development, security, testing, or release requirement.
 
-The project should not delay V1 implementation by continuously expanding planning documents.
+The current owner-requested revision is an explicit exception to the previous
+documentation freeze. Close concrete contract/decision gaps, preserve the phase
+dependency order and avoid adding speculative scope. A documentation task is
+finished by verified specifications, not by pretending the corresponding feature
+has been implemented.
+
+### January Website and Account Portal Lane
+
+Both surfaces are required in [V1 scope section 15](V1_FEATURE_SCOPE.md).
+Schedule the WEB-01–06 chain from the
+[web contract](revision/05-WEB-AND-INTEGRATIONS.md) alongside the relevant shared
+identity, preferences, privacy and billing foundations. This is sequencing for
+one contributor, not extra staffing or permission to create agents. Do not leave
+the complete web lane until mobile Phase 10. The full productivity Web App is
+later; exact hosting, commercial and production gates still apply.
 
 ---
 
@@ -313,6 +379,10 @@ This includes:
 ### Navigation
 
 Implement the primary navigation structure according to the approved UI/UX and architecture documentation.
+
+Use `V1_SCREEN_MAP.md` as the canonical route inventory. Introduce its connected
+route groups in the approved implementation order; route placeholders do not
+indicate that their feature behavior is complete.
 
 Navigation should support the V1 screen hierarchy without placing business logic inside route files.
 
@@ -2309,7 +2379,11 @@ said` without receiving and validating the exact approved structured actions.
 
 ### AI Access and Rewarded Unlock
 
-The first five eligible AI actions are introductory free actions.
+Limited free AI allowance plus optional paid AI access was approved on September
+16. Exact allowance/renewal/prices remain open; do not implement a hard-coded five.
+Unobtrusive initial-release ads are required, but their provider/format/placement
+and age-safe delivery still need contracts. The following flow applies only if
+rewarded AI access is selected, not as the only way to obtain additional access.
 
 After those actions are exhausted:
 
@@ -2425,9 +2499,11 @@ Task Breakdown → Reject
 Task Breakdown → Confirm
 Review My Day Lite With Empty Activity
 Review My Day Lite With Verified Activity
-Five Introductory AI Actions Exhausted
-Unverified Rewarded-Ad Claim
-Verified Rewarded-Ad Grant
+Configured Free AI Allowance Exhausted
+Verified Paid AI Grant / Duplicate Purchase Evidence
+Core Usable Without AI or Ads
+Unverified Rewarded-Ad Claim (If This Format Is Selected)
+Verified Rewarded-Ad Grant (If This Format Is Selected)
 Advertisement Failure / Cancellation
 ```
 
@@ -2682,10 +2758,6 @@ Phase 9 prepares the complete application for release.
 
 No major new V1 feature should normally be introduced during this phase.
 
-The V1 feature freeze begins on 2026-12-01. After that date, changes should be
-limited to release blockers, verified defect fixes, compliance work, and
-low-risk release preparation. The release-candidate target is 2026-12-08.
-
 The focus should shift toward:
 
 ```text
@@ -2790,8 +2862,6 @@ Performance
 
 Test the supported iOS experience using available:
 
-- Periodic Expo EAS cloud builds
-- TestFlight beta builds
 - Simulator
 - Physical iPhone/iPad where available
 - Relevant iOS versions
@@ -2808,11 +2878,6 @@ Appearance
 ```
 
 Where direct iOS hardware access is unavailable during development, required physical-device validation should remain a release requirement rather than being falsely marked complete.
-
-Do not defer the first iOS build until Android is complete. Validate iOS
-configuration and native dependencies periodically during feature development,
-then run TestFlight and representative-device regression testing before store
-submission.
 
 ### Performance Testing
 
@@ -2980,49 +3045,13 @@ The release should represent tested implementation rather than merely completed 
 | --- | --- |
 | V1 scope and stability checkpoint | 2026-11-15 |
 | Beta | 2026-11-30 |
-| Feature freeze | 2026-12-01 |
-| Release candidate | 2026-12-08 |
 | Store submission | 2026-12-15 |
-| Google Play and App Store public launch | 2027-01-01 |
+| Public V1 release | 2027-01-01 |
 
 At the scope checkpoint, `Plan My Day` remains required. `Break Down This Task`
 and `Review My Day Lite` remain in V1 only when their inclusion does not weaken
 core reliability, security, accessibility, testing, store readiness, or the
 public-release target.
-
-The 2027-01-01 date is the target public launch on both stores, not a guaranteed
-review-completion date. Apple and Google control review timing. The 2026-12-15
-submission target provides time for review questions, rejection fixes, renewed
-build validation, and controlled release preparation.
-
-### Cross-Platform Release Timeline
-
-#### September-October 2026
-
-- Continue core V1 development in the shared codebase.
-- Use Android for frequent local validation.
-- Consider iOS compatibility during each feature rather than after Android is
-  complete.
-- Run periodic iOS cloud-build checks and establish automated test foundations.
-
-#### November 2026
-
-- Set up or verify Google Play Console and Apple Developer membership.
-- Create the App Store Connect record and register the approved bundle ID.
-- Confirm signing and EAS credential workflows without committing credentials.
-- Prepare privacy policy, Data Safety/App Privacy answers, metadata, icons,
-  screenshots, testing tracks, and TestFlight information.
-- Begin internal testing and TestFlight preparation before the 2026-11-30 beta.
-
-#### December 2026
-
-- Freeze features on 2026-12-01 and stabilize the release candidate.
-- Run Android and iOS regression, accessibility, security, performance, and
-  representative real-device testing.
-- Complete Google closed testing if it applies to the developer account and
-  complete TestFlight beta feedback cycles.
-- Submit production candidates by 2026-12-15 and keep the remaining time for
-  review, rejection fixes, and final release checks.
 
 ### Release Candidate
 
@@ -3085,12 +3114,6 @@ Version information
 
 Development credentials or endpoints should not accidentally remain active in production builds.
 
-Repository configuration currently includes Android package
-`com.randunukaushan9.DeepFocus`. `ios.bundleIdentifier` is not yet present in
-`app.json`; the product owner must approve the permanent value before iOS
-credentials, App Store Connect records, or production builds are finalized.
-Do not invent or casually change either production identifier.
-
 ### Production Secrets
 
 Verify again that private secrets are not embedded in the mobile application.
@@ -3137,71 +3160,6 @@ Required platform declarations
 ```
 
 Store-specific requirements should be verified against current platform requirements during the actual release process.
-
-#### Google Play preparation
-
-- Complete Play Console account and identity verification.
-- Confirm the package ID and enroll the release in Play App Signing.
-- Produce a signed `.aab` and use internal testing before wider tracks.
-- Complete the store listing, app description, icon, required screenshots and
-  graphics, privacy policy, Data Safety, permissions, content declarations, and
-  reviewer access information.
-- If the account is a newly created personal developer account subject to the
-  current rule, run a closed test with at least 12 opted-in testers continuously
-  for 14 days, then apply for production access and answer the readiness
-  questions. Verify the rule in Play Console because account eligibility and
-  policy can change.
-- Use managed publishing or another supported release option only after review
-  behavior and launch timing are rechecked. Google states processing may take a
-  few hours, up to seven days, or longer in exceptional cases.
-
-#### Apple App Store preparation
-
-- Enroll in the Apple Developer Program and create the App Store Connect app
-  record using the approved bundle identifier.
-- Configure signing certificates, provisioning, and the EAS credential workflow
-  without committing private credentials.
-- Produce a signed `.ipa`, upload it to App Store Connect, and distribute stable
-  beta builds through TestFlight.
-- Complete metadata, screenshots, age rating, app privacy answers, privacy policy
-  URL, export-compliance information, review notes, and reviewer account access
-  where required.
-- Submit the final build for App Review early. Choose manual release or
-  automatic release no earlier than the target date only after considering that
-  post-release storefront availability may still take time.
-
-EAS Submit uploads binaries but does not complete store metadata or automatically
-release a TestFlight build to the public App Store.
-
-### Cost Classification
-
-| Category | Current planning treatment |
-| --- | --- |
-| One-time | Google Play Console registration; currently USD 25 |
-| Yearly recurring | Apple Developer Program; currently USD 99 per membership year, with regional variation |
-| Optional subscription | Paid Expo/EAS plan when free limits or queue priority are insufficient |
-| Usage-based | EAS overages on eligible paid plans and selective AWS Device Farm minutes |
-| Cost-minimizing default | Local checks, Android emulator/devices, available iPhones, free EAS allowance, and targeted cloud testing |
-
-Fees and allowances are time-sensitive. Verify them again before purchase rather
-than treating this table as a permanent price guarantee.
-
-Official release references, last verified 2026-09-01:
-
-- Google Play registration: <https://support.google.com/googleplay/android-developer/answer/6112435>
-- Google personal-account testing: <https://support.google.com/googleplay/android-developer/answer/14151465>
-- Google publishing control and review timing: <https://support.google.com/googleplay/android-developer/answer/9859654>
-- Google Data Safety: <https://support.google.com/googleplay/android-developer/answer/10787469>
-- Android App Bundles: <https://developer.android.com/guide/app-bundle>
-- Apple Developer enrollment: <https://developer.apple.com/programs/enroll/>
-- Apple TestFlight: <https://developer.apple.com/testflight/>
-- Apple App Review Guidelines: <https://developer.apple.com/app-store/review/guidelines/>
-- Apple release options: <https://developer.apple.com/help/app-store-connect/manage-your-apps-availability/select-an-app-store-version-release-option/>
-- Apple app privacy: <https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/>
-- Expo app-store submission: <https://docs.expo.dev/deploy/submit-to-app-stores/>
-- Expo iOS builds: <https://docs.expo.dev/build-reference/ios-builds/>
-- Expo plans and billing: <https://docs.expo.dev/billing/plans/>
-- AWS Device Farm pricing: <https://aws.amazon.com/device-farm/pricing/>
 
 ### Rollout
 
@@ -3445,7 +3403,11 @@ A phase should only be marked complete after its completion criteria have been v
 
 ## 19. Documentation Freeze for V1 Implementation
 
-After this implementation plan is approved, the project should move into active V1 development.
+The earlier freeze is superseded narrowly by the owner's current request to
+research and reconcile the enterprise/V1 documentation. This does not discard
+the approved mobile baseline or approve every new draft. Re-freeze each bounded
+contract after its dependencies and conflicts are resolved, using the READY gate
+in the revision playbook, before authorising its implementation.
 
 The existing documentation set should be treated as the primary implementation reference.
 
@@ -3458,9 +3420,10 @@ Documentation may still be:
 - Updated to match implementation
 - Extended when an actual technical requirement is discovered
 
-However, documentation work should no longer delay the start of V1 coding.
+Do not use the old freeze as a reason to skip the requested revision, nor the
+revision as a reason to keep adding requirements without resolving existing gaps.
 
-The default workflow from this point should become:
+After a bounded task is implementation-ready, its workflow becomes:
 
 ```text
 Read Relevant Specification

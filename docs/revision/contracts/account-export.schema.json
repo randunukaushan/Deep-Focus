@@ -1,0 +1,1047 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:deep-focus:account-export:2026-09-20",
+  "title": "Draft contract-scoped account export artifact; not runtime or legal proof",
+  "definitions": {
+    "Identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "email",
+        "phone",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+        },
+        "email": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "email",
+              "maxLength": 320
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phone": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^\\+[1-9][0-9]{1,14}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "createdAt": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/UtcInstant"
+        },
+        "updatedAt": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/UtcInstant"
+        }
+      }
+    },
+    "FocusEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sessionId",
+        "sequence",
+        "type",
+        "occurredAt",
+        "receivedAt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+        },
+        "sessionId": {
+          "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "type": {
+          "enum": [
+            "pause",
+            "resume",
+            "complete",
+            "cancel"
+          ]
+        },
+        "occurredAt": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/UtcInstant"
+        },
+        "receivedAt": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/UtcInstant"
+        }
+      }
+    },
+    "SafeAccountSession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "displayLabel",
+        "state",
+        "createdAt",
+        "lastSeenAt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+        },
+        "displayLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "state": {
+          "enum": [
+            "active",
+            "revoked"
+          ]
+        },
+        "createdAt": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/UtcInstant"
+        },
+        "lastSeenAt": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/UtcInstant"
+        }
+      }
+    },
+    "DeferredFamily": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "family",
+            "disposition",
+            "policyRef"
+          ],
+          "properties": {
+            "family": {
+              "enum": [
+                "ai_activity",
+                "consent_history",
+                "billing_records",
+                "cloud_resources",
+                "shared_workspaces",
+                "support_records",
+                "telemetry",
+                "connector_data"
+              ]
+            },
+            "disposition": {
+              "const": "not_collected"
+            },
+            "policyRef": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "family",
+            "disposition",
+            "policyRef"
+          ],
+          "properties": {
+            "family": {
+              "enum": [
+                "ai_activity",
+                "consent_history",
+                "billing_records",
+                "cloud_resources",
+                "shared_workspaces",
+                "support_records",
+                "telemetry",
+                "connector_data"
+              ]
+            },
+            "disposition": {
+              "const": "separate_process"
+            },
+            "policyRef": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._-]{0,99}@[1-9][0-9]{0,8}$"
+            }
+          }
+        }
+      ]
+    },
+    "identitySection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recordCount",
+        "pageCount",
+        "pages",
+        "sectionDigest"
+      ],
+      "properties": {
+        "recordCount": {
+          "const": 1
+        },
+        "pageCount": {
+          "const": 1
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pageIndex",
+              "records"
+            ],
+            "properties": {
+              "pageIndex": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "records": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 1,
+                "items": {
+                  "$ref": "#/definitions/Identity"
+                }
+              }
+            }
+          }
+        },
+        "sectionDigest": {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/Digest"
+        }
+      }
+    },
+    "profileSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recordCount",
+        "pageCount",
+        "pages",
+        "sectionDigest"
+      ],
+      "properties": {
+        "recordCount": {
+          "const": 1
+        },
+        "pageCount": {
+          "const": 1
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pageIndex",
+              "records"
+            ],
+            "properties": {
+              "pageIndex": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "records": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 1,
+                "items": {
+                  "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Profile"
+                }
+              }
+            }
+          }
+        },
+        "sectionDigest": {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/Digest"
+        }
+      }
+    },
+    "settingsSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recordCount",
+        "pageCount",
+        "pages",
+        "sectionDigest"
+      ],
+      "properties": {
+        "recordCount": {
+          "const": 1
+        },
+        "pageCount": {
+          "const": 1
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pageIndex",
+              "records"
+            ],
+            "properties": {
+              "pageIndex": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "records": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 1,
+                "items": {
+                  "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/AccountSettings"
+                }
+              }
+            }
+          }
+        },
+        "sectionDigest": {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/Digest"
+        }
+      }
+    },
+    "tasksSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recordCount",
+        "pageCount",
+        "pages",
+        "sectionDigest"
+      ],
+      "properties": {
+        "recordCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "pageCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2147483647,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pageIndex",
+              "records"
+            ],
+            "properties": {
+              "pageIndex": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "records": {
+                "type": "array",
+                "minItems": 0,
+                "maxItems": 100,
+                "items": {
+                  "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Task"
+                }
+              }
+            }
+          }
+        },
+        "sectionDigest": {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/Digest"
+        }
+      }
+    },
+    "goalsSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recordCount",
+        "pageCount",
+        "pages",
+        "sectionDigest"
+      ],
+      "properties": {
+        "recordCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "pageCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2147483647,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pageIndex",
+              "records"
+            ],
+            "properties": {
+              "pageIndex": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "records": {
+                "type": "array",
+                "minItems": 0,
+                "maxItems": 100,
+                "items": {
+                  "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Goal"
+                }
+              }
+            }
+          }
+        },
+        "sectionDigest": {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/Digest"
+        }
+      }
+    },
+    "sessionsSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recordCount",
+        "pageCount",
+        "pages",
+        "sectionDigest"
+      ],
+      "properties": {
+        "recordCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "pageCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2147483647,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pageIndex",
+              "records"
+            ],
+            "properties": {
+              "pageIndex": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "records": {
+                "type": "array",
+                "minItems": 0,
+                "maxItems": 100,
+                "items": {
+                  "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Session"
+                }
+              }
+            }
+          }
+        },
+        "sectionDigest": {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/Digest"
+        }
+      }
+    },
+    "focusEventsSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recordCount",
+        "pageCount",
+        "pages",
+        "sectionDigest"
+      ],
+      "properties": {
+        "recordCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "pageCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2147483647,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pageIndex",
+              "records"
+            ],
+            "properties": {
+              "pageIndex": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "records": {
+                "type": "array",
+                "minItems": 0,
+                "maxItems": 100,
+                "items": {
+                  "$ref": "#/definitions/FocusEvent"
+                }
+              }
+            }
+          }
+        },
+        "sectionDigest": {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/Digest"
+        }
+      }
+    },
+    "breaksSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recordCount",
+        "pageCount",
+        "pages",
+        "sectionDigest"
+      ],
+      "properties": {
+        "recordCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "pageCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2147483647,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pageIndex",
+              "records"
+            ],
+            "properties": {
+              "pageIndex": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "records": {
+                "type": "array",
+                "minItems": 0,
+                "maxItems": 100,
+                "items": {
+                  "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Break"
+                }
+              }
+            }
+          }
+        },
+        "sectionDigest": {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/Digest"
+        }
+      }
+    },
+    "remindersSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recordCount",
+        "pageCount",
+        "pages",
+        "sectionDigest"
+      ],
+      "properties": {
+        "recordCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "pageCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2147483647,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pageIndex",
+              "records"
+            ],
+            "properties": {
+              "pageIndex": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "records": {
+                "type": "array",
+                "minItems": 0,
+                "maxItems": 100,
+                "items": {
+                  "allOf": [
+                    {
+                      "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Reminder"
+                    },
+                    {
+                      "properties": {
+                        "deletedAt": {
+                          "type": "null"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "sectionDigest": {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/Digest"
+        }
+      }
+    },
+    "rewardHistorySection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recordCount",
+        "pageCount",
+        "pages",
+        "sectionDigest"
+      ],
+      "properties": {
+        "recordCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "pageCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2147483647,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pageIndex",
+              "records"
+            ],
+            "properties": {
+              "pageIndex": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "records": {
+                "type": "array",
+                "minItems": 0,
+                "maxItems": 100,
+                "items": {
+                  "$ref": "urn:deep-focus:rewards-ai:2026-09-19#/definitions/RewardEntry"
+                }
+              }
+            }
+          }
+        },
+        "sectionDigest": {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/Digest"
+        }
+      }
+    },
+    "aiUsageSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recordCount",
+        "pageCount",
+        "pages",
+        "sectionDigest"
+      ],
+      "properties": {
+        "recordCount": {
+          "const": 1
+        },
+        "pageCount": {
+          "const": 1
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pageIndex",
+              "records"
+            ],
+            "properties": {
+              "pageIndex": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "records": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 1,
+                "items": {
+                  "oneOf": [
+                    {
+                      "$ref": "urn:deep-focus:rewards-ai:2026-09-19#/definitions/CurrentUsage"
+                    },
+                    {
+                      "$ref": "urn:deep-focus:rewards-ai:2026-09-19#/definitions/UnknownUsage"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "sectionDigest": {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/Digest"
+        }
+      }
+    },
+    "entitlementsSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recordCount",
+        "pageCount",
+        "pages",
+        "sectionDigest"
+      ],
+      "properties": {
+        "recordCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "pageCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2147483647,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pageIndex",
+              "records"
+            ],
+            "properties": {
+              "pageIndex": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "records": {
+                "type": "array",
+                "minItems": 0,
+                "maxItems": 100,
+                "items": {
+                  "allOf": [
+                    {
+                      "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/Entitlement"
+                    },
+                    {
+                      "properties": {
+                        "scopeType": {
+                          "const": "personal"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "sectionDigest": {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/Digest"
+        }
+      }
+    },
+    "accountSessionsSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recordCount",
+        "pageCount",
+        "pages",
+        "sectionDigest"
+      ],
+      "properties": {
+        "recordCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "pageCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2147483647,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pageIndex",
+              "records"
+            ],
+            "properties": {
+              "pageIndex": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "records": {
+                "type": "array",
+                "minItems": 0,
+                "maxItems": 100,
+                "items": {
+                  "$ref": "#/definitions/SafeAccountSession"
+                }
+              }
+            }
+          }
+        },
+        "sectionDigest": {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/Digest"
+        }
+      }
+    },
+    "Manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exportJobId",
+        "snapshotAt",
+        "generatedAt",
+        "highWater",
+        "privacyEpoch",
+        "timeEncoding",
+        "coverage",
+        "exclusions",
+        "deferredFamilies",
+        "artifactDigest"
+      ],
+      "properties": {
+        "exportJobId": {
+          "$ref": "urn:deep-focus:personal-api:2026-09-15#/definitions/Id"
+        },
+        "snapshotAt": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/UtcInstant"
+        },
+        "generatedAt": {
+          "$ref": "urn:deep-focus:planning:2026-09-19#/definitions/UtcInstant"
+        },
+        "highWater": {
+          "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Sequence"
+        },
+        "privacyEpoch": {
+          "$ref": "urn:deep-focus:replication-v2:2026-09-20#/definitions/Epoch"
+        },
+        "timeEncoding": {
+          "const": "UTC_with_record_time_zones"
+        },
+        "coverage": {
+          "const": "contract_scoped"
+        },
+        "exclusions": {
+          "type": "array",
+          "items": [
+            {
+              "const": "local_only"
+            },
+            {
+              "const": "credentials"
+            },
+            {
+              "const": "internal_security"
+            },
+            {
+              "const": "deleted_content"
+            },
+            {
+              "const": "raw_ai_content"
+            }
+          ],
+          "additionalItems": false,
+          "minItems": 5,
+          "maxItems": 5
+        },
+        "deferredFamilies": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/definitions/DeferredFamily"
+          }
+        },
+        "artifactDigest": {
+          "$ref": "urn:deep-focus:operations-api:2026-09-18#/definitions/Digest"
+        }
+      }
+    },
+    "AccountExport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "contractVersion",
+        "manifest",
+        "sections"
+      ],
+      "properties": {
+        "format": {
+          "const": "deep-focus-account-export"
+        },
+        "contractVersion": {
+          "const": 1
+        },
+        "manifest": {
+          "$ref": "#/definitions/Manifest"
+        },
+        "sections": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "identity",
+            "profile",
+            "settings",
+            "tasks",
+            "goals",
+            "sessions",
+            "focusEvents",
+            "breaks",
+            "reminders",
+            "rewardHistory",
+            "aiUsage",
+            "entitlements",
+            "accountSessions",
+            "plans"
+          ],
+          "properties": {
+            "identity": {
+              "$ref": "#/definitions/identitySection"
+            },
+            "profile": {
+              "$ref": "#/definitions/profileSection"
+            },
+            "settings": {
+              "$ref": "#/definitions/settingsSection"
+            },
+            "tasks": {
+              "$ref": "#/definitions/tasksSection"
+            },
+            "goals": {
+              "$ref": "#/definitions/goalsSection"
+            },
+            "sessions": {
+              "$ref": "#/definitions/sessionsSection"
+            },
+            "focusEvents": {
+              "$ref": "#/definitions/focusEventsSection"
+            },
+            "breaks": {
+              "$ref": "#/definitions/breaksSection"
+            },
+            "reminders": {
+              "$ref": "#/definitions/remindersSection"
+            },
+            "rewardHistory": {
+              "$ref": "#/definitions/rewardHistorySection"
+            },
+            "aiUsage": {
+              "$ref": "#/definitions/aiUsageSection"
+            },
+            "entitlements": {
+              "$ref": "#/definitions/entitlementsSection"
+            },
+            "accountSessions": {
+              "$ref": "#/definitions/accountSessionsSection"
+            },
+            "plans": {
+              "$ref": "urn:deep-focus:replication-v2:2026-09-20#/definitions/ExportPlansSection"
+            }
+          }
+        }
+      }
+    }
+  }
+}

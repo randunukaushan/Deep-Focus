@@ -10,11 +10,46 @@ checkpoint described below.
 This file defines product scope. Architecture, security, data, API, UI, testing,
 and implementation details remain governed by their dedicated specifications.
 
+### Owner-confirmed September revision boundary
+
+The owner reopened product planning to define the enterprise destination before
+freezing the expanded V1. The August mobile baseline below is retained; it is
+not the complete newly frozen January feature set. September 25 confirms Android
+and iOS, Public Website and Account Portal, optional paid Cloud Resources,
+Sri Lanka O/L/A/L/higher-stage education, the independent personal-teacher
+organiser and Sinhala/Tamil/English launch locales. The classroom amendment
+recorded September 29 additionally targets bounded classroom sharing in V1:
+private invitations, teacher instructions/deadline, explicit add-to-private-plan,
+learner-selected completion/progress sharing and teacher feedback. No private
+timetable/notes/full focus history disclosure, file distribution or full LMS is
+admitted. Detailed contracts and independent review remain prerequisites.
+Full productivity Web App remains later. The
+[release map](revision/32-JANUARY-RELEASE-SCOPE-AND-DECISIONS.md) bounds these
+choices; educational stage does not set minimum age/consent. The
+[decision register](revision/01-REQUIREMENTS-AND-DECISIONS.md)
+separates confirmed requirements, candidates and unresolved decisions; it does
+not authorise implementing every enterprise feature.
+
+September 26: the owner selected a desired **15+ product target**. On October 6,
+the owner approved developing features for ages 15–17, with real-minor pilot and
+release access disabled until qualified legal review is complete. Development
+approval does not establish legal consent, age-assurance mechanism, store rating
+or eligibility for ads/AI/payments/cloud; do not admit real-minor data or pilot
+access before that review and separately implemented controls.
+
+The same September 29 record confirms January 1 priority: if measured delivery
+progress indicates risk, defer features through an explicit revised release map
+with effort/dependency/user-impact evidence. No particular cut is selected yet.
+Public Website/Account Portal remain required; do not silently drop surfaces or
+weaken security, privacy, accessibility, recovery or review to meet the date.
+This is not a guaranteed release or permission to publish.
+
 ---
 
 ## 1. Scope Rules
 
-- Existing approved V1 functionality is not removed or reduced by this update.
+- Existing approved V1 functionality is not removed by this reconciliation;
+  subsequent feature deferrals follow the recorded January-first scope policy.
 - Core focus, task, goal, recovery, progress, and account functionality must not
   depend on AI availability.
 - AI output remains a proposal until the user explicitly confirms an action.
@@ -22,6 +57,16 @@ and implementation details remain governed by their dedicated specifications.
   permissions, or other trusted progression and security state.
 - Future features listed in `POST_V1_FEATURE_SCOPE.md` are not silently pulled
   into V1.
+- Confirmed product boundary: Deep Focus does not supply academic videos,
+  papers, notes or a question/answer library. Users organise their own resources.
+  Local resource use is the default; optional paid Cloud Resources is required
+  for the January target by the September 25 owner decision. The later September
+  26 reply selects initial PDF/JPG/PNG, website/video links and book/page references,
+  with read-only in-app PDF/image viewing. Exact format restrictions, numeric
+  limits, native adapters, price/quota, billing, privacy/security and operational acceptance
+  remain gated. See the [resource contract](revision/12-LOCAL-RESOURCES-AND-WORK-PLANNING.md).
+  This rule constrains any admitted resource feature; it does not mark the
+  proposed resource system or cloud subscription implemented or V1-ready.
 
 ---
 
@@ -80,6 +125,14 @@ V1 includes:
 - persisted session history;
 - optional sound controls where implemented;
 - duplicate-completion protection.
+
+September 17 owner-confirmed safety boundary for configurable commitment modes:
+Settings may disable ordinary End early before a session, but a separate Emergency
+exit remains available. This is not an unbreakable-lock promise. Exact interaction
+and in-session setting behavior remain to be specified; current implementation
+is not claimed. Early exit remains cancellation, not earned full completion or
+an XP penalty. See the decision register and proposed
+[safety contract](revision/19-SAFETY-AND-COMMITMENT-CONTRACT.md).
 
 ---
 
@@ -146,7 +199,8 @@ V1 includes:
 - duplicate XP and achievement protection.
 
 No real-money reward, gambling, cash stake, or cash-based focus bet belongs to
-V1.
+V1. The owner also confirmed no XP deduction as a penalty for missed work;
+do not implement historical XP-forfeiture or Focus Bet examples.
 
 ---
 
@@ -261,11 +315,16 @@ after core stability and higher-priority release work.
 
 ---
 
-## 12. AI Access and Rewarded Unlock
+## 12. AI Access and Unobtrusive Advertising
 
-- The first five eligible AI actions are introductory free actions.
-- After those actions are exhausted, additional AI access may be unlocked only
-  after a rewarded-ad completion is verified by trusted infrastructure.
+- Owner-approved September 16 direction: limited free AI allowance plus an
+  optional paid AI add-on. Allowance amount, renewal and prices remain undecided;
+  the older fixed-five/ad-only rule is superseded.
+- Initial release includes unobtrusive ads. The ads-free launch suggestion was
+  rejected. Formats/placements/frequency/provider/age eligibility and ad-removal
+  benefits still require decisions; do not equate paid AI with ad-free access.
+- If rewarded AI access is selected, grants require trusted verification; it is
+  not the only possible route to additional AI access.
 - A client claim that an advertisement completed is not sufficient by itself.
 - The number and validity period of actions granted by one verified advertisement
   remain server-configured until the product owner approves exact values.
@@ -279,23 +338,25 @@ after core stability and higher-priority release work.
 
 ## 13. Release Guardrails and Milestones
 
-The planning baseline is five Deep Focus development hours per weekday.
-
-V1 targets Android and iOS from one shared React Native and Expo codebase. The
-public-release target applies to both Google Play Store and Apple App Store.
-Separate Android `.aab` and iOS `.ipa` builds are required; one platform binary
-is not converted into the other.
+The current owner-confirmed capacity is 25–35 hours per week, including review,
+testing, rework and release work. This replaces the earlier five-hours-per-weekday
+planning assumption. It is available capacity, not guaranteed coding throughput.
 
 The approved release targets are:
+
+Android and iOS are first-class mobile targets from shared source, with separate
+native production artifacts. The January target also requires Public Website
+and Account Portal under section 15. [Release guidance](DUAL_PLATFORM_RELEASE_GUIDE.md)
+details platform preparation and buffers. Its December 1 freeze/December 8 RC
+options are proposals, not additional approved rows in this milestone table;
+external review timing and release gates prevent a same-day-approval guarantee.
 
 | Checkpoint | Target |
 | --- | --- |
 | V1 scope and stability checkpoint | 2026-11-15 |
 | Beta target | 2026-11-30 |
-| Feature freeze | 2026-12-01 |
-| Release candidate target | 2026-12-08 |
 | Store submission target | 2026-12-15 |
-| Google Play and App Store public-launch target | 2027-01-01 |
+| Public V1 release target | 2027-01-01 |
 
 At the 2026-11-15 checkpoint:
 
@@ -308,12 +369,6 @@ At the 2026-11-15 checkpoint:
 Release quality, security, accessibility, testing, and store readiness must not be
 traded away to fit a conditional AI feature.
 
-The 2027-01-01 date is a target public launch date, not the first submission date
-or a guarantee that either store will approve the application by then. The
-submission target intentionally leaves time for review, rejection fixes, and
-release-candidate re-verification. If external review timing prevents exact
-same-day availability, safety and compliance take priority over forcing the date.
-
 ---
 
 ## 14. V1 Scope Summary
@@ -325,3 +380,30 @@ goals, progress, analytics, personalization, and user-controlled AI assistance.
 The protected minimum AI release scope is `Plan My Day`. The full target AI scope
 also includes `Break Down This Task` and `Review My Day Lite` when the release
 guardrails above are satisfied.
+
+---
+
+## 15. Required January Public Website and Account Portal
+
+The owner explicitly requires both surfaces for the 2027-01-01 target. Do not
+classify them as optional post-V1 web expansion or substitute a landing page
+for the Account Portal.
+
+- Public Website: explain actual features, settings/account access, availability,
+  approved plans, help and future direction; distinguish shipped from planned.
+- Account Portal: authenticated access to the user's supported account/settings,
+  subscription status/management and privacy controls under shared contracts.
+- Next.js is the selected Website/Portal framework; Supabase PostgreSQL/Auth is
+  selected for backend identity/data. Hosting, exact versions/runtime, production
+  settings and detailed surface contracts remain gated.
+- Subscription management must reflect verified provider state. September 25
+  separately approves January Cloud Resources placement, not prices, a merchant,
+  unverified paid checkout, provider activation or publication.
+  If commercial gates cannot be met, the owner must explicitly decide the launch
+  packaging; an implementer cannot silently remove the portal or invent payment success.
+- A browser-based focus timer, complete planning workspace, classroom/LMS and
+  full productivity Web App are not implied by these two required surfaces.
+
+The [web contract](revision/05-WEB-AND-INTEGRATIONS.md) contains proposed route
+details and WEB/FWEB task maps. Scope authority is this confirmed surface
+requirement; draft routes/features do not become approved merely by that link.

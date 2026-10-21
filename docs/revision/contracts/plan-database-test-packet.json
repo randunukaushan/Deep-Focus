@@ -1,0 +1,416 @@
+{
+  "contractVersion": 1,
+  "task": "PL-03",
+  "executionAuthorized": false,
+  "independentReview": "PENDING",
+  "scope": "Specification inventory only; no SQL/runtime/security proof",
+  "gates": [
+    {
+      "id": "DB-G01",
+      "title": "Approved verified disposable target",
+      "state": "OPEN"
+    },
+    {
+      "id": "DB-G02",
+      "title": "Foundational schema/writer/harness inventory",
+      "state": "OPEN"
+    },
+    {
+      "id": "DB-G03",
+      "title": "Trusted actor/role/locking security design",
+      "state": "OPEN"
+    },
+    {
+      "id": "DB-G04",
+      "title": "Lifecycle, replay/identity retention and erasure policy",
+      "state": "OPEN"
+    },
+    {
+      "id": "DB-G05",
+      "title": "Bounded fan-out/retry/lock/job/size policy",
+      "state": "OPEN"
+    },
+    {
+      "id": "DB-G06",
+      "title": "Worker/storage/Auth/export/JCS adapter proof",
+      "state": "OPEN"
+    },
+    {
+      "id": "DB-G07",
+      "title": "Independent review of named revision",
+      "state": "OPEN"
+    }
+  ],
+  "cards": [
+    {
+      "id": "DB-01",
+      "title": "Baseline and isolated harness admission",
+      "state": "DRAFT",
+      "dependsOn": [],
+      "gates": [
+        "DB-G01",
+        "DB-G02"
+      ],
+      "tests": [
+        "DB-T01"
+      ],
+      "outcome": "Inventory actual foundations and target; define real harness commands/files and positive/negative controls. Do not run prototype as a reset."
+    },
+    {
+      "id": "DB-02",
+      "title": "Trusted actor and privilege design",
+      "state": "DRAFT",
+      "dependsOn": [
+        "DB-01"
+      ],
+      "gates": [
+        "DB-G03"
+      ],
+      "tests": [],
+      "outcome": "Specify verified identity adapter, grants/signatures/search path and role matrix; independently review the trust boundary before mutation integration."
+    },
+    {
+      "id": "DB-03",
+      "title": "Relational expand and migration rehearsal",
+      "state": "DRAFT",
+      "dependsOn": [
+        "DB-02"
+      ],
+      "gates": [
+        "DB-G04",
+        "DB-G05",
+        "DB-G07"
+      ],
+      "tests": [
+        "DB-T21"
+      ],
+      "outcome": "Write only authorized isolated migrations after foundations; implement owned constraints/non-reuse and resumable validation with capability off."
+    },
+    {
+      "id": "DB-04",
+      "title": "Common atomic plan commands",
+      "state": "DRAFT",
+      "dependsOn": [
+        "DB-03"
+      ],
+      "gates": [
+        "DB-G03",
+        "DB-G04",
+        "DB-G05",
+        "DB-G07"
+      ],
+      "tests": [
+        "DB-T02",
+        "DB-T03",
+        "DB-T04",
+        "DB-T05",
+        "DB-T06",
+        "DB-T07",
+        "DB-T08",
+        "DB-T09",
+        "DB-T10",
+        "DB-T11",
+        "DB-T16"
+      ],
+      "outcome": "Implement shared private manual/confirmed-apply helpers, normalization, receipts/groups and fault barriers; no nested independent commits."
+    },
+    {
+      "id": "DB-05",
+      "title": "Deletion and lifecycle cascades",
+      "state": "DRAFT",
+      "dependsOn": [
+        "DB-04"
+      ],
+      "gates": [
+        "DB-G04",
+        "DB-G05",
+        "DB-G07"
+      ],
+      "tests": [
+        "DB-T12",
+        "DB-T13",
+        "DB-T14",
+        "DB-T15",
+        "DB-T23"
+      ],
+      "outcome": "Implement task/context/reminder cascades and epoch advancement; preserve standalone resources/history under reviewed rules."
+    },
+    {
+      "id": "DB-06",
+      "title": "Replication and retained artifact integration",
+      "state": "DRAFT",
+      "dependsOn": [
+        "DB-05"
+      ],
+      "gates": [
+        "DB-G05",
+        "DB-G06",
+        "DB-G07"
+      ],
+      "tests": [
+        "DB-T17",
+        "DB-T18",
+        "DB-T19",
+        "DB-T20",
+        "DB-T22",
+        "DB-T24"
+      ],
+      "outcome": "Connect all writers, consistent materialization and cutover/worker suppression; record full source coverage and actual adapter limits."
+    },
+    {
+      "id": "DB-07",
+      "title": "Evidence and independent acceptance review",
+      "state": "DRAFT",
+      "dependsOn": [
+        "DB-06"
+      ],
+      "gates": [
+        "DB-G07"
+      ],
+      "tests": [],
+      "outcome": "Review all 24 actual runtime results, named migration revision, safe-forward evidence and unresolved policies; no acceptance with NOT_RUN required tests."
+    }
+  ],
+  "tests": [
+    {
+      "id": "DB-T01",
+      "title": "Target guard",
+      "given": "Unknown/non-disposable target or missing explicit environment authority.",
+      "when": "Harness attempts migration preflight.",
+      "then": "Abort before any DDL/DML; report redacted target mismatch; approved isolated target has a positive preflight.",
+      "source": "25-SAVED-PLAN-LIFECYCLE-AND-PRIVACY.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T02",
+      "title": "Owned positive path",
+      "given": "A owns valid active plan, current tasks/reminders and active session.",
+      "when": "A submits one valid manual edit through the trusted entry.",
+      "then": "One version increment and one minimal receipt/group; subsequent PG-05 read matches independently read committed plan/reminder rows; mutation response remains receipt-only; no XP or AI debit.",
+      "source": "26-SAVED-PLAN-MANAGEMENT-WIRE.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T03",
+      "title": "Cross-owner denial",
+      "given": "A and B have distinct workspaces, plans, context tasks and reminders.",
+      "when": "A guesses B IDs in read/edit/action, direct route and sync; anon repeats.",
+      "then": "No B record/content disclosed or changed; safe errors; owned control still succeeds; compare B rows independently.",
+      "source": "26-SAVED-PLAN-MANAGEMENT-WIRE.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T04",
+      "title": "Privilege boundary",
+      "given": "Actual role grants/signatures/exposed schemas and gateway identity adapter are installed in disposable target.",
+      "when": "Anon/authenticated directly invoke private helpers or forge owner/context; trusted gateway receives forged client owner.",
+      "then": "Private access denied; trusted code uses verified actor; real service/BYPASSRLS path cannot substitute client owner; inspect all overload/default grants.",
+      "source": "25-SAVED-PLAN-LIFECYCLE-AND-PRIVACY.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T05",
+      "title": "Schedule and bindings",
+      "given": "Schedules include overlap, zero length, bad order/kind, duplicate position and cross-plan reminder reuse.",
+      "when": "Attempt each invalid shape and a valid atomic reorder.",
+      "then": "Each invalid command rolls back; final valid reorder succeeds without temporary-position false failures; sole reminder binding preserved.",
+      "source": "26-SAVED-PLAN-MANAGEMENT-WIRE.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T06",
+      "title": "Identity non-reuse",
+      "given": "A removed a block and retained content-free identity evidence.",
+      "when": "Reuse its ID in another plan/kind, then create a fresh legitimate block.",
+      "then": "Reused identities rejected; fresh ID accepted; no erased text retained in identity registry.",
+      "source": "26-SAVED-PLAN-MANAGEMENT-WIRE.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T07",
+      "title": "Injected rollback",
+      "given": "Valid edit changes header and two reminders.",
+      "when": "Inject failure after each declared write/feed/group/receipt point before commit.",
+      "then": "Independent connection sees unchanged header/reminders/head/epoch/receipts/groups; prove each injection fired.",
+      "source": "26-SAVED-PLAN-MANAGEMENT-WIRE.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T08",
+      "title": "Lost response replay",
+      "given": "Valid intent commits, response lost, later plan state may change/delete.",
+      "when": "Retry same command/key/normalized payload across direct and sync transports; if erasure advanced epoch, first complete authorized v2 reset and retain the original item key.",
+      "then": "Original minimal receipt/watermark returned if still authorized and retained; no duplicate effects or old schedule disclosure.",
+      "source": "26-SAVED-PLAN-MANAGEMENT-WIRE.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T09",
+      "title": "Changed intent under key",
+      "given": "Existing receipt for A and one exact logical intent.",
+      "when": "Resubmit same command/key with changed target/version/block order; permute set-valued arrays as control.",
+      "then": "Changed intent conflicts; canonical set permutation replays; no additional sequence/reward/AI debit.",
+      "source": "26-SAVED-PLAN-MANAGEMENT-WIRE.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T10",
+      "title": "Two edits concurrency",
+      "given": "Two connections A1/A2 hold same plan version and independent command keys.",
+      "when": "Barrier both before owner-head acquisition; release in both orders.",
+      "then": "Exactly one edit commits; loser gets version conflict; no mixed reminders, duplicate group or lost update.",
+      "source": "26-SAVED-PLAN-MANAGEMENT-WIRE.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T11",
+      "title": "Owner lock isolation",
+      "given": "A transaction holds A owner head while B uses independent data.",
+      "when": "B commits owned edit before A is released; exercise bounded lock timeout/retry on A.",
+      "then": "No unnecessary global lock; B can progress; A rollback/retry uses same key without partial writes.",
+      "source": "25-SAVED-PLAN-LIFECYCLE-AND-PRIVACY.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T12",
+      "title": "Edit versus erasure",
+      "given": "A edit/apply references task X; concurrent connection deletes X.",
+      "when": "Run both commit orders with deterministic barriers and fresh reads.",
+      "then": "Either edit precedes full cascade or is rejected after deletion; no stale plan/proposal resurrection; epoch and group atomic.",
+      "source": "25-SAVED-PLAN-LIFECYCLE-AND-PRIVACY.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T13",
+      "title": "Context-only erasure",
+      "given": "X supplied generated context but appears in no selected focus block; active and archived plans depend on X.",
+      "when": "Delete X via a legacy mutation path.",
+      "then": "Known dependent explanations/reviewable copies sanitized; each affected plan incremented once; private dependencies not exposed.",
+      "source": "25-SAVED-PLAN-LIFECYCLE-AND-PRIVACY.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T14",
+      "title": "Archive restore delete",
+      "given": "Plan owns bound reminders plus unrelated standalone reminder exists.",
+      "when": "Archive then restore, also exercise delete and stale action versions.",
+      "then": "Archive disables/detaches only bound reminders; restore does not re-enable; delete leaves tasks and safe minimal tombstone; no XP penalty.",
+      "source": "26-SAVED-PLAN-MANAGEMENT-WIRE.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T15",
+      "title": "Reminder deletion consistency",
+      "given": "Reminder R bound to plan and independent reminders coexist.",
+      "when": "Delete R through direct/legacy/v2 writer; attempt standalone incompatible retime.",
+      "then": "Binding cleared and plan version/group updated atomically; incompatible retime denied; independent reminders unchanged.",
+      "source": "25-SAVED-PLAN-LIFECYCLE-AND-PRIVACY.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T16",
+      "title": "Confirmed AI apply atomicity",
+      "given": "Exact v2 reviewed proposal with optional reminders and one plan.create.",
+      "when": "Confirm exact operations; inject failure and concurrently repeat apply.",
+      "then": "One all-or-nothing save/consumed marker/receipt; failure saves nothing; no manual plan.create entry or second AI generation charge.",
+      "source": "26-SAVED-PLAN-MANAGEMENT-WIRE.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T17",
+      "title": "Group and bigint fidelity",
+      "given": "Owner sequence above Number precision; transaction has companion rows and private filtered change.",
+      "when": "Commit via each writer; read v1/v2 with page limits and oversized-group fixture.",
+      "then": "Stored commitment covers full public group; v2 never splits/omits; v1 projection valid; exact decimal ordering; oversized group resets.",
+      "source": "27-PLAN-REPLICATION-SNAPSHOT-EXPORT-WIRE.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T18",
+      "title": "Mid-batch epoch",
+      "given": "V2 batch includes erasure followed by another plan mutation.",
+      "when": "Execute ordered per-item transactions and advance epoch on first success.",
+      "then": "Earlier receipt retained; later item not executed and marked reset/retry per wire; stale initial epoch writes zero items.",
+      "source": "27-PLAN-REPLICATION-SNAPSHOT-EXPORT-WIRE.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T19",
+      "title": "Coherent snapshot",
+      "given": "Tasks/plan/reminder and headers change while snapshot/export job runs.",
+      "when": "Barrier between section reads and concurrent commit; crash materialization and retry.",
+      "then": "All included rows/H share one snapshot; retry never appends live pages to old snapshot; cross-bindings and source counts match.",
+      "source": "28-ACCOUNT-EXPORT-ARTIFACT-CONTRACT.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T20",
+      "title": "Stale worker and artifact",
+      "given": "Materialized artifact and worker lease exist before erasure/freeze.",
+      "when": "Advance epoch/revoke lease then attempt finish and old/new downloads.",
+      "then": "Stale publication denied; old authorized URLs fail at reviewed revocation boundary; already-delivered-byte limits recorded.",
+      "source": "28-ACCOUNT-EXPORT-ARTIFACT-CONTRACT.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T21",
+      "title": "Migration interruption",
+      "given": "Clean and populated synthetic predecessor DB, exact baseline checksums and invalid-row fixture.",
+      "when": "Interrupt every expand/backfill phase and retry under reviewed recovery plan.",
+      "then": "No silent loss/fabricated provenance; checkpoints resumable; invalid data blocks; old rows/counts preserved or explicit safe-forward evidence.",
+      "source": "25-SAVED-PLAN-LIFECYCLE-AND-PRIVACY.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T22",
+      "title": "Legacy cutover",
+      "given": "Pre-group flat feed, old writer and old/new client capabilities represented.",
+      "when": "Attempt cutover while old writer remains; then fence writers and establish H/reset.",
+      "then": "Unsafe mixed writer admission blocked; old cursors reset safely or unsupported clients denied; no invented groups from contiguous sequence IDs.",
+      "source": "27-PLAN-REPLICATION-SNAPSHOT-EXPORT-WIRE.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T23",
+      "title": "Overflow and fan-out",
+      "given": "Versions/sequence/epoch near maximum; task has more dependencies than reviewed synchronous bound.",
+      "when": "Attempt increment/cascade at bounds and inject worker interruption if frozen-job path chosen.",
+      "then": "No wrap or partial synchronous success; safe failure/fenced privacy job per approved policy; affected data inaccessible during unfinished purge.",
+      "source": "25-SAVED-PLAN-LIFECYCLE-AND-PRIVACY.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    },
+    {
+      "id": "DB-T24",
+      "title": "Recovery and suppression",
+      "given": "Synthetic pre-erasure backup plus separate suppression evidence; new-version data exists.",
+      "when": "Rehearse approved restore/safe-forward recovery with traffic quarantined.",
+      "then": "Deleted data cannot become accessible; no blind destructive down migration; source inventory/export/legacy reads checked before admission.",
+      "source": "28-ACCOUNT-EXPORT-ARTIFACT-CONTRACT.md",
+      "status": "NOT_RUN",
+      "evidence": []
+    }
+  ]
+}

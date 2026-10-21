@@ -16,6 +16,29 @@ All architectural decisions should remain aligned with:
 
 When an implementation decision meaningfully conflicts with approved project documentation, the conflict should be identified and reviewed before introducing a breaking, irreversible, or architecture-wide change.
 
+## Approved platform selection - 2026-09-14
+
+Mobile V1 uses shared React Native/Expo source with separate Android and iOS
+artifacts; an Android binary is not converted to iOS. The required Next.js
+Public Website and Account Portal are separate web surfaces, not excluded from
+V1 by the later full productivity Web App direction. See
+[release/build boundary guidance](DUAL_PLATFORM_RELEASE_GUIDE.md); no framework,
+provider, dependency or trust boundary is changed by this reconciliation.
+
+The project owner approved Supabase managed PostgreSQL and Supabase Auth for backend/database/identity, and Next.js for the Public Website and Account Portal. This selection supersedes the earlier undecided Firebase/backend/auth alternatives in this document, but does not mean any service is implemented. [Decision record](revision/01-REQUIREMENTS-AND-DECISIONS.md).
+
+Keep the existing Expo/React Native mobile stack and domain/repository boundaries. Use trusted server-side application logic plus PostgreSQL constraints/RLS; never expose service-role credentials or trust client ownership/grants. Website/Portal share the same identity and domain contracts as mobile. Next.js does not replace mobile or automatically select the later full-web implementation.
+
+Resource storage boundary: user-owned study/teaching resources are local by default, not automatically part of cloud sync or AI context. Optional paid-cloud direction is accepted, but only explicitly selected resources can enter a separately approved entitlement/quota/ownership-controlled upload path. No resource storage service has been provisioned. See the [resource contract](revision/12-LOCAL-RESOURCES-AND-WORK-PLANNING.md).
+
+September 15 selections: Supabase Edge Functions hosts the application API;
+Expo SQLite stores mobile domain data; Expo SecureStore stores login credentials.
+Home/Plan/Focus/Progress/Profile with Rewards under Progress is the selected
+navigation direction. Next.js hosting vendor, exact package/runtime settings,
+region, key/backup configuration, test tools and operational/privacy policies
+remain open where documented. Selection authorises design and reconciliation,
+not installation, paid provisioning, production migration or publication.
+
 ---
 
 ## 1. Architecture Goals
@@ -733,6 +756,12 @@ Possible responsibilities may include:
 - Storage migration support
 
 Storage access should remain isolated from presentation logic.
+
+The current mobile vertical slices use feature-local storage adapters under
+`src/features/` for focus-session history, tasks, and goals. These adapters keep
+serialization and recovery outside route components; they may move behind a
+shared storage boundary when synchronization or a local database creates a
+clear need.
 
 Sensitive information should use storage mechanisms appropriate to its security requirements.
 
@@ -1806,7 +1835,8 @@ Navigation should help users remain focused rather than forcing unnecessary scre
 
 ### 2. Navigation Structure
 
-The application may be organized into logical navigation groups such as:
+The V1 application is organized into the logical navigation groups defined in
+`V1_SCREEN_MAP.md`, including:
 
 - Authentication
 - Onboarding
@@ -1901,15 +1931,24 @@ When authentication is used:
 
 The primary application should provide fast access to frequently used destinations.
 
-The current product direction may include:
+The owner-approved V1 primary navigation, in order, is:
 
 - Home
+- Plan
 - Focus
-- Analytics
-- Rewards
+- Progress
 - Profile
 
+Rewards and session history are nested under Progress. Analytics remains a
+capability of Progress, not another permanent tab. The September 15 approval
+does not mean the current source routes have already migrated. Preserve old
+entry URLs using the compatibility map in `V1_SCREEN_MAP.md`; do not rename
+stored entities or discard history to change navigation labels.
+
 Primary navigation should remain stable and predictable throughout normal application usage.
+
+The canonical full-screen route inventory, non-route interfaces, and navigation
+flows are defined in `V1_SCREEN_MAP.md`.
 
 Changes to the primary navigation model should be treated as product-level decisions rather than casual implementation changes.
 
@@ -2061,13 +2100,15 @@ Bottom sheets should not replace full navigation when a task requires substantia
 
 ### 11. Tab Navigation
 
-The primary mobile experience may use a bottom navigation bar with five primary destinations:
+The primary mobile experience uses the owner-approved five bottom-navigation destinations:
 
 - Home
+- Plan
 - Focus
-- Analytics
-- Rewards
+- Progress
 - Profile
+
+History, analytics and Rewards belong under Progress; see `V1_SCREEN_MAP.md`.
 
 Only one primary destination should be active at a time.
 
@@ -2555,7 +2596,11 @@ Cancellation should, where appropriate:
 
 Cancelled sessions should remain distinguishable from completed sessions.
 
-High-commitment modes such as God Mode may make cancellation less convenient but should not create an unsafe state where essential device use or a necessary exit becomes impossible.
+High-commitment modes may disable ordinary End early through pre-session Settings,
+but must retain a separate Emergency exit (September 17 owner approval). Do not
+disable the domain cancellation/recovery capability just because an ordinary UI
+control is unavailable. Exact interaction and mode-change rules remain proposed;
+the mode cannot claim to make essential device use or a necessary exit impossible.
 
 ---
 
@@ -2713,7 +2758,7 @@ Possible updates may include:
 - Streak progression
 - Badge progress
 - Milestone completion
-- Focus Bet results where enabled
+- Non-punitive commitment feedback if separately approved; no Focus Bet stake/loss processing
 
 Reward calculations should follow defined business rules and remain independent from visual components.
 
@@ -3603,7 +3648,7 @@ Depending on the chosen infrastructure, controls may include:
 - Environment separation
 - Security monitoring
 
-If a platform such as Firebase or another managed backend is selected in the future, its provider-specific security configuration should be documented as part of the approved infrastructure architecture.
+Supabase PostgreSQL/Auth is the approved managed-backend selection. Its grants, RLS, auth/session configuration, private storage and trusted-service permissions must be specified and tested before production; default provider settings are not acceptance evidence.
 
 Default provider configuration should not automatically be assumed to be appropriate for production.
 
@@ -4438,33 +4483,19 @@ Temporary development data may use simpler migration strategies when preserving 
 
 ---
 
-### 8. V1 Mobile Platforms
+### 8. Platform Expansion
 
-Deep Focus V1 supports Android and iOS from one shared React Native and Expo
-codebase. Both platforms are immediate V1 release requirements rather than
-future platform expansion.
+Deep Focus is initially focused on mobile experiences.
 
-The build architecture is:
+Potential future platforms may include:
 
-```text
-Shared React Native / Expo source
-        |                 |
-        v                 v
-Android native build   iOS native build
-        |                 |
-        v                 v
-      .aab               .ipa
-        |                 |
-        v                 v
-Google Play Store   Apple App Store
-```
+- Android
+- iOS
+- Web
+- Desktop
+- Wearable experiences
 
-Android APK or AAB files are not converted into iOS applications. Each native
-artifact is built separately from the shared source code with the credentials,
-signing, and platform configuration required by its store.
-
-Web, desktop, and wearable experiences remain potential future expansion and
-are not V1 release requirements.
+Platform expansion should not be assumed as an immediate requirement.
 
 Business and domain logic should remain independent from platform-specific implementation where doing so provides practical value.
 
@@ -4507,12 +4538,6 @@ Platform-specific areas may include:
 Shared architecture should not hide important platform differences merely to maximize code reuse.
 
 Correct platform behavior should take priority over artificial reuse.
-
-Development should continuously consider both platforms. Android may be used
-for frequent local testing on Windows, while periodic iOS validation should use
-supported iOS environments and Expo EAS cloud builds. A shared defect belongs
-in shared code; a genuine operating-system difference belongs behind a narrow,
-documented platform boundary.
 
 ---
 
@@ -4903,11 +4928,11 @@ When product requirements introduce capabilities such as:
 - Team functionality
 - Remote analytics history
 
-an approved cloud data solution may be introduced.
+the approved Supabase PostgreSQL platform may be implemented through the documented phase and security gates.
 
-Potential managed backend technologies may include Firebase or another service that satisfies project requirements.
+Firebase and AWS were compared as alternatives; neither is a parallel selected backend. Replacing Supabase requires a new owner-approved decision.
 
-The final cloud platform should be selected according to:
+The selected platform's implementation must continue to be evaluated against:
 
 - Security
 - Authorization requirements
@@ -4922,7 +4947,7 @@ The final cloud platform should be selected according to:
 
 Cloud-provider-specific implementation should remain isolated from domain and presentation logic where practical.
 
-Firebase Firestore should not be treated as a mandatory dependency until it is approved for an implemented cloud-data requirement.
+Firebase Firestore is not an approved dependency. Supabase selection does not remove the need for an explicit local/offline synchronization design or migration proof.
 
 ---
 
@@ -4942,7 +4967,7 @@ When authentication is implemented, the selected solution should support:
 - Protected backend access
 - Future authentication methods where justified
 
-Firebase Authentication may be evaluated as a possible managed authentication solution, but it should not become an architectural commitment until the project's account and backend requirements justify and approve it.
+Supabase Auth is the approved identity provider. Supported sign-in factors, verification gates, secure token storage, account recovery and school/guardian policies still need exact tested configuration. Firebase Authentication is not selected.
 
 Authentication provider-specific implementation should remain behind appropriate service boundaries.
 
@@ -5512,18 +5537,19 @@ default.
 
 ### 3. AI Action Entitlement Flow
 
-Introductory and rewarded actions are trusted backend state.
+Free-allowance, optional paid AI and any selected rewarded actions are trusted
+backend state. Allowance amounts/renewal and ad format/provider are not yet fixed.
 
 ```text
 Eligible User
   ↓
-Five Introductory Actions Created Once
+Configured Free Allowance Granted Idempotently
   ↓
 Successful Validated AI Result Consumes One Action
   ↓
 No Action Available
   ↓
-Optional Rewarded-Ad Verification
+Verified Paid AI Access / Rewarded Access If Selected
   ↓
 Server-Created Action Grant
 ```

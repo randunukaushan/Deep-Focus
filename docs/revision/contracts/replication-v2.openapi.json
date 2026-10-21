@@ -1,0 +1,378 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Deep Focus draft replication v2",
+    "version": "0.1.0-draft"
+  },
+  "servers": [
+    {
+      "url": "/v1"
+    }
+  ],
+  "security": [
+    {
+      "UserBearer": []
+    }
+  ],
+  "paths": {
+    "/replication/v2/push": {
+      "post": {
+        "operationId": "pushReplicaV2",
+        "x-replication-id": "RP-01",
+        "x-active-account-required": true,
+        "x-unknown-query-keys": "reject",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned protocol-2 result; not proof of runtime or OS effects.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "replication-v2.schema.json#/definitions/PushResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "replication-v2.schema.json#/definitions/PushInput"
+              }
+            }
+          }
+        },
+        "x-max-body-bytes": 65536
+      }
+    },
+    "/replication/v2/pull": {
+      "get": {
+        "operationId": "pullReplicaV2",
+        "x-replication-id": "RP-02",
+        "x-active-account-required": true,
+        "x-unknown-query-keys": "reject",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned protocol-2 result; not proof of runtime or OS effects.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "replication-v2.schema.json#/definitions/PullResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/replication/v2/snapshots": {
+      "post": {
+        "operationId": "createReplicaSnapshotV2",
+        "x-replication-id": "RP-03",
+        "x-active-account-required": true,
+        "x-unknown-query-keys": "reject",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Owned protocol-2 result; not proof of runtime or OS effects.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "replication-v2.schema.json#/definitions/SnapshotAccepted"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "replication-v2.schema.json#/definitions/SnapshotCreate"
+              }
+            }
+          }
+        },
+        "x-max-body-bytes": 65536
+      }
+    },
+    "/replication/v2/snapshots/{id}": {
+      "get": {
+        "operationId": "readReplicaSnapshotV2",
+        "x-replication-id": "RP-04",
+        "x-active-account-required": true,
+        "x-unknown-query-keys": "reject",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned protocol-2 result; not proof of runtime or OS effects.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "replication-v2.schema.json#/definitions/SnapshotStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/replication/v2/snapshots/{id}/pages": {
+      "get": {
+        "operationId": "readReplicaSnapshotPageV2",
+        "x-replication-id": "RP-05",
+        "x-active-account-required": true,
+        "x-unknown-query-keys": "reject",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned protocol-2 result; not proof of runtime or OS effects.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "replication-v2.schema.json#/definitions/SnapshotPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/plans": {
+      "get": {
+        "operationId": "listDailyPlans",
+        "x-replication-id": "RP-06",
+        "x-active-account-required": true,
+        "x-unknown-query-keys": "reject",
+        "parameters": [
+          {
+            "name": "Plan-Contract-Version",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "const": 2
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "active",
+                "archived",
+                "all"
+              ],
+              "default": "active"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "urn:deep-focus:backend-extensions:2026-09-16#/definitions/Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned protocol-2 result; not proof of runtime or OS effects.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              },
+              "Plan-Contract-Version": {
+                "schema": {
+                  "type": "integer",
+                  "const": 2
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "replication-v2.schema.json#/definitions/PlanList"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "UserBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Supabase user access JWT"
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Shared safe error; owner/session/epoch authorization still required.",
+        "headers": {
+          "Cache-Control": {
+            "schema": {
+              "type": "string",
+              "const": "private, no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "personal-api.schema.json#/definitions/Error"
+            }
+          }
+        }
+      }
+    }
+  }
+}

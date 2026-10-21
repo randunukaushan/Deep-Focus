@@ -4,23 +4,27 @@
 
 Deep Focus is being developed as a cross-platform mobile application for people who want to work with greater intention without turning productivity into constant pressure. It combines focused work, thoughtful recovery, progress insights, and optional AI assistance while keeping the user in control.
 
-## V1 Platform and Release Target
-
-Deep Focus V1 is being developed from one shared React Native and Expo codebase
-for Android and iOS. Both platforms are first-class V1 release targets.
-
-- Target public launch: **January 1, 2027**
-- Stores: **Google Play Store and Apple App Store**
-- Production artifacts: Android `.aab` and iOS `.ipa`
-- Build model: separate native builds generated from the shared source code
-
-January 1, 2027 is the target public launch date, not a guaranteed store-review
-completion date. Beta testing, store preparation, and submissions must finish
-earlier so Apple and Google review or rejection fixes have a release buffer.
-
 ## Project Status
 
-Deep Focus is currently in **Phase 1 — Application Foundation**.
+V1 targets Android and iOS from shared React Native/Expo source **plus the
+required Public Website and Account Portal**. Full productivity web remains
+later. Separate `.aab`/`.ipa` builds, testing/store buffers, dated cost inputs
+and open identifier/publisher gates are in the
+[reconciled release guide](docs/DUAL_PLATFORM_RELEASE_GUIDE.md).
+January 1, 2027 is a target, not a store-approval guarantee or permission to publish.
+
+Start with the [Final Build Guide](docs/revision/49-BUILD-ENTRY-HANDOFF-SI.md):
+the first coding task, phase order, feature contracts and remaining decisions.
+Use the [documentation map](docs/DOCUMENTATION_MAP.md) for authority and
+the [readiness sheet](docs/revision/18-IMPLEMENTATION-READINESS-AND-OWNER-DECISIONS.md)
+for detailed prerequisite history. The broad documentation consolidation pass is
+closed; complete remaining specifications within each selected feature task.
+The foundation checkpoint below is historical; it is not a fresh audit of every
+current feature or proof that the expanded enterprise contracts are implemented.
+
+Recorded foundation checkpoint: **Phase 1 — Application Foundation**. Confirm
+the actual current implementation against source and the readiness sheet before
+selecting a new task; this checkpoint is not a current feature-completion claim.
 
 - Phase 0 project-readiness work is complete.
 - The initial React Native and Expo project foundation exists.
@@ -89,7 +93,13 @@ The current mobile foundation uses:
 
 The exact installed versions are defined in [`package.json`](package.json) and [`package-lock.json`](package-lock.json).
 
-Backend, database, authentication-provider, state-management, and AI-provider choices must not be treated as approved commitments until an implementation requirement and the project documentation explicitly approve them.
+Approved direction: **Supabase PostgreSQL/Auth/Edge Functions**, **Expo SQLite**
+domain data, **Expo SecureStore** credentials and **Next.js** Public Website/Account
+Portal. See the [decision register](docs/revision/01-REQUIREMENTS-AND-DECISIONS.md)
+for the September 14–15 approval boundaries. These selections do not establish
+implemented/provisioned services. Next.js hosting, exact adapters/configuration,
+test tooling, state management and AI-provider choices remain subject to their
+documented gates; do not re-ask already approved platform choices.
 
 ## Architecture Direction
 
@@ -103,10 +113,7 @@ Deep Focus follows a modular, maintainable architecture with clear separation be
 
 Implementation should reuse the approved design system and components, keep route files lightweight, protect user privacy, and build complete vertical feature slices rather than disconnected layers.
 
-Shared application logic, UI, services, state, and feature code should support
-both mobile platforms unless an operating-system difference requires a small,
-isolated platform-specific implementation. An Android binary is never converted
-into an iOS binary.
+The canonical Light/Dark color roles and semantic token mapping are defined in [`docs/COLOR_SYSTEM.md`](docs/COLOR_SYSTEM.md). UI implementation should use the shared theme tokens in [`src/theme/tokens.ts`](src/theme/tokens.ts) rather than introducing feature-local hex values.
 
 ## Getting Started
 
@@ -172,19 +179,27 @@ The reliable core focus-session system remains the highest implementation priori
 
 The documents in `docs/` are the primary implementation reference.
 
+The [enterprise documentation revision](docs/revision/README.md) is a research-backed **draft for owner review** covering the expanded product, January Website/Account Portal, security, monetization and Luna task preparation. It records confirmed requests separately from proposed decisions and does not silently replace the canonical documents below. Resolve its approval gates and reconcile affected canonical contracts before implementing new scope or providers.
+
+The revision also includes [Sri Lanka student/teacher research](docs/revision/10-SRI-LANKA-EDUCATION-RESEARCH-SI.md) and [bounded education implementation contracts](docs/revision/11-SRI-LANKA-EDUCATION-CONTRACTS.md). These preserve the January Website/Account Portal requirement while keeping the full teacher LMS and real-user pilot behind their own scope/privacy gates.
+
 ### Product and scope
 
 - [`PROJECT_VISION.md`](docs/PROJECT_VISION.md) — mission, long-term vision, and values;
 - [`BLUEPRINT.md`](docs/BLUEPRINT.md) — product behavior, features, navigation, and roadmap;
 - [`V1_FEATURE_SCOPE.md`](docs/V1_FEATURE_SCOPE.md) — canonical V1 user-facing feature list and release guardrails;
+- [`V1_SCREEN_MAP.md`](docs/V1_SCREEN_MAP.md) — canonical V1 route, navigation, and route-versus-state map;
 - [`POST_V1_FEATURE_SCOPE.md`](docs/POST_V1_FEATURE_SCOPE.md) — deferred V1.1 and longer-term feature directions;
 - [`V1_IMPLEMENTATION_PLAN.md`](docs/V1_IMPLEMENTATION_PLAN.md) — approved V1 sequence, completion criteria, and scope control.
 
 ### Design and architecture
 
+- [`COLOR_SYSTEM.md`](docs/COLOR_SYSTEM.md) — canonical Light/Dark palettes, semantic color roles, component mapping, and theme rules;
 - [`UI_UX_DESIGN_SPECIFICATION.md`](docs/UI_UX_DESIGN_SPECIFICATION.md) — interface and interaction requirements;
 - [`COMPONENT_LIBRARY.md`](docs/COMPONENT_LIBRARY.md) — approved reusable UI patterns;
 - [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) — layers, data flow, navigation, security, and technology direction.
+
+For color-specific decisions, `COLOR_SYSTEM.md` is authoritative if an older palette reference elsewhere has not yet been synchronized.
 
 ### Data, API, and security
 

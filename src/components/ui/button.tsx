@@ -10,9 +10,10 @@ import {
 } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
+import { accentTextColor } from '@/theme/action-colors';
+import { Fonts } from '@/constants/theme';
 import {
     LetterSpacingEm,
-    LineHeightRatio,
     Palette,
     Radius,
     Spacing,
@@ -35,6 +36,8 @@ export type ButtonProps = Omit<
   loading?: boolean;
   fullWidth?: boolean;
   icon?: ReactNode;
+  accentColor?: string;
+  loadingAccessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -45,6 +48,8 @@ export function Button({
   loading = false,
   fullWidth = false,
   icon,
+  accentColor,
+  loadingAccessibilityLabel,
   style,
   accessibilityLabel,
   accessibilityState,
@@ -54,20 +59,22 @@ export function Button({
   const theme = useTheme();
   const isDisabled = disabled || loading;
 
-  const containerStyle = getContainerStyle(variant);
-  const labelColor = getLabelColor(variant, theme.text);
+  const actionColor = accentColor ?? theme.primary ?? Palette.mintPrimary;
+  const containerStyle = getContainerStyle(variant, actionColor);
+  const labelColor = getLabelColor(variant, theme.text, actionColor);
   const disabledBackground = theme.backgroundElement;
   const disabledText = theme.textSecondary;
+  const accessibleName = accessibilityLabel ?? label;
 
   return (
     <Pressable
       {...pressableProps}
-      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityLabel={loading ? loadingAccessibilityLabel ?? accessibleName : accessibleName}
       accessibilityRole="button"
       accessibilityState={{
         ...accessibilityState,
-        busy: loading || accessibilityState?.busy,
-        disabled: isDisabled || accessibilityState?.disabled,
+        busy: loading || accessibilityState?.busy === true,
+        disabled: isDisabled || accessibilityState?.disabled === true,
       }}
       disabled={isDisabled}
       onPress={onPress}
@@ -103,12 +110,12 @@ export function Button({
   );
 }
 
-function getContainerStyle(variant: ButtonVariant): ViewStyle {
+function getContainerStyle(variant: ButtonVariant, accentColor: string = Palette.mintPrimary): ViewStyle {
   switch (variant) {
     case 'secondary':
       return {
         backgroundColor: 'transparent',
-        borderColor: Palette.deepIndigo,
+        borderColor: accentColor,
       };
 
     case 'ghost':
@@ -126,21 +133,23 @@ function getContainerStyle(variant: ButtonVariant): ViewStyle {
     case 'primary':
     default:
       return {
-        backgroundColor: Palette.deepIndigo,
-        borderColor: Palette.deepIndigo,
+        backgroundColor: accentColor,
+        borderColor: accentColor,
       };
   }
 }
 
-function getLabelColor(variant: ButtonVariant, themeText: string) {
+function getLabelColor(variant: ButtonVariant, themeText: string, accentColor: string = Palette.mintPrimary) {
   switch (variant) {
     case 'secondary':
-      return Palette.deepIndigo;
+      return accentColor;
 
     case 'ghost':
       return themeText;
 
     case 'primary':
+      return accentTextColor(accentColor);
+
     case 'destructive':
     default:
       return Palette.lightSurface;
@@ -167,11 +176,13 @@ const styles = StyleSheet.create({
     opacity: 0.82,
   },
   label: {
+    fontFamily: Fonts.sans,
     flexShrink: 1,
+    minWidth: 0,
     textAlign: 'center',
     fontSize: Typography.button.fontSize,
     fontWeight: Typography.button.fontWeight,
-    lineHeight: Typography.button.fontSize * LineHeightRatio.body,
+    lineHeight: 24,
     letterSpacing:
       Typography.button.fontSize * LetterSpacingEm.button,
   },
