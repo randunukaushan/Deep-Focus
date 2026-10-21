@@ -56,7 +56,9 @@ Future platform capabilities may include:
 - wearable integrations;
 - connected-device management;
 - cross-device continuity beyond required V1 synchronization;
-- desktop, web, tablet, or browser-extension expansion where approved.
+- desktop, full productivity Web App, tablet, or browser-extension expansion
+  where approved. The Public Website and Account Portal are required for January
+  under [V1 scope section 15](V1_FEATURE_SCOPE.md), not deferred by this item.
 
 No provider or platform is selected by this list.
 
@@ -86,12 +88,16 @@ Future capabilities may include:
 - expanded achievement collections;
 - cosmetic rewards;
 - advanced milestone systems;
-- optional premium content;
-- subscription management;
+- optional licensed productivity assets such as sounds or cosmetics, not
+  Deep Focus-supplied academic videos, papers, notes or answer libraries;
+- advanced subscription/business capabilities beyond the required January
+  Account Portal; exact paid offers and release placement still need approval;
 - additional sustainable business-model experiments.
 
 Deep Focus must not introduce gambling, real-money rewards, cash stakes, or
-misleading paid progression. Rewarded advertising must remain optional,
+misleading paid progression. No XP stakes, forfeiture or missed-work penalties
+may be reintroduced through a future challenge or commitment module.
+Rewarded advertising must remain optional,
 non-intrusive, and absent from active focus and recovery experiences.
 
 ---
@@ -115,12 +121,20 @@ conditions, attention disorders, or other medical states.
 
 ## 7. Global, Education, and Enterprise Expansion
 
+October22 reconciliation against main `adebb0fdf9ade89a551c38d15ac22c4060c1b6e4`:
+this section covers expansion **beyond** the already admitted V1 Sri Lanka
+learner/independent-teacher/bounded-classroom organizer, General/Custom no-pack
+use, si/ta/en and local-default/optional paid-cloud resource direction. Optional
+reviewed Sri Lanka metadata remains an existing candidate/detail gate, not an
+implemented pack or a blanket post-V1 deferral. Current V1/owner decisions and
+implementation order take precedence; no new scope cut/promotion here.
+
 Future global capabilities may include:
 
-- full localization and multi-language support;
+- additional verified languages beyond the owner-approved si/ta/en launch locales;
 - regional AI experiences;
 - a reusable Global Education Core;
-- learner, educator, and educational-institution workflows;
+- richer learner/educator workflows beyond the bounded V1 subset, and institutions;
 - modular Country Packs;
 - separate Curriculum Packs, Exam Packs, Language Packs, and Compliance Packs;
 - Generic International Mode for countries without dedicated Country Packs;
@@ -159,21 +173,22 @@ needed, and study targets even when a dedicated Country Pack does not yet exist.
 Potential initial country-pack research and rollout direction may prioritize Sri
 Lanka, the United States, Japan, South Korea, the United Kingdom, India,
 Singapore, and China, followed by additional countries according to validated
-demand and implementation feasibility. This ordering is planning direction, not
-a release commitment.
+demand and implementation feasibility. This is an inherited research candidate
+list, not validated demand, an approved market sequence or a release commitment.
 
 Country-specific functionality involving minors, educators, institutions,
 academic records, communications, AI data handling, or materially different
 privacy/data/regulatory requirements must receive the appropriate product,
 security, privacy, accessibility, and jurisdiction review before release.
 
-The canonical architectural direction for this expansion is defined in
-`GLOBAL_EDUCATION_COUNTRY_PACK_ARCHITECTURE.md`.
+The [global planning reference](GLOBAL_EDUCATION_COUNTRY_PACK_ARCHITECTURE.md)
+preserves pack separation, optional context and future direction. It is not a
+normative schema, new security/legal policy, or override of canonical V1 scope.
 
 The proposed **Today → Focus → Done** screen flow, Sri Lanka learner features,
 and educator dashboard/workflows are recorded as **unapproved design and feature
-candidates** in `PROPOSED_PRODUCT_FLOWS_AND_EDUCATION_FEATURES.md`. This backlog
-preserves the ideas for owner review; it does not modify the V1 scope or promise
+candidates** in [the proposed backlog](PROPOSED_PRODUCT_FLOWS_AND_EDUCATION_FEATURES.md).
+This backlog preserves the ideas for owner review; it does not modify V1 or promise
 implementation.
 
 ---
@@ -196,3 +211,12 @@ role boundaries, migration behavior, and country/jurisdiction review where
 required.
 
 Ideas in this file are directions, not promises of implementation or release.
+
+The owner's enterprise expansion is preserved in the
+[capability register](revision/01-REQUIREMENTS-AND-DECISIONS.md), including the
+Personal/Professional and Education branches. Resources are local by default;
+optional paid cloud is required for the January target by the September 25 owner
+decision, with price, limits, security and production acceptance still open.
+Language is independent of a country/curriculum pack; si/ta/en launch selection
+does not promote every regional feature. This future list
+neither reverses those decisions nor promotes all associated draft features into V1.

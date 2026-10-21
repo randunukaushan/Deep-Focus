@@ -1,0 +1,42 @@
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'C:/Users/User/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const assert=require('node:assert/strict');
+const path=require('node:path');
+const {pathToFileURL}=require('node:url');
+(async()=>{
+ const browser=await chromium.launch({headless:true,channel:'msedge'});
+ try{
+ const page=await browser.newPage({viewport:{width:1280,height:1300},reducedMotion:'no-preference'});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(pathToFileURL(path.join(__dirname,'index.html')).href);
+ const nav=async v=>page.locator(`.bottom-nav [data-go="${v}"]`).click();
+ const moving=()=>page.locator('.scene').evaluate(el=>el.getAnimations({subtree:true}).filter(a=>a.playState==='running').length);
+ await page.locator('#replay-scene').click();assert(await moving()>0);
+ await page.waitForTimeout(2300);assert.equal(await moving(),0);
+ await page.locator('#phone').screenshot({path:path.join(__dirname,'home-light.png')});
+ await page.locator('#theme').click();await page.waitForTimeout(2300);
+ await page.locator('#phone').screenshot({path:path.join(__dirname,'home-dark.png')});
+ await page.locator('#preview-completion').click();
+ assert(await page.locator('#motion-dialog .success-check').evaluate(el=>el.getAnimations().length)>0);
+ await page.waitForTimeout(900);await page.locator('#motion-dialog').screenshot({path:path.join(__dirname,'completion-sample.png')});
+ await page.keyboard.press('Escape');assert.equal(await page.locator('#preview-completion').evaluate(el=>el===document.activeElement),true);
+ await nav('progress');assert.equal(await page.locator('.progress-number').textContent(),'0');
+ await nav('focus');await page.locator('#start-pause').click();assert.equal(await moving(),0);
+ assert(await page.locator('.timer-wrap').evaluate(el=>el.getAnimations().length)>0);
+ await page.locator('#start-pause').click();assert.equal(await page.locator('#timer-state').textContent(),'Paused');assert.equal(await moving(),0);
+ await page.locator('#start-pause').click();await page.waitForTimeout(500);
+ await page.locator('#phone').screenshot({path:path.join(__dirname,'focus-dark.png')});
+ await nav('home');assert.equal(await moving(),0);
+ await page.locator('#replay-scene').click();assert.equal(await moving(),0);
+ await page.reload();await page.emulateMedia({reducedMotion:'reduce'});
+ await page.locator('#replay-scene').click();assert.equal(await moving(),0);
+ await page.locator('#preview-completion').click();assert.equal(await page.locator('#motion-dialog .success-check').evaluate(el=>el.getAnimations().length),0);
+ await page.keyboard.press('Escape');await page.emulateMedia({reducedMotion:'no-preference'});
+ await nav('profile');await page.locator('#motion-setting').check();await page.locator('#replay-scene').click();assert.equal(await moving(),0);
+ await page.locator('#preview-completion').click();assert.equal(await page.locator('#motion-dialog .success-check').evaluate(el=>el.getAnimations().length),0);await page.keyboard.press('Escape');
+ await page.clock.install();await page.reload();await nav('focus');await page.locator('#start-pause').click();await page.clock.fastForward(25*60*1000+500);
+ assert(await page.locator('#main').getByText('A little further forward.',{exact:true}).isVisible());assert(await page.locator('#main .success-check').isVisible());
+ await nav('progress');assert.equal(await page.locator('.progress-number').textContent(),'1');
+ assert.deepEqual(errors,[]);
+ console.log('PASS: finite/replayable scenery; start/pause feedback; no session scenery motion; sample no progress mutation; actual timed completion; system/manual reduced-motion; modal keyboard return; screenshots; no page errors.');
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

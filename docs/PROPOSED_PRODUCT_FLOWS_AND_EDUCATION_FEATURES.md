@@ -1,16 +1,28 @@
 # Deep Focus — Proposed UX and Education Feature Backlog
 
-**Status:** Proposal / design exploration; not an approved V1 scope change.  
-**Decision owner:** Product owner.  
-**Implementation:** Not started or authorized by this document.  
-**Related documents:** `V1_FEATURE_SCOPE.md`, `POST_V1_FEATURE_SCOPE.md`, `UI_UX_DESIGN_SPECIFICATION.md`, `COMPONENT_LIBRARY.md`, `COLOR_SYSTEM.md`, and `GLOBAL_EDUCATION_COUNTRY_PACK_ARCHITECTURE.md`.
+Reconciled **2026-10-22**, against main
+`adebb0fdf9ade89a551c38d15ac22c4060c1b6e4`.
+Status: proposal/design exploration; no new V1 scope, UI or implementation
+authorization. Existing source may already overlap parts of these ideas; that
+is not evidence the whole proposed workflow has been implemented or accepted.
+Decision owner: product owner. Authority: [V1 scope](V1_FEATURE_SCOPE.md),
+[owner decisions](revision/01-REQUIREMENTS-AND-DECISIONS.md),
+[screen map](V1_SCREEN_MAP.md), [Color System](COLOR_SYSTEM.md),
+[UI specification](UI_UX_DESIGN_SPECIFICATION.md),
+[components](COMPONENT_LIBRARY.md) and
+[global planning reference](GLOBAL_EDUCATION_COUNTRY_PACK_ARCHITECTURE.md).
+Original ideas remain traceable at [original PR head](https://github.com/randunukaushan/Deep-Focus/blob/40ff8928c4d2887a12ea8ea1f8a6a671f746186a/docs/PROPOSED_PRODUCT_FLOWS_AND_EDUCATION_FEATURES.md).
 
 ## 1. Purpose and decision boundary
 
 This document preserves the ideas discussed for (a) a simpler daily user experience, (b) the Sri Lanka education experience, and (c) educator value and workflows so that they can be evaluated later without silently entering the protected V1 release.
 
 - **Existing approved V1 capabilities** remain governed by `V1_FEATURE_SCOPE.md`. The proposed Today → Focus → Done presentation may reorganize how existing V1 functions are surfaced, but it is **not** an approved replacement for existing V1 navigation or features.
-- **Global Education, Sri Lanka packs, educator/institution workflows, and country-aware education AI** remain post-V1 candidates unless the product owner later approves a precisely bounded scope change.
+- Expanded Global Education/pack framework, institution dashboards, grades and
+  country-aware academic AI remain later proposals. Already admitted Sri Lanka
+  learner/independent-teacher/bounded-classroom work and si/ta/en are not deferred
+  by this backlog. Optional reviewed metadata remains an existing candidate,
+  not a required pack or automatic V1 promotion (see section 6).
 - This is a feature inventory and UX concept, **not** a delivery promise, implementation specification, or confirmation that these features already work.
 - No code, database schema, API contract, release date, subscription plan, or user-role permission is approved here.
 
@@ -27,7 +39,15 @@ Today (choose one meaningful next action)
       → Today or an optional next focus session
 ```
 
-The three names describe a **journey**, not three new permanent bottom-navigation tabs. The currently documented primary navigation remains unchanged until the product owner explicitly approves a redesign.
+The three names describe a **journey**, not new permanent tabs. Current canonical
+tabs remain Home / Plan / Focus / Progress / Profile, with Tasks/Goals in their
+existing routes. October 20 already authorizes current whole-app preview
+alignment; this unapproved alternative does not revoke that or approve new
+navigation. No screens, recovery actions or supported settings are removed.
+
+Current five-step onboarding remains language, future focus duration, future
+break duration, appearance and motion. This backlog does not add role, country,
+education or institution questions, permission requests or inferred consent.
 
 ### 2.2 Screen A — Today / Home
 
@@ -90,10 +110,13 @@ All names, dates, durations, and tasks above are **illustrative**, not app data.
 
 **Behavior:**
 
-- The timer must be based on trusted persisted timestamps/lifecycle state, not visual interval ticks alone.
+- The timer follows validated persisted timestamps/lifecycle state, not visual
+  interval ticks alone. Local elapsed time is not trusted server credit, proof
+  of attention, academic learning or a grade.
 - Backgrounding, app restart, temporary offline use, recovery, and duplicate-safe completion follow existing V1 rules.
 - Do not interrupt the session with ads, AI suggestions, rewards, or nonessential notifications.
-- Provide a safe and understandable exit; never trap the user in a focus session.
+- Retain current configurable ordinary-exit and separate Emergency-exit direction;
+  no unbreakable lock, missed-work XP penalty or newly approved exit interaction.
 - Hide primary navigation during an immersive active session only in line with existing navigation guidance.
 - Handle starting, running, paused, resuming, recovering, completing, canceling, and error states explicitly.
 
@@ -148,14 +171,26 @@ All names, dates, durations, and tasks above are **illustrative**, not app data.
 
 - **States:** first-time/empty, normal, loading, paused, completed, canceled, interrupted/recoverable, offline/pending sync, and error/retry.
 - **Accessibility:** meaningful labels, screen-reader timer/status announcements without excessive repetition, dynamic type, touch targets, contrast, reduced motion, keyboard/safe-area support where applicable.
-- **Visual system:** reuse approved Home/Focus/Session Summary components and semantic color tokens. Blue = primary focus action, teal = progress, green = verified completion; neutral surfaces dominate. No new color system.
+- **Visual system:** reuse current semantic tokens/components and the dated
+  Color System authority; no local hard-coded palette or new token mapping.
 - **Privacy:** show only data the current user is authorized to see.
 - **No silent workflow changes:** an AI proposal, timer completion, or educator assignment must not automatically mark a task completed without an approved rule and clear user control.
-- **Open product decisions:** Is `Today` simply the existing Home screen label? Which current Home cards are collapsed rather than removed? Should Done offer a break first or after the summary? What task completion confirmation is preferred? Resolve against the current approved navigation and V1 scope before implementation.
+- **Future UX questions:** if this alternative is later selected, define the
+  exact Home/Today labeling/card/break handoff without undoing current decisions.
+  Task completion already remains explicit and separate from session completion;
+  this is not a newly unanswered policy. Do not block existing V1 work waiting
+  for approval of an unrelated redesign.
 
-## 3. Proposed Sri Lanka education experience (post-V1)
+## 3. Sri Lanka education extensions — existing V1 subset retained
 
 A Sri Lanka Country Pack supplies local academic context and references separate Curriculum, Exam, Language, and Compliance Packs; it must not absorb all their responsibilities.
+
+This describes a possible future structured pack, not a currently shipped one.
+General/Custom subjects/own work require no official pack. Existing Sri Lanka
+O/L/A/L/higher-stage organization, independent teachers and bounded classroom
+sharing already have V1 placement; the richer candidates below do not defer
+them or automatically admit every academic feature. Education11 and owner
+September25/29 decisions own exact boundaries.
 
 ### 3.1 Learner profile and localization
 
@@ -168,7 +203,10 @@ A Sri Lanka Country Pack supplies local academic context and references separate
 ### 3.2 Study execution and examination preparation
 
 - Subject/topic progress and curriculum-version awareness when authoritative syllabus data exists.
-- Notes, tutes, resources, recordings, and class-linked study tasks, without becoming a full content-hosting LMS by default.
+- User-owned resource references and study tasks under the existing local/default
+  resource contract, not supplied teaching content. Initial format families are
+  PDF/JPG/PNG, website/video links and book/page references; recordings, OCR,
+  broader file formats and classroom file distribution are not thereby admitted.
 - Homework, assignments, past-paper practice, timed paper simulations, and user-recorded results.
 - Error logs, weak-topic maps based on sufficient evidence, revision queues, exam countdowns, and backward study plans.
 - Weekly targets, actual focused study time, backlog/catch-up plans, and task-to-focus breakdown.
@@ -185,7 +223,13 @@ A Sri Lanka Country Pack supplies local academic context and references separate
 - Child/minor accounts, teacher access, guardian visibility, and academic records require explicit privacy, age, consent, and authorization design.
 - A tuition-fee collection, QR attendance, payment, or full tuition ERP suite is **not** the initial direction.
 
-## 4. Proposed educator value and dashboard (post-V1)
+## 4. Expanded educator dashboard — later proposal, not all teaching work
+
+Independent personal-teacher organization and the September29 private invitation,
+work-instruction/deadline, learner-confirmed private-task adoption, selected
+completion/progress sharing and text-feedback subset already target V1.
+Full dashboard/aggregates, grades/rubrics, paper publishing, resources/files,
+institution management and AI Teacher Assistant below remain outside that subset.
 
 **Core educator benefit:** see whether assigned independent study is being completed, which topics may need reinforcement, and what focused follow-up work is useful—without turning Deep Focus into a student-surveillance product.
 
@@ -223,7 +267,9 @@ Teach topic → Assign practice/revision
 
 - Student-to-teacher sharing must be transparent, purpose-limited, permissioned, and appropriate to age and jurisdiction.
 - Do not expose private personal focus histories, detailed activity surveillance, or sensitive learner data by default.
-- Educator aggregates need suitable minimum cohort sizes and protections against re-identification; small classes may require suppression or alternative views.
+- Aggregates would need separately reviewed privacy controls if later admitted;
+  no numeric cohort threshold or aggregate access policy is chosen here. Existing
+  classroom security contracts, not this mock dashboard, govern actual sharing.
 - Avoid unrestricted teacher-student direct messaging, coercive study-hour enforcement, or punitive rankings.
 - Parent/guardian visibility, if ever added, should be narrow, read-only where appropriate, and reviewed independently.
 - Role-based access control, account linking, revocation, auditability, and retention need approved contracts before implementation.
@@ -232,9 +278,18 @@ Teach topic → Assign practice/revision
 
 A physics teacher publishes practice for a topic and recommends a reasonable study target. A learner chooses their own focus sessions, works through questions, and submits results. The educator receives only authorized completion/assessment evidence and can decide whether the next class needs revision. No real student data or analytics is implied.
 
+This richer assessment example is not the V1 wire contract: V1 sharing is selected
+completion/progress and text feedback, not marks/weak-topic dashboards, automatic
+focus-history disclosure or transmission of resource files. Membership is not
+sharing consent. Real-minor access remains disabled pending qualified legal
+review and separately implemented controls; no real learner records used here.
+
 ## 5. How future V1 decisions should be recorded
 
-The product owner will specify which, if any, items should be considered for V1. Until then, do **not** move this proposal into the V1 feature list or start implementation.
+Existing owner-approved V1 inclusions remain in force. Only a genuinely new
+expansion or deferral needs an exact additional decision; do not re-ask already
+recorded audience/language/teacher/classroom choices or block approved work.
+This backlog does not authorize implementing its new alternatives.
 
 For each proposed promotion, record:
 
@@ -252,10 +307,18 @@ A proposed `Today → Focus → Done` UX refinement should first be evaluated as
 | Topic | Current status |
 | --- | --- |
 | Today → Focus → Done simplified UX | Proposed design, pending product-owner V1 selection |
-| Sri Lanka Country Pack | Post-V1 proposal, not approved for V1 |
-| O/L / A/L / university workflows | Post-V1 proposals; authoritative data needed |
-| Educator dashboard and teaching loop | Post-V1 proposal; role/privacy model needed |
+| Sri Lanka pack framework | Future proposal; optional reviewed metadata remains an existing ADR-007 candidate, not a mandatory General-mode pack |
+| O/L / A/L / higher-stage organizer | Already admitted V1 audience/work boundary; richer university/grades/mastery proposals not automatically admitted |
+| Independent teacher / bounded teaching loop | Existing V1 organizer plus September29 private instruction/selected-progress/text-feedback subset; detail/review/eligibility gates open |
+| Expanded educator/institution dashboard | Later proposal; no aggregate/grade/resource-file permission from current classroom scope |
+| Sinhala / Tamil / English | Required launch locales; QA unverified, language does not select country or consent |
+| Own resources / optional paid cloud | Local default, January optional paid-cloud capability required; no automatic upload, price or classroom sharing approval |
+| Android / iOS / Website / Account Portal | Required four surfaces; full productivity web and teacher web workspace later |
 | AI Teacher Assistant | Post-V1 proposal; privacy and AI contracts needed |
 | V1 feature list / deadline | Unchanged; governed by existing V1 documents |
 
-**Next step:** Wait for the product owner's explicit list of V1 inclusions/exclusions. Document the decision before any implementation or scope change.
+Next: follow current foundation/implementation order and scoped acceptance,
+not a fresh blanket V1-selection exercise. New candidates need exact owner
+admission and relevant technical/privacy/age/review gates. This merge changes
+no UI, schema or provider and does not certify native/hosted/legal acceptance;
+product remains NOT_READY. See [actual reconciliation checks](revision/evidence/PR17-EDUCATION-RECONCILIATION-2026-10-22.md).

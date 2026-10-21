@@ -8,13 +8,13 @@ export type ThemedTextProps = TextProps & {
   themeColor?: ThemeColor;
 };
 
-export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
+export function ThemedText({ style, type = 'default', themeColor, accessibilityRole, accessibilityLiveRegion, ...rest }: ThemedTextProps) {
   const theme = useTheme();
 
   return (
     <Text
       style={[
-        { color: theme[themeColor ?? 'text'] },
+        { color: theme[themeColor ?? 'text'], flexShrink: 1, minWidth: 0 },
         type === 'default' && styles.default,
         type === 'title' && styles.title,
         type === 'small' && styles.small,
@@ -25,6 +25,8 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
         type === 'code' && styles.code,
         style,
       ]}
+      accessibilityLiveRegion={accessibilityLiveRegion ?? (accessibilityRole === 'alert' ? 'assertive' : undefined)}
+      accessibilityRole={accessibilityRole}
       {...rest}
     />
   );
@@ -32,35 +34,42 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
 
 const styles = StyleSheet.create({
   small: {
+    fontFamily: Fonts.sans,
     fontSize: 14,
-    lineHeight: 20,
-    fontWeight: 500,
+    lineHeight: 22,
+    fontWeight: '400',
   },
   smallBold: {
+    fontFamily: Fonts.sans,
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 22,
     fontWeight: 700,
   },
   default: {
+    fontFamily: Fonts.sans,
     fontSize: 16,
-    lineHeight: 24,
-    fontWeight: 500,
+    lineHeight: 26,
+    fontWeight: '400',
   },
   title: {
-    fontSize: 48,
+    fontFamily: Fonts.sans,
+    fontSize: 40,
     fontWeight: 600,
-    lineHeight: 52,
+    lineHeight: 48,
   },
   subtitle: {
-    fontSize: 32,
-    lineHeight: 44,
+    fontFamily: Fonts.sans,
+    fontSize: 28,
+    lineHeight: 38,
     fontWeight: 600,
   },
   link: {
+    fontFamily: Fonts.sans,
     lineHeight: 30,
     fontSize: 14,
   },
   linkPrimary: {
+    fontFamily: Fonts.sans,
     lineHeight: 30,
     fontSize: 14,
     color: '#3c87f7',

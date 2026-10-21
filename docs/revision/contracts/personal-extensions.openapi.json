@@ -1,0 +1,134 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Deep Focus selected personal extension contracts",
+    "version": "0.1.0-draft",
+    "description": "Not deployed. Twelve selected operations EX-01 through EX-11 and EX-17 supplement, not replace, the fourteen-operation core document. External schemas declare draft-07. Contract metadata/shape checks are not full OpenAPI conformance or authorization tests. All private responses require Cache-Control: private, no-store. Exact product policies and semantic validation remain gated."
+  },
+  "servers": [{ "url": "/v1", "description": "Logical base only; no deployed domain." }],
+  "security": [{ "UserBearer": [] }],
+  "paths": {
+    "/goals/{id}": {
+      "parameters": [{ "$ref": "personal-api.openapi.json#/components/parameters/Id" }],
+      "patch": {
+        "operationId": "patchGoal", "x-registry-id": "EX-01", "x-command": "goal.patch",
+        "description": "Title/description only. Owner and expected version checked in the domain transaction.",
+        "parameters": [{ "$ref": "personal-api.openapi.json#/components/parameters/IdempotencyKey" }],
+        "requestBody": { "$ref": "#/components/requestBodies/GoalPatch" },
+        "responses": { "200": { "$ref": "personal-api.openapi.json#/components/responses/Goal" }, "default": { "$ref": "personal-api.openapi.json#/components/responses/Error" } }
+      },
+      "delete": {
+        "operationId": "deleteGoal", "x-registry-id": "EX-02", "x-command": "goal.delete",
+        "description": "Soft delete with no request body. Normalize Expected-Version to VersionOnly for the shared command/receipt. Clear live links atomically, retain historical attribution. Same-key retry returns the original response.",
+        "parameters": [{ "$ref": "personal-api.openapi.json#/components/parameters/IdempotencyKey" }, { "$ref": "#/components/parameters/ExpectedVersion" }],
+        "responses": { "200": { "$ref": "#/components/responses/GoalDeletion" }, "default": { "$ref": "personal-api.openapi.json#/components/responses/Error" } }
+      }
+    },
+    "/tasks/{id}": {
+      "parameters": [{ "$ref": "personal-api.openapi.json#/components/parameters/Id" }],
+      "delete": {
+        "operationId": "deleteTask", "x-registry-id": "EX-03", "x-command": "task.delete",
+        "description": "Soft delete; preserve historical sessions, cancel pending reminder intents and clear live planning links in the transaction. No request body; Expected-Version normalizes to VersionOnly.",
+        "parameters": [{ "$ref": "personal-api.openapi.json#/components/parameters/IdempotencyKey" }, { "$ref": "#/components/parameters/ExpectedVersion" }],
+        "responses": { "200": { "$ref": "#/components/responses/TaskDeletion" }, "default": { "$ref": "personal-api.openapi.json#/components/responses/Error" } }
+      }
+    },
+    "/settings": {
+      "get": {
+        "operationId": "getAccountSettings", "x-registry-id": "EX-04",
+        "description": "Owned provisioned settings; missing/failed bootstrap is not a fabricated default response. No device grants, questionnaire answers or phrases.",
+        "responses": { "200": { "$ref": "#/components/responses/AccountSettings" }, "default": { "$ref": "personal-api.openapi.json#/components/responses/Error" } }
+      },
+      "patch": {
+        "operationId": "patchAccountSettings", "x-registry-id": "EX-05", "x-command": "settings.patch",
+        "description": "Account allowlist only. Shared command target is the owned singleton ID. Does not modify a running session or grant AI processing consent.",
+        "parameters": [{ "$ref": "personal-api.openapi.json#/components/parameters/IdempotencyKey" }],
+        "requestBody": { "$ref": "#/components/requestBodies/AccountSettingsPatch" },
+        "responses": { "200": { "$ref": "#/components/responses/AccountSettings" }, "default": { "$ref": "personal-api.openapi.json#/components/responses/Error" } }
+      }
+    },
+    "/breaks": {
+      "post": {
+        "operationId": "recordBreak", "x-registry-id": "EX-06", "x-command": "break.record",
+        "description": "Record a started post-focus break for an owned eligible terminal session. Server derives actualMs, validates timestamps and outcome; no focus XP or physical-rest proof. Replay retains original status/body.",
+        "parameters": [{ "$ref": "personal-api.openapi.json#/components/parameters/IdempotencyKey" }],
+        "requestBody": { "$ref": "#/components/requestBodies/BreakRecord" },
+        "responses": { "201": { "$ref": "#/components/responses/Break" }, "default": { "$ref": "personal-api.openapi.json#/components/responses/Error" } }
+      },
+      "get": {
+        "operationId": "listBreaks", "x-registry-id": "EX-07",
+        "description": "Owned terminal break history ordered by endedAt DESC, id DESC. Live keyset view, not a sync snapshot.",
+        "parameters": [{ "$ref": "#/components/parameters/Cursor" }, { "$ref": "#/components/parameters/Limit" }],
+        "responses": { "200": { "$ref": "#/components/responses/BreakList" }, "default": { "$ref": "personal-api.openapi.json#/components/responses/Error" } }
+      }
+    },
+    "/task-reminders": {
+      "post": {
+        "operationId": "createTaskReminder", "x-registry-id": "EX-08", "x-command": "reminder.create",
+        "description": "Persist explicit reminder intent for an owned eligible task. Initial enabled=true records user intent only, not OS permission/installation/delivery. One selected device installs after permission. Replay retains original status/body.",
+        "parameters": [{ "$ref": "personal-api.openapi.json#/components/parameters/IdempotencyKey" }],
+        "requestBody": { "$ref": "#/components/requestBodies/ReminderCreate" },
+        "responses": { "201": { "$ref": "#/components/responses/Reminder" }, "default": { "$ref": "personal-api.openapi.json#/components/responses/Error" } }
+      },
+      "get": {
+        "operationId": "listTaskReminders", "x-registry-id": "EX-09",
+        "description": "Owned nondeleted reminder intents, including disabled/missed, by scheduledFor ASC, id ASC. Editing a sort key may move a row between live pages; deduplicate by ID and refresh after changes. Use sync for complete replication.",
+        "parameters": [{ "$ref": "#/components/parameters/Cursor" }, { "$ref": "#/components/parameters/Limit" }],
+        "responses": { "200": { "$ref": "#/components/responses/ReminderList" }, "default": { "$ref": "personal-api.openapi.json#/components/responses/Error" } }
+      }
+    },
+    "/task-reminders/{id}": {
+      "parameters": [{ "$ref": "personal-api.openapi.json#/components/parameters/Id" }],
+      "patch": {
+        "operationId": "patchTaskReminder", "x-registry-id": "EX-10", "x-command": "reminder.patch",
+        "description": "Versioned intent update; does not reassign task/owner or prove OS delivery. Reconcile chosen-device installation.",
+        "parameters": [{ "$ref": "personal-api.openapi.json#/components/parameters/IdempotencyKey" }],
+        "requestBody": { "$ref": "#/components/requestBodies/ReminderPatch" },
+        "responses": { "200": { "$ref": "#/components/responses/Reminder" }, "default": { "$ref": "personal-api.openapi.json#/components/responses/Error" } }
+      },
+      "delete": {
+        "operationId": "deleteTaskReminder", "x-registry-id": "EX-11", "x-command": "reminder.delete",
+        "description": "Versioned tombstone plus change-feed invalidation. Offline-device delivery cannot be remotely guaranteed cancelled. No request body; Expected-Version normalizes to VersionOnly.",
+        "parameters": [{ "$ref": "personal-api.openapi.json#/components/parameters/IdempotencyKey" }, { "$ref": "#/components/parameters/ExpectedVersion" }],
+        "responses": { "200": { "$ref": "#/components/responses/ReminderDeletion" }, "default": { "$ref": "personal-api.openapi.json#/components/responses/Error" } }
+      }
+    },
+    "/analytics/summary": {
+      "get": {
+        "operationId": "getAnalyticsSummary", "x-registry-id": "EX-17",
+        "description": "Half-open [start,end), reviewed maximum range and valid IANA zone require semantic checks. Unavailable snapshot means null totals, not zero; known pending/stale snapshots expose freshness. No health/attention claim.",
+        "parameters": [{ "$ref": "#/components/parameters/Start" }, { "$ref": "#/components/parameters/End" }, { "$ref": "#/components/parameters/TimeZone" }],
+        "responses": { "200": { "$ref": "#/components/responses/AnalyticsSummary" }, "default": { "$ref": "personal-api.openapi.json#/components/responses/Error" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "UserBearer": { "type": "http", "scheme": "bearer", "bearerFormat": "Supabase user access JWT" } },
+    "parameters": {
+      "ExpectedVersion": { "name": "Expected-Version", "in": "header", "required": true, "schema": { "$ref": "backend-extensions.schema.json#/definitions/Version" }, "description": "Application header: exactly one base-10 positive integer, no signs/whitespace/fractions/leading zeroes, <=2147483647. Normalize to {expectedVersion:n}; absent/malformed=400, stale=409. This is not HTTP If-Match. Never hash raw header spelling." },
+      "Cursor": { "name": "cursor", "in": "query", "required": false, "schema": { "$ref": "backend-extensions.schema.json#/definitions/Cursor" }, "description": "Opaque signed actor/endpoint/filter/sort-bound cursor; not sync/export authority." },
+      "Limit": { "name": "limit", "in": "query", "required": false, "schema": { "$ref": "backend-extensions.schema.json#/definitions/ListQuery/properties/limit" } },
+      "Start": { "name": "start", "in": "query", "required": true, "schema": { "$ref": "backend-extensions.schema.json#/definitions/AnalyticsQuery/properties/start" } },
+      "End": { "name": "end", "in": "query", "required": true, "schema": { "$ref": "backend-extensions.schema.json#/definitions/AnalyticsQuery/properties/end" } },
+      "TimeZone": { "name": "timeZone", "in": "query", "required": true, "schema": { "$ref": "backend-extensions.schema.json#/definitions/AnalyticsQuery/properties/timeZone" } }
+    },
+    "requestBodies": {
+      "GoalPatch": { "required": true, "content": { "application/json": { "schema": { "$ref": "backend-extensions.schema.json#/definitions/GoalPatch" } } } },
+      "AccountSettingsPatch": { "required": true, "content": { "application/json": { "schema": { "$ref": "backend-extensions.schema.json#/definitions/AccountSettingsPatch" } } } },
+      "BreakRecord": { "required": true, "content": { "application/json": { "schema": { "$ref": "backend-extensions.schema.json#/definitions/BreakRecord" } } } },
+      "ReminderCreate": { "required": true, "content": { "application/json": { "schema": { "$ref": "backend-extensions.schema.json#/definitions/ReminderCreate" } } } },
+      "ReminderPatch": { "required": true, "content": { "application/json": { "schema": { "$ref": "backend-extensions.schema.json#/definitions/ReminderPatch" } } } }
+    },
+    "responses": {
+      "GoalDeletion": { "description": "Durable goal tombstone and original command receipt; not a privacy-job credential.", "content": { "application/json": { "schema": { "$ref": "backend-extensions.schema.json#/definitions/GoalDeletionResponse" } } } },
+      "TaskDeletion": { "description": "Durable task tombstone and original command receipt.", "content": { "application/json": { "schema": { "$ref": "backend-extensions.schema.json#/definitions/TaskDeletionResponse" } } } },
+      "ReminderDeletion": { "description": "Durable reminder tombstone and original command receipt; device invalidation pending reconciliation.", "content": { "application/json": { "schema": { "$ref": "backend-extensions.schema.json#/definitions/ReminderDeletionResponse" } } } },
+      "AccountSettings": { "description": "Owned allowlisted preferences, not a device permission record.", "content": { "application/json": { "schema": { "$ref": "backend-extensions.schema.json#/definitions/AccountSettingsResponse" } } } },
+      "Break": { "description": "Owned recorded break with server-derived duration and explicit verification state.", "content": { "application/json": { "schema": { "$ref": "backend-extensions.schema.json#/definitions/BreakResponse" } } } },
+      "BreakList": { "description": "Owned terminal break page, max 100, null cursor at end.", "content": { "application/json": { "schema": { "$ref": "backend-extensions.schema.json#/definitions/BreakListResponse" } } } },
+      "Reminder": { "description": "Owned reminder intent; enabled does not mean delivered.", "content": { "application/json": { "schema": { "$ref": "backend-extensions.schema.json#/definitions/ReminderResponse" } } } },
+      "ReminderList": { "description": "Owned nondeleted intent page, max 100, null cursor at end.", "content": { "application/json": { "schema": { "$ref": "backend-extensions.schema.json#/definitions/ReminderListResponse" } } } },
+      "AnalyticsSummary": { "description": "Owned snapshot with explicit period, freshness and unavailable state.", "content": { "application/json": { "schema": { "$ref": "backend-extensions.schema.json#/definitions/AnalyticsSummaryResponse" } } } }
+    }
+  }
+}

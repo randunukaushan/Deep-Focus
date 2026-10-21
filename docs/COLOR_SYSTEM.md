@@ -4,6 +4,44 @@ This document is the **canonical source of truth for Deep Focus colors and theme
 
 If a color value, color role, or light/dark theme rule in another document conflicts with this file, **this file takes precedence for color decisions** until the conflicting document is updated.
 
+## Current palette reconciliation — 2026-10-21
+
+PR #20 brings this September color contract together with the owner's October
+19–20 preview-alignment direction, recorded in
+[the decision register](revision/01-REQUIREMENTS-AND-DECISIONS.md) and
+[onboarding/presentation evidence](revision/evidence/ONBOARDING-AND-AUTH-POLISH-2026-10-20.md).
+The table below retains the already implemented October palette; it is not a new
+visual redesign. It supersedes numeric palette/mapping examples in sections
+2, 3, 5, 6, 8 and 13, which remain the historical September baseline.
+
+| Current semantic token | Light | Dark |
+| --- | --- | --- |
+| background | `#F6F9FD` | `#07182B` |
+| surface | `#FFFFFF` | `#10253D` |
+| surfaceElevated | `#FFFFFF` | `#162F4C` |
+| border | `#DBE5F0` | `#162F4C` |
+| textPrimary | `#142E48` | `#ECF4FF` |
+| textSecondary / textMuted | `#526981` | `#A6BBD4` |
+| primary / borderFocus | `#2165DF` | `#8BB8FF` |
+| primaryPressed | `#2563EB` | `#2563EB` |
+| secondary (neutral secondary-action surface) | `#17354A` | `#1B3B54` |
+| progress | `#14B8A6` | `#14B8A6` |
+| aiAccent / info | `#A78BFA` | `#A78BFA` |
+| achievement (retained milestone accent) | `#FBBF24` | `#FBBF24` |
+| success | `#22C55E` | `#22C55E` |
+| warning | `#F59E0B` | `#F59E0B` |
+| error / danger | `#EF4444` | `#EF4444` |
+
+`progress` explicitly preserves teal progress semantics independently from the
+existing neutral `secondary` action role. `danger` aliases `error`; `info` aliases
+the non-critical purple accent. Existing palette names remain compatibility
+aliases. Primary action text uses `accentTextColor` to choose a tested foreground;
+do not replace that foreground with an unconditional white label. Native visual,
+large-text and screen-reader acceptance remain pending.
+
+Semantic meaning, theme stability and accessibility rules below still apply.
+Legacy Home atmosphere aliases do not authorize time-of-day palette changes.
+
 The goal of the Deep Focus visual system is to create an interface that feels calm, focused, motivating, accessible, and premium without becoming visually noisy or overstimulating.
 
 ---
