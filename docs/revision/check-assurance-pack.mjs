@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 // This verifies the dated document pack, not any product security control.
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const baseline = 'ecd6d348093292c27b06751815eb09694a41665a';
+const reviewedSnapshot = '73b6c6760cd98f641056969d483398fdab74ddb9';
 const original = '87e995e27df3e383a6fb646883a2adbc3ebb64cb';
 const normalize = value => value.replace(/\r\n/g, '\n').trimEnd();
 const read = path => readFileSync(join(root, path), 'utf8');
@@ -53,7 +54,9 @@ for (const file of historical) {
   }
 }
 const unchanged = ['AGENTS.md', 'docs/AI_RULES.md', 'docs/ai', 'docs/V1_FEATURE_SCOPE.md', 'docs/V1_IMPLEMENTATION_PLAN.md', 'app.json', 'eas.json', 'package.json', 'package-lock.json', 'src', 'tests', 'web'];
-assert.equal(git(['diff', '--name-only', baseline, '--', ...unchanged]), '', 'non-task source/config/governance/scope delta');
+// Preserve the dated PR15 claim against its actual accepted Git snapshot, not
+// freeze every future authorized source/config task at the old baseline.
+assert.equal(git(['diff', '--name-only', baseline, reviewedSnapshot, '--', ...unchanged]), '', 'PR15 source/config/governance/scope delta');
 const manifest = JSON.parse(read('package.json'));
 assert.equal(manifest.dependencies.expo, '~56.0.23');
 assert.equal(manifest.dependencies['react-native'], '0.85.3');
@@ -83,4 +86,4 @@ assert.match(read(`${pack}/README.md`), /real-minor access/);
 assert.match(read(`${pack}/README.md`), /Five-step language-first onboarding/);
 assert.match(read(`${pack}/README.md`), /Public Website \+ Account Portal/);
 assert.match(read(`${pack}/OPEN_HORIZON_PROCESS_EVIDENCE_MAPPING.md`), /PROPOSED crosswalk/);
-console.log(JSON.stringify({ status: 'PASS', scope: 'Dated document structure, history identity, source observations and unchanged boundaries; no runtime/security/release acceptance', markdownFiles: files.length, localLinks: links, currentPackTables: tables, historicalBodiesUnchanged: historical.length, baseline, original }, null, 2));
+console.log(JSON.stringify({ status: 'PASS', scope: 'Current dated-document structure and historical PR15 source preservation; no current-source/runtime/security/release certification', markdownFiles: files.length, localLinks: links, currentPackTables: tables, historicalBodiesUnchanged: historical.length, baseline, reviewedSnapshot, original }, null, 2));

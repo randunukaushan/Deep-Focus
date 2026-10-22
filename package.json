@@ -44,6 +44,8 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
+    "postinstall": "node scripts/security/apply-sdk56-backports.mjs",
+    "security:check": "node scripts/security/apply-sdk56-backports.mjs --check",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
