@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-22 — SDK56 dependency-security mitigations
+
+- Preserve all dependency resolutions; add source/version/hash-checked local
+  install backports for image box/ICNS progress, bounded URI decoding, nested
+  RSA DigestAlgorithm validation and brace nesting. Apply braces mitigation to
+  web development tooling too; retain existing CommonJS callers.
+- Add negative/positive dependency regression tests and explicit installation
+  checks. Keep npm alerts visible, UUID v4-only exposure and native/release
+  limits separate from local mitigation evidence.
+- [Task authority, triage and actual verification](revision/evidence/SDK56-DEPENDENCY-SECURITY-2026-10-22.md).
+  Development hardening only, not upstream certification or release approval.
+
 ## 2026-10-22 — PR #17 global education planning reconciliation
 
 - Reconcile pack/global direction and proposed UX backlog with current V1

@@ -1,0 +1,10 @@
+{
+  "image-size/dist/types/utils.js": "d778f37fc0179b71e0c83e6571bd0e416ff7e8542cca8db228df764aa0128c9f",
+  "image-size/dist/types/icns.js": "12b8209c52ab5882ec27a46ca0947052808db9b783bbda5edc6dc5e4ac87aea3",
+  "decode-uri-component/index.js": "661d0f8dc8f1affca6f20337a74eea5e84b063eb8e4440e0cdfdbea7895fb516",
+  "node-forge/lib/rsa.js": "447c5441cea1b125e23661d7e27a8b1759cc3400241c0013b2d034b4ee1dbf50",
+  "braces/lib/parse.js": "9efc5e67fafa04834c908ba7f4337d88125b479bfb97d292b03fd58bfa299e92",
+  "braces/lib/compile.js": "cf23d48456f5bc15d81b188f217b1839cf7fc0b9069939b4d6f3faa8f7fc7352",
+  "braces/lib/expand.js": "446894bb13d7234cd60638c76aba6cb0c3b1236b1ed2c95d325abb3d6826bae3",
+  "braces/lib/stringify.js": "3384e27261805913f39d9c787e76be56452cb7411f64f424b2855df708a39de5"
+}

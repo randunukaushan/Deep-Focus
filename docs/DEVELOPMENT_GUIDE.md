@@ -11,6 +11,26 @@ lane, use [release guidance](DUAL_PLATFORM_RELEASE_GUIDE.md). Installed tool,
 credential/budget and actual platform verification gates still apply; no cloud
 build, account setup or submission is authorized merely by a workflow example.
 
+### SDK56 dependency-security backports — 2026-10-22
+
+Root and web `npm ci`/`npm install` run their security `postinstall` hook.
+Run `npm run security:check` in each installed project before verification or
+building. If lifecycle scripts were intentionally disabled, run `npm run
+postinstall` explicitly first, then the check; an unpatched install is not an
+accepted build input. Keep the repository's `scripts/security` beside `web/`;
+copying only `web/` without the shared hook is not a supported standalone install.
+The production-only web tree has no braces/dev-lint target; the checker reports
+that omission explicitly rather than pretending a development patch was applied.
+
+These reviewed local mitigations preserve installed SDK56 package versions,
+CommonJS APIs and registry lockfile integrity. They do not modify shared caches,
+forge package versions or suppress `npm audit` findings. Unknown versions/source
+bytes fail closed: inspect a compatible upstream update and deliberately retire
+or regenerate the relevant patch with regression tests, never remove the guard
+just to install successfully. Run the security regression file with the normal
+domain suite after installing both root and web trees: it deliberately checks
+both. See [triage, exact checks and limits](revision/evidence/SDK56-DEPENDENCY-SECURITY-2026-10-22.md).
+
 
 
 This document defines the development workflow, coding standards, project structure, and engineering best practices for the Deep Focus project.

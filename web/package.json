@@ -7,6 +7,8 @@
     "node": ">=20.9.0"
   },
   "scripts": {
+    "postinstall": "node ../scripts/security/apply-sdk56-backports.mjs --web",
+    "security:check": "node ../scripts/security/apply-sdk56-backports.mjs --web --check",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
